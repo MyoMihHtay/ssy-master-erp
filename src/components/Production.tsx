@@ -22,7 +22,6 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
   const [newOutputUnit, setNewOutputUnit] = useState('ပိဿာ');
   const [newIngredients, setNewIngredients] = useState<RecipeIngredient[]>([]);
 
-  // လတ်တလောရွေးထားသော ဖော်မြူလာမရှိပါက အလိုအလျောက် ပထမတစ်ခုကို ရွေးပေးရန်
   useEffect(() => {
     if (!selectedRecipeId && recipes.length > 0) {
       setSelectedRecipeId(recipes[0].id);
@@ -69,7 +68,6 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
     }
   };
 
-  // ⭐️ မလိုအပ်သော ဖော်မြူလာများကို ဖျက်ရန် ⭐️
   const handleDeleteRecipe = () => {
     if (!selectedRecipe) return;
     if (window.confirm(`⚠️ "${selectedRecipe.name}" ဖော်မြူလာကို အပြီးအပိုင် ဖျက်ရန် သေချာပါသလား?`)) {
@@ -130,7 +128,6 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
             <div className="flex-1 min-w-[300px]">
               <div className="flex justify-between items-end mb-2">
                 <label className="block text-sm font-bold text-gray-700">ထုတ်လုပ်မည့် ကုန်ချော (Recipe)</label>
-                {/* ⭐️ ဖော်မြူလာ ဖျက်ခွင့် ခလုတ် (Manager Only) ⭐️ */}
                 {isManager && (
                   <button onClick={handleDeleteRecipe} className="text-red-500 hover:text-red-700 text-xs font-bold underline">
                     ဤဖော်မြူလာကို ဖျက်မည်
@@ -171,7 +168,6 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
                   {productionDetails.materials.map((mat, idx) => (
                     <tr key={idx} className={`border-b ${mat.isShortage ? 'bg-red-50' : 'hover:bg-indigo-50'}`}>
                       <td className="p-4 font-semibold text-gray-800">{mat.itemName}</td>
-                      {/* ⭐️ toFixed(2) ဖြင့် 2 Digit သို့ ပြောင်းပေးထားပါသည် ⭐️ */}
                       <td className="p-4 text-center font-bold text-indigo-600">{mat.totalRequired.toFixed(2)} {mat.unit}</td>
                       <td className="p-4 text-center">
                         <span className={`font-bold px-3 py-1 rounded-full text-sm ${mat.isShortage ? 'bg-red-200 text-red-800' : 'bg-green-100 text-green-800'}`}>
@@ -196,7 +192,6 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
         </>
       )}
 
-      {/* ----------------- FORMULA BUILDER TAB ----------------- */}
       {activeTab === 'builder' && isManager && (
         <form onSubmit={handleSaveRecipe} className="bg-white shadow-xl rounded-xl p-6 border-t-4 border-orange-500">
           <h3 className="text-lg font-bold mb-4 text-gray-800">📋 ဖော်မြူလာအသစ် တည်ဆောက်ခြင်း</h3>
