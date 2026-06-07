@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { InventoryItem, BOMResult, Recipe, RecipeIngredient } from '../App';
 
 interface ProductionProps {
@@ -13,22 +13,24 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
   const [activeTab, setActiveTab] = useState<'produce' | 'builder'>('produce');
   const isManager = (userRole || '').toLowerCase() === 'manager';
 
-  // --- Produce State ---
-  const [selectedRecipeId, setSelectedRecipeId] = useState<string>(recipes[0]?.id || '');
+  const [selectedRecipeId, setSelectedRecipeId] = useState<string>('');
   const [batchCount, setBatchCount] = useState<number>(1);
   const [customCosts, setCustomCosts] = useState<{ [key: string]: number }>({});
 
-  // --- Builder State ---
   const [newRecipeName, setNewRecipeName] = useState('');
   const [newOutputQty, setNewOutputQty] = useState('');
   const [newOutputUnit, setNewOutputUnit] = useState('ပိဿာ');
   const [newIngredients, setNewIngredients] = useState<RecipeIngredient[]>([]);
 
+  // လတ်တလောရွေးထားသော ဖော်မြူလာမရှိပါက အလိုအလျောက် ပထမတစ်ခုကို ရွေးပေးရန်
+  useEffect(() => {
+    if (!selectedRecipeId && recipes.length > 0) {
+      setSelectedRecipeId(recipes[0].id);
+    }
+  }, [recipes, selectedRecipeId]);
+
   const selectedRecipe = recipes.find(r => r.id === selectedRecipeId) || recipes[0];
 
-  // ----------------------------------------------------
-  // Logic: Production (ထုတ်လုပ်ခြင်း)
-  // ----------------------------------------------------
   const handleCostChange = (itemName: string, newCost: string) => {
     setCustomCosts(prev => ({ ...prev, [itemName]: Number(newCost) }));
   };
@@ -67,9 +69,17 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
     }
   };
 
-  // ----------------------------------------------------
-  // Logic: Formula Builder (ဖော်မြူလာ တည်ဆောက်ခြင်း)
-  // ----------------------------------------------------
+  // ⭐️ မလိုအပ်သော ဖော်မြူလာများကို ဖျက်ရန် ⭐️
+  const handleDeleteRecipe = () => {
+    if (!selectedRecipe) return;
+    if (window.confirm(`⚠️ "${selectedRecipe.name}" ဖော်မြူလာကို အပြီးအပိုင် ဖျက်ရန် သေချာပါသလား?`)) {
+      const updatedRecipes = recipes.filter(r => r.id !== selectedRecipe.id);
+      setRecipes(updatedRecipes);
+      setSelectedRecipeId(updatedRecipes.length > 0 ? updatedRecipes[0].id : '');
+      alert('✅ ဖော်မြူလာကို အောင်မြင်စွာ ဖျက်လိုက်ပါပြီ။');
+    }
+  };
+
   const handleAddIngredientRow = () => {
     setNewIngredients([...newIngredients, { itemName: inventoryItems[0]?.name || '', requiredQty: 0, unit: 'ပိဿာ', defaultCost: 0 }]);
   };
@@ -99,6 +109,7 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
     };
     setRecipes([...recipes, newRecipe]);
     setNewRecipeName(''); setNewOutputQty(''); setNewIngredients([]);
+    setSelectedRecipeId(newRecipe.id);
     alert('✅ ဖော်မြူလာအသစ် အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
     setActiveTab('produce');
   };
@@ -113,12 +124,19 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
         </div>
       </div>
 
-      {/* ----------------- PRODUCE TAB ----------------- */}
       {activeTab === 'produce' && productionDetails && selectedRecipe && (
         <>
           <div className="bg-white shadow-lg rounded-xl p-6 border-t-4 border-indigo-500 mb-6 flex flex-wrap gap-6 items-end">
             <div className="flex-1 min-w-[300px]">
-              <label className="block text-sm font-bold text-gray-700 mb-2">ထုတ်လုပ်မည့် ကုန်ချော (Recipe)</label>
+              <div className="flex justify-between items-end mb-2">
+                <label className="block text-sm font-bold text-gray-700">ထုတ်လုပ်မည့် ကုန်ချော (Recipe)</label>
+                {/* ⭐️ ဖော်မြူလာ ဖျက်ခွင့် ခလုတ် (Manager Only) ⭐️ */}
+                {isManager && (
+                  <button onClick={handleDeleteRecipe} className="text-red-500 hover:text-red-700 text-xs font-bold underline">
+                    ဤဖော်မြူလာကို ဖျက်မည်
+                  </button>
+                )}
+              </div>
               <select value={selectedRecipeId} onChange={e => setSelectedRecipeId(e.target.value)} className="border border-gray-300 p-3 rounded-lg w-full bg-gray-50 focus:ring-2 focus:ring-indigo-500 font-semibold text-indigo-900">
                 {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
               </select>
@@ -153,10 +171,11 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
                   {productionDetails.materials.map((mat, idx) => (
                     <tr key={idx} className={`border-b ${mat.isShortage ? 'bg-red-50' : 'hover:bg-indigo-50'}`}>
                       <td className="p-4 font-semibold text-gray-800">{mat.itemName}</td>
-                      <td className="p-4 text-center font-bold text-indigo-600">{mat.totalRequired.toFixed(3)} {mat.unit}</td>
+                      {/* ⭐️ toFixed(2) ဖြင့် 2 Digit သို့ ပြောင်းပေးထားပါသည် ⭐️ */}
+                      <td className="p-4 text-center font-bold text-indigo-600">{mat.totalRequired.toFixed(2)} {mat.unit}</td>
                       <td className="p-4 text-center">
                         <span className={`font-bold px-3 py-1 rounded-full text-sm ${mat.isShortage ? 'bg-red-200 text-red-800' : 'bg-green-100 text-green-800'}`}>
-                          {mat.inStock.toFixed(3)} {mat.isShortage ? ' (မလောက်ပါ)' : ''}
+                          {mat.inStock.toFixed(2)} {mat.isShortage ? ' (မလောက်ပါ)' : ''}
                         </span>
                       </td>
                       <td className="p-4 text-right">

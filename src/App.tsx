@@ -46,6 +46,9 @@ export default function App() {
     { id: 8, code: 'RM-008', name: 'Marlar Seasoning Powder', category: 'Raw Materials', unit: 'g', inStock: 5000 },
     { id: 9, code: 'RM-009', name: 'ငရုတ်သီးမှုန့်', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 10 },
     { id: 10, code: 'RM-010', name: 'ပျဉ်းတော်သိမ်ရွက်', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 5 },
+    // ⭐️ ဆား နှင့် ငပိ ကို Warehouse ထဲ ကြိုထည့်ပေးထားပါသည် ⭐️
+    { id: 11, code: 'RM-011', name: 'ဆား', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 20 },
+    { id: 12, code: 'RM-012', name: 'ငပိ', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 10 },
   ]);
 
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodItem[]>([]);
@@ -58,13 +61,15 @@ export default function App() {
       id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4,
       ingredients: [
         { itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 },
-        { itemName: 'စားအုန်းဆီ', requiredQty: 0.5, unit: 'ပိဿာ', defaultCost: 3000 }, // ⭐️ စားအုန်းဆီ ထပ်ထည့်ထားပါသည်
         { itemName: 'Gas အိုး (60Kg)', requiredQty: 0.2, unit: 'ပိဿာ', defaultCost: 250 },
         { itemName: 'စီချွမ် Seasoning Powder', requiredQty: 20, unit: 'g', defaultCost: 570 },
         { itemName: 'Garlic Seasoning Powder', requiredQty: 20, unit: 'g', defaultCost: 360 },
         { itemName: 'Marlar Seasoning Powder', requiredQty: 20, unit: 'g', defaultCost: 480 },
         { itemName: 'ငရုတ်သီးမှုန့်', requiredQty: 0.1, unit: 'ပိဿာ', defaultCost: 1000 },
         { itemName: 'ပျဉ်းတော်သိမ်ရွက်', requiredQty: 0.03, unit: 'ပိဿာ', defaultCost: 500 },
+        // ⭐️ ဆား နှင့် ငပိ ကို ဖော်မြူလာထဲ ထည့်ပေးထားပါသည် (ပမာဏကို လိုသလို ပြင်နိုင်ပါသည်) ⭐️
+        { itemName: 'ဆား', requiredQty: 0.05, unit: 'ပိဿာ', defaultCost: 100 },
+        { itemName: 'ငပိ', requiredQty: 0.05, unit: 'ပိဿာ', defaultCost: 500 },
       ]
     },
     {
@@ -94,9 +99,20 @@ export default function App() {
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => {
     const itemToUpdate = inventoryItems.find(item => item.name === itemName);
     const itemUnit = itemToUpdate ? itemToUpdate.unit : 'ခု';
-    setInventoryItems(prevItems => prevItems.map(item => item.name === itemName ? { ...item, inStock: item.inStock + qty } : item));
+
+    setInventoryItems(prevItems => 
+      prevItems.map(item => 
+        item.name === itemName 
+          ? { ...item, inStock: item.inStock + qty } 
+          : item
+      )
+    );
+    
     if (totalCost > 0) {
-      setExpenses(prevExpenses => [...prevExpenses, { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူစရိတ်', description: `${itemName} အဝင် (${qty} ${itemUnit}) အတွက်`, amount: totalCost }]);
+      setExpenses(prevExpenses => [
+        ...prevExpenses,
+        { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူစရိတ်', description: `${itemName} အဝင် (${qty} ${itemUnit}) အတွက်`, amount: totalCost }
+      ]);
     }
   };
 
@@ -105,7 +121,7 @@ export default function App() {
       prevItems.map(invItem => {
         const bomMatch = bomResults.find(b => b.itemName === invItem.name || invItem.name.includes(b.itemName));
         if (bomMatch) {
-          // ⭐️ ဒသမ ၂ နေရာ (2 Digits) ဖြင့်သာ သိမ်းဆည်းရန် ပြင်ဆင်ထားသည်
+          // ⭐️ toFixed(2) ဖြင့် 2 Digit သို့ ပြောင်းပေးထားပါသည် ⭐️
           return { ...invItem, inStock: parseFloat((invItem.inStock - bomMatch.amount).toFixed(2)) };
         }
         return invItem;
@@ -115,6 +131,7 @@ export default function App() {
     setFinishedGoods(prevGoods => {
       const existingIdx = prevGoods.findIndex(g => g.category === category && g.taste === taste && g.gram === gram);
       if (existingIdx > -1) {
+        // ⭐️ toFixed(2) ဖြင့် 2 Digit သို့ ပြောင်းပေးထားပါသည် ⭐️
         return prevGoods.map((g, idx) => idx === existingIdx ? { ...g, stockQty: parseFloat((g.stockQty + qty).toFixed(2)) } : g);
       } else {
         return [...prevGoods, { id: Date.now(), category, taste, gram, price: 0, stockQty: parseFloat(qty.toFixed(2)) }];
@@ -130,7 +147,9 @@ export default function App() {
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
           {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
-          {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
+          {activeTab === 'production' && (
+            <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />
+          )}
           {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
           {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         </div>
