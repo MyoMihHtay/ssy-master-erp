@@ -3,7 +3,6 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
 import { Production } from './components/Production';
-// ⭐️ Packaging Component ကို ခေါ်ယူထားပါသည် (နောက်တစ်ဆင့်တွင် ဖန်တီးပါမည်)
 import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
 import { Expenses } from './components/Expenses';
@@ -15,19 +14,11 @@ export interface FinishedGoodItem { id: number; category: string; taste: string;
 export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; updatedBy?: string; updatedAt?: string; }
 export interface UserSession { name: string; role: string; }
 export interface BOMResult { itemName: string; amount: number; }
-
 export interface RecipeIngredient { itemName: string; requiredQty: number; unit: string; defaultCost: number; }
 export interface Recipe { id: string; name: string; outputCategory: string; outputUnit: string; outputQtyPerBatch: number; ingredients: RecipeIngredient[]; }
 
-// ⭐️ Packaging Formula အတွက် Type အသစ် ⭐️
 export interface PackageRecipe {
-  id: string;
-  skuName: string; // ဥပမာ - ငါးရေခွံ ၃၅ ဂရမ် (Spicy)
-  category: string; // ငါးရေခွံကြော်
-  taste: string; // Spicy
-  gram: number; // 35
-  price: number; // 1500
-  ingredients: RecipeIngredient[]; // အကြမ်းထည်၊ အိတ်၊ တံဆိပ် စသည်
+  id: string; skuName: string; category: string; taste: string; gram: number; price: number; ingredients: RecipeIngredient[];
 }
 
 export default function App() {
@@ -49,7 +40,6 @@ export default function App() {
     { id: 10, code: 'RM-010', name: 'ပျဉ်းတော်သိမ်ရွက်', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 5 },
     { id: 11, code: 'RM-011', name: 'ဆား', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 20 },
     { id: 12, code: 'RM-012', name: 'ငပိ', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 10 },
-    // ⭐️ Packaging ပစ္စည်းများနှင့် အကြမ်းထည်များ ထပ်တိုးထားပါသည် ⭐️
     { id: 13, code: 'SF-001', name: 'ငါးရေခွံကြော် (အကြမ်းထည်)', category: 'Semi-Finished', unit: 'ပိဿာ', inStock: 10 },
     { id: 14, code: 'PK-001', name: '၇x၅ ပလပ်စတစ်အိတ်', category: 'Packaging', unit: 'ခု', inStock: 5000 },
     { id: 15, code: 'PK-002', name: '၃၅ဂရမ် တံဆိပ် (Sticker)', category: 'Packaging', unit: 'ခု', inStock: 5000 },
@@ -58,7 +48,7 @@ export default function App() {
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodItem[]>([]);
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [user, setUser] = useState<UserSession | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('packaging'); // စမ်းသပ်ရန် packaging ကို အရင်ဖွင့်ထားပါသည်
+  const [activeTab, setActiveTab] = useState<string>('packaging');
 
   const [recipes, setRecipes] = useState<Recipe[]>([
     {
@@ -77,12 +67,11 @@ export default function App() {
     }
   ]);
 
-  // ⭐️ Packaging (SKU) ဖော်မြူလာများ ⭐️
   const [packageRecipes, setPackageRecipes] = useState<PackageRecipe[]>([
     {
       id: 'PK-001', skuName: 'ငါးရေခွံကြော် ၃၅g (Marlar)', category: 'ငါးရေခွံကြော်', taste: 'Marlar', gram: 35, price: 1500,
       ingredients: [
-        { itemName: 'ငါးရေခွံကြော် (အကြမ်းထည်)', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 650 }, // 35g ခန့်မှန်း
+        { itemName: 'ငါးရေခွံကြော် (အကြမ်းထည်)', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 650 },
         { itemName: '၇x၅ ပလပ်စတစ်အိတ်', requiredQty: 1, unit: 'ခု', defaultCost: 20 },
         { itemName: '၃၅ဂရမ် တံဆိပ် (Sticker)', requiredQty: 1, unit: 'ခု', defaultCost: 15 },
       ]
@@ -90,10 +79,9 @@ export default function App() {
   ]);
 
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => {
-    // (ယခင်အတိုင်း)
+    //
   };
 
-  // ⭐️ Production (ကြော်ခြင်း) ပြီးလျှင် အကြမ်းထည် အဖြစ် Warehouse သို့ ဝင်မည် ⭐️
   const handleConfirmProduction = (category: string, taste: string, gram: number, qty: number, bomResults: BOMResult[]) => {
     setInventoryItems(prevItems => {
       let updatedItems = prevItems.map(invItem => {
@@ -104,7 +92,6 @@ export default function App() {
         return invItem;
       });
 
-      // ထွက်လာသော အကြမ်းထည်ကို Inventory ထဲ ပေါင်းထည့်မည်
       const outputItem = updatedItems.find(i => i.name === category);
       if (outputItem) {
         outputItem.inStock = parseFloat((outputItem.inStock + qty).toFixed(2));
@@ -117,9 +104,7 @@ export default function App() {
     });
   };
 
-  // ⭐️ Packaging ပြီးလျှင် ကုန်ချော (Finished Goods) သို့ ဝင်မည် ⭐️
   const handleConfirmPackaging = (recipe: PackageRecipe, outputQty: number, bomResults: BOMResult[]) => {
-    // ၁. Warehouse မှ အကြမ်းထည် နှင့် အိတ်များကို နှုတ်မည်
     setInventoryItems(prevItems => 
       prevItems.map(invItem => {
         const bomMatch = bomResults.find(b => b.itemName === invItem.name || invItem.name.includes(b.itemName));
@@ -130,7 +115,6 @@ export default function App() {
       })
     );
 
-    // ၂. Finished Goods ထဲသို့ ကုန်ချောထုပ်များ ပေါင်းထည့်မည်
     setFinishedGoods(prevGoods => {
       const existingIdx = prevGoods.findIndex(g => g.category === recipe.category && g.taste === recipe.taste && g.gram === recipe.gram);
       if (existingIdx > -1) {
@@ -149,13 +133,8 @@ export default function App() {
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
           {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
-          {activeTab === 'production' && (
-            <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />
-          )}
-          {/* ⭐️ Packaging Component ကို ခေါ်ထားပါသည် ⭐️ */}
-          {activeTab === 'packaging' && (
-             <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />
-          )}
+          {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
+          {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
           {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
           {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         </div>
