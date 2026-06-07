@@ -7,9 +7,6 @@ import { FinishedGoods } from './components/FinishedGoods';
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
 
-// ==========================================
-// Types & Interfaces
-// ==========================================
 export interface AccountItem {
   id: number; username: string; password?: string; role: 'manager' | 'supervisor' | 'storekeeper' | 'staff'; displayName: string;
 }
@@ -25,7 +22,6 @@ export interface ExpenseItem {
 export interface UserSession { name: string; role: string; }
 export interface BOMResult { itemName: string; amount: number; }
 
-// Dynamic Formula အတွက် Type များ
 export interface RecipeIngredient {
   itemName: string; requiredQty: number; unit: string; defaultCost: number;
 }
@@ -57,12 +53,12 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [activeTab, setActiveTab] = useState<string>('production');
 
-  // ဖော်မြူလာများကို State ဖြင့် သိမ်းဆည်းခြင်း
   const [recipes, setRecipes] = useState<Recipe[]>([
     {
       id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4,
       ingredients: [
         { itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 },
+        { itemName: 'စားအုန်းဆီ', requiredQty: 0.5, unit: 'ပိဿာ', defaultCost: 3000 }, // ⭐️ စားအုန်းဆီ ထပ်ထည့်ထားပါသည်
         { itemName: 'Gas အိုး (60Kg)', requiredQty: 0.2, unit: 'ပိဿာ', defaultCost: 250 },
         { itemName: 'စီချွမ် Seasoning Powder', requiredQty: 20, unit: 'g', defaultCost: 570 },
         { itemName: 'Garlic Seasoning Powder', requiredQty: 20, unit: 'g', defaultCost: 360 },
@@ -83,8 +79,7 @@ export default function App() {
       ]
     },
     {
-      id: 'F-003', name: 'အာလူးပေါင်းကြော်', outputCategory: 'အာလူးပေါင်းကြော်', outputUnit: 'ပိဿာ', 
-      outputQtyPerBatch: 1.15, // ⭐️ ဤနေရာတွင် ၁.၁၅ ဟု ပြင်ဆင်လိုက်ပါပြီ ⭐️
+      id: 'F-003', name: 'အာလူးပေါင်းကြော်', outputCategory: 'အာလူးပေါင်းကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.15,
       ingredients: [
         { itemName: 'အာလူးပေါင်း ကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 4400 },
         { itemName: 'စားအုန်းဆီ', requiredQty: 0.5, unit: 'ပိဿာ', defaultCost: 3000 },
@@ -99,26 +94,9 @@ export default function App() {
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => {
     const itemToUpdate = inventoryItems.find(item => item.name === itemName);
     const itemUnit = itemToUpdate ? itemToUpdate.unit : 'ခု';
-
-    setInventoryItems(prevItems => 
-      prevItems.map(item => 
-        item.name === itemName 
-          ? { ...item, inStock: item.inStock + qty } 
-          : item
-      )
-    );
-    
+    setInventoryItems(prevItems => prevItems.map(item => item.name === itemName ? { ...item, inStock: item.inStock + qty } : item));
     if (totalCost > 0) {
-      setExpenses(prevExpenses => [
-        ...prevExpenses,
-        { 
-          id: Date.now(), 
-          date: new Date().toLocaleDateString('en-GB'), 
-          category: 'ကုန်ကြမ်းဝယ်ယူစရိတ်', 
-          description: `${itemName} အဝင် (${qty} ${itemUnit}) အတွက်`, 
-          amount: totalCost 
-        }
-      ]);
+      setExpenses(prevExpenses => [...prevExpenses, { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူစရိတ်', description: `${itemName} အဝင် (${qty} ${itemUnit}) အတွက်`, amount: totalCost }]);
     }
   };
 
@@ -127,7 +105,8 @@ export default function App() {
       prevItems.map(invItem => {
         const bomMatch = bomResults.find(b => b.itemName === invItem.name || invItem.name.includes(b.itemName));
         if (bomMatch) {
-          return { ...invItem, inStock: parseFloat((invItem.inStock - bomMatch.amount).toFixed(3)) };
+          // ⭐️ ဒသမ ၂ နေရာ (2 Digits) ဖြင့်သာ သိမ်းဆည်းရန် ပြင်ဆင်ထားသည်
+          return { ...invItem, inStock: parseFloat((invItem.inStock - bomMatch.amount).toFixed(2)) };
         }
         return invItem;
       })
@@ -136,9 +115,9 @@ export default function App() {
     setFinishedGoods(prevGoods => {
       const existingIdx = prevGoods.findIndex(g => g.category === category && g.taste === taste && g.gram === gram);
       if (existingIdx > -1) {
-        return prevGoods.map((g, idx) => idx === existingIdx ? { ...g, stockQty: parseFloat((g.stockQty + qty).toFixed(3)) } : g);
+        return prevGoods.map((g, idx) => idx === existingIdx ? { ...g, stockQty: parseFloat((g.stockQty + qty).toFixed(2)) } : g);
       } else {
-        return [...prevGoods, { id: Date.now(), category, taste, gram, price: 0, stockQty: parseFloat(qty.toFixed(3)) }];
+        return [...prevGoods, { id: Date.now(), category, taste, gram, price: 0, stockQty: parseFloat(qty.toFixed(2)) }];
       }
     });
   };
@@ -151,15 +130,7 @@ export default function App() {
       <main className="flex-1 p-8 overflow-y-auto">
         <div className="max-w-7xl mx-auto">
           {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
-          {activeTab === 'production' && (
-            <Production 
-              userRole={user.role} 
-              inventoryItems={inventoryItems} 
-              recipes={recipes} 
-              setRecipes={setRecipes} 
-              onProductionConfirm={handleConfirmProduction} 
-            />
-          )}
+          {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
           {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
           {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         </div>
