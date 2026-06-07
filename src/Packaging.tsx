@@ -13,12 +13,10 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
   const [activeTab, setActiveTab] = useState<'package' | 'builder'>('package');
   const isManager = (userRole || '').toLowerCase() === 'manager';
 
-  // --- Packaging State ---
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>('');
   const [packCount, setPackCount] = useState<number>(1);
   const [customCosts, setCustomCosts] = useState<{ [key: string]: number }>({});
 
-  // --- Builder State ---
   const [newSkuName, setNewSkuName] = useState('');
   const [newCategory, setNewCategory] = useState('');
   const [newTaste, setNewTaste] = useState('Normal');
@@ -83,7 +81,6 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
     }
   };
 
-  // --- Builder Logic ---
   const handleAddIngredientRow = () => {
     setNewIngredients([...newIngredients, { itemName: inventoryItems[0]?.name || '', requiredQty: 0, unit: 'ခု', defaultCost: 0 }]);
   };
@@ -129,7 +126,6 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
         </div>
       </div>
 
-      {/* ----------------- PACKAGING TAB ----------------- */}
       {activeTab === 'package' && packagingDetails && selectedRecipe && (
         <>
           <div className="bg-white shadow-lg rounded-xl p-6 border-t-4 border-teal-500 mb-6 flex flex-wrap gap-6 items-end">
@@ -200,7 +196,6 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
         </>
       )}
 
-      {/* ----------------- SKU BUILDER TAB ----------------- */}
       {activeTab === 'builder' && isManager && (
         <form onSubmit={handleSaveRecipe} className="bg-white shadow-xl rounded-xl p-6 border-t-4 border-pink-500">
           <h3 className="text-lg font-bold mb-4 text-gray-800">📦 ရောင်းတန်းဝင် SKU အသစ် တည်ဆောက်ခြင်း</h3>
@@ -251,4 +246,19 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
                 <div className="w-32">
                   <input type="number" value={ing.defaultCost || ''} onChange={e => handleIngredientChange(idx, 'defaultCost', Number(e.target.value))} placeholder="ခန့်မှန်းဈေး" className="border p-2 rounded w-full" required />
                 </div>
-                <button type="button" onClick={() => handleRemoveIngredient(idx)} className="text-red-500 hover:text-red-700 font-bold px-2">X</button
+                <button type="button" onClick={() => handleRemoveIngredient(idx)} className="text-red-500 hover:text-red-700 font-bold px-2">X</button>
+              </div>
+            ))}
+            {newIngredients.length === 0 && <div className="text-sm text-gray-500 italic text-center py-4">ပစ္စည်းများ ထည့်သွင်းထားခြင်း မရှိသေးပါ။</div>}
+          </div>
+
+          <div className="flex justify-end">
+            <button type="submit" className="bg-pink-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-pink-700 shadow-md">
+              SKU သိမ်းဆည်းမည်
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+};
