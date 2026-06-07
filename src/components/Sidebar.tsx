@@ -1,65 +1,116 @@
 import React from 'react';
-import { LayoutDashboard, Warehouse, PackageCheck, CircleDollarSign, Receipt, LogOut, Users } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   userName: string;
-  userRole: string; // ရာထူးကို လက်ခံမည်
+  userRole: string;
   onLogout: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userName, userRole, onLogout }) => {
-  // ရာထူးအလိုက် မြင်ရမည့် မီနူးများကို သတ်မှတ်ခြင်း
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['manager', 'supervisor', 'staff'] },
-    { id: 'inventory', label: 'ကုန်လှောင်ရုံ (Warehouse)', icon: Warehouse, roles: ['manager', 'supervisor'] }, // Staff မမြင်ရ
-    { id: 'production', label: 'ထုတ်လုပ်မှု (Production)', icon: PackageCheck, roles: ['manager', 'supervisor', 'staff'] },
-    { id: 'finished_goods', label: 'ကုန်ချောစာရင်း', icon: PackageCheck, roles: ['manager', 'supervisor', 'staff'] },
-    { id: 'expenses', label: 'အသုံးစရိတ်များ', icon: CircleDollarSign, roles: ['manager', 'supervisor'] }, // Staff မမြင်ရ
-    { id: 'invoices', label: 'အရောင်းဘောင်ချာ', icon: Receipt, roles: ['manager', 'supervisor'] },
-    { id: 'accounts', label: 'အကောင့်စီမံခန့်ခွဲမှု', icon: Users, roles: ['manager'] }, // Manager သာ မြင်ရမည်
-  ];
-
-  // လက်ရှိရာထူးနှင့် ကိုက်ညီသော မီနူးများကိုသာ စစ်ထုတ်ခြင်း
-  const visibleMenus = menuItems.filter(item => item.roles.includes(userRole));
-
   return (
-    <div className="w-64 bg-gray-900 text-white min-h-screen p-4 shadow-xl flex flex-col">
-      <div className="mb-8 mt-4 text-center">
-        <h1 className="text-3xl font-extrabold text-blue-400">SSY</h1>
-        <p className="text-sm text-gray-400 tracking-widest mt-1">MASTER ERP</p>
-      </div>
-
-      <div className="bg-gray-800 p-3 rounded-xl mb-6 border border-gray-700">
-        <p className="text-xs text-gray-400 mb-1">လက်ရှိအသုံးပြုသူ</p>
-        <p className="text-sm font-bold text-green-400">{userName}</p>
+    <div className="w-64 bg-gray-900 text-white flex flex-col shadow-2xl h-screen sticky top-0">
+      <div className="p-6 border-b border-gray-800 text-center">
+        <h1 className="text-3xl font-black text-blue-400 tracking-wider">SSY</h1>
+        <p className="text-xs text-gray-400 tracking-widest mt-1">MASTER ERP</p>
       </div>
       
-      <nav className="flex-1">
-        {visibleMenus.map((item) => {
-          const Icon = item.icon;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center gap-4 p-3 rounded-xl mb-3 transition-all duration-200 text-left ${
-                activeTab === item.id 
-                  ? 'bg-blue-600 text-white shadow-md' 
-                  : 'hover:bg-gray-800 text-gray-400 hover:text-white'
-              }`}
-            >
-              <Icon size={22} className="flex-shrink-0" />
-              <span className="font-medium leading-tight">{item.label}</span>
-            </button>
-          );
-        })}
+      <div className="p-4 bg-gray-800 mx-4 mt-6 rounded-lg border border-gray-700">
+        <p className="text-xs text-gray-400 mb-1">လက်ရှိအသုံးပြုသူ</p>
+        <p className="font-bold text-green-400 truncate">{userName}</p>
+      </div>
+
+      <nav className="flex-1 px-4 mt-8 space-y-2 overflow-y-auto pb-4">
+        <button
+          onClick={() => setActiveTab('inventory')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-800'
+          }`}
+        >
+          <span>📦</span>
+          <div className="text-left">
+            <div className="text-sm">ကုန်လှောင်ရုံ</div>
+            <div className="text-[10px] opacity-70">(Warehouse)</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('production')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'production' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-800'
+          }`}
+        >
+          <span>🍳</span>
+          <div className="text-left">
+            <div className="text-sm">ထုတ်လုပ်မှု</div>
+            <div className="text-[10px] opacity-70">(Production)</div>
+          </div>
+        </button>
+
+        {/* ⭐️ အသစ်ထည့်ထားသော Packaging Menu ⭐️ */}
+        <button
+          onClick={() => setActiveTab('packaging')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'packaging' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-800'
+          }`}
+        >
+          <span>🏷️</span>
+          <div className="text-left">
+            <div className="text-sm">ထုပ်ပိုးမှု</div>
+            <div className="text-[10px] opacity-70">(Packaging)</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('finished_goods')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'finished_goods' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-800'
+          }`}
+        >
+          <span>🛍️</span>
+          <div className="text-left">
+            <div className="text-sm">ကုန်ချောစာရင်း</div>
+            <div className="text-[10px] opacity-70">(Finished Goods)</div>
+          </div>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('expenses')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'expenses' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-800'
+          }`}
+        >
+          <span>💰</span>
+          <div className="text-left">
+            <div className="text-sm">အသုံးစရိတ်များ</div>
+            <div className="text-[10px] opacity-70">(Expenses)</div>
+          </div>
+        </button>
+
+        {userRole === 'manager' && (
+          <button
+            onClick={() => setActiveTab('accounts')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+              activeTab === 'accounts' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-300 hover:bg-gray-800'
+            }`}
+          >
+            <span>👥</span>
+            <div className="text-left">
+              <div className="text-sm">အကောင့်စီမံခန့်ခွဲမှု</div>
+              <div className="text-[10px] opacity-70">(Accounts)</div>
+            </div>
+          </button>
+        )}
       </nav>
 
-      <div className="mt-auto pt-4 border-t border-gray-800">
-        <button onClick={onLogout} className="w-full flex items-center gap-4 p-3 rounded-xl hover:bg-red-600/20 text-red-400 hover:text-red-500 transition-colors text-left">
-          <LogOut size={22} className="flex-shrink-0" />
-          <span className="font-medium leading-tight">အကောင့်ထွက်မည်</span>
+      <div className="p-4 border-t border-gray-800">
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+        >
+          <span>[→</span>
+          အကောင့်ထွက်မည်
         </button>
       </div>
     </div>
