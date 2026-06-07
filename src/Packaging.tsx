@@ -252,9 +252,10 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
             {newIngredients.length === 0 && <div className="text-sm text-gray-500 italic text-center py-4">ပစ္စည်းများ ထည့်သွင်းထားခြင်း မရှိသေးပါ။</div>}
           </div>
 
+          {/* ပြတ်သွားသော အစိတ်အပိုင်းများကို အောက်တွင် ဖြည့်စွက်ပေးထားပါသည် */}
           <div className="flex justify-end">
-            <button type="submit" className="bg-pink-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-pink-700 shadow-md">
-              SKU သိမ်းဆည်းမည်
+            <button type="submit" className="bg-pink-600 text-white px-6 py-3 rounded-lg font-bold shadow-md hover:bg-pink-700 transition-colors">
+              SKU အသစ် သိမ်းမည်
             </button>
           </div>
         </form>
