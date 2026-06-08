@@ -20,13 +20,14 @@ export interface PackageRecipe { id: string; skuName: string; category: string; 
 
 export default function App() {
   const [accounts, setAccounts] = useState<AccountItem[]>([
-    { id: 1, username: 'md', password: '123', role: 'md', displayName: 'စက်ရုံမှူး (MD)' },
-    { id: 2, username: 'finance', password: '123', role: 'finance', displayName: 'Finance Manager' },
-    { id: 3, username: 'qc', password: '123', role: 'qc', displayName: 'QC / QA' },
-    { id: 4, username: 'purchasing', password: '123', role: 'purchasing', displayName: 'Purchasing Officer' },
-    { id: 5, username: 'store', password: '123', role: 'storekeeper', displayName: 'Store Keeper' },
-    { id: 6, username: 'maint', password: '123', role: 'maintenance', displayName: 'Maintenance' },
-    { id: 7, username: 'staff', password: '123', role: 'staff', displayName: 'Production Staff' },
+    { id: 1, username: 'md', password: '123', role: 'md', displayName: 'Managing Director (MD)' },
+    { id: 2, username: 'manager', password: '123', role: 'manager', displayName: 'စက်ရုံမှူး (Manager)' },
+    { id: 3, username: 'finance', password: '123', role: 'finance', displayName: 'Finance Manager' },
+    { id: 4, username: 'qc', password: '123', role: 'qc', displayName: 'QC / QA' },
+    { id: 5, username: 'purchasing', password: '123', role: 'purchasing', displayName: 'Purchasing Officer' },
+    { id: 6, username: 'store', password: '123', role: 'storekeeper', displayName: 'Store Keeper' },
+    { id: 7, username: 'maint', password: '123', role: 'maintenance', displayName: 'Maintenance' },
+    { id: 8, username: 'staff', password: '123', role: 'staff', displayName: 'Production Staff' },
   ]);
 
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
