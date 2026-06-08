@@ -14,6 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
     { id: 'production', name: 'ထုတ်လုပ်မှု', icon: '🍳' },
     { id: 'packaging', name: 'ထုပ်ပိုးမှု', icon: '🏷️' },
     { id: 'finished_goods', name: 'ကုန်ချောစာရင်း', icon: '🛍️' },
+    { id: 'procurement', name: 'ဝယ်ယူရေးနှင့် တင်ဒါ', icon: '🛒' }, // <--- အသစ်တိုးထားသော နေရာ
     { id: 'expenses', name: 'အသုံးစရိတ်များ', icon: '💰' },
   ];
 
@@ -34,7 +35,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
             <span>{tab.name}</span>
           </button>
         ))}
-        {/* MD တစ်ဦးတည်းသာ AC Menu ကို မြင်တွေ့ခွင့်ရှိသည် */}
         {userRole === 'md' && (
           <button onClick={() => setActiveTab('accounts')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === 'accounts' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}>
             <span className="text-xl">👥</span>
