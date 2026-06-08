@@ -10,6 +10,7 @@ interface ExpensesProps {
 
 export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses, setExpenses }) => {
   const [category, setCategory] = useState('');
+  const [customCategory, setCustomCategory] = useState(''); // ခေါင်းစဉ်အသစ်အတွက် State
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [voucherNo, setVoucherNo] = useState('');
@@ -28,14 +29,17 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!category || !description || !amount) {
+    // 'other' ရွေးထားရင် ရိုက်ထည့်ထားတဲ့ ခေါင်းစဉ်ကို ယူမည်
+    const finalCategory = category === 'other' ? customCategory : category;
+
+    if (!finalCategory || !description || !amount) {
       alert('လိုအပ်သော အချက်အလက်များကို ဖြည့်ပါ။'); return;
     }
 
     const newExpense: ExpenseItem = {
       id: Date.now(),
       date: new Date().toLocaleDateString('en-GB'),
-      category,
+      category: finalCategory,
       description,
       amount: Number(amount),
       voucherNo: voucherNo || '-',
@@ -43,7 +47,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
     };
 
     setExpenses([...expenses, newExpense]);
-    setCategory(''); setDescription(''); setAmount(''); setVoucherNo(''); setReceiptImage('');
+    setCategory(''); setCustomCategory(''); setDescription(''); setAmount(''); setVoucherNo(''); setReceiptImage('');
     alert('✅ အသုံးစရိတ် မှတ်တမ်းတင်ပြီးပါပြီ။');
   };
 
@@ -62,27 +66,23 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
       </h2>
 
       <div className="bg-white shadow-lg p-6 rounded-2xl border-t-4 border-red-500">
-        <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+        <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           
           <div className="md:col-span-1">
             <label className="block text-sm font-bold text-gray-700 mb-1">အသုံးစရိတ် ခေါင်းစဉ်</label>
-            {/* ဤနေရာတွင် Dropdown အစား DataList ဖြင့် ပြောင်းထားပါသည် */}
-            <input 
-              type="text" 
-              list="expense-categories"
-              value={category} 
-              onChange={e => setCategory(e.target.value)} 
-              className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0 font-semibold" 
-              required 
-              placeholder="ရွေးချယ်ပါ (သို့) အသစ်ရိုက်ထည့်ပါ"
-            />
-            <datalist id="expense-categories">
-              <option value="ကုန်ကြမ်းဝယ်ယူမှု" />
-              <option value="စက်ရုံသုံးပစ္စည်း" />
-              <option value="ဝန်ထမ်းစရိတ် / လစာ" />
-              <option value="ပြုပြင်ထိန်းသိမ်းစရိတ်" />
-              <option value="အထွေထွေ" />
-            </datalist>
+            <select value={category} onChange={e => setCategory(e.target.value)} className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0 font-semibold" required>
+              <option value="">-- ရွေးချယ်ပါ --</option>
+              <option value="ကုန်ကြမ်းဝယ်ယူမှု">ကုန်ကြမ်းဝယ်ယူမှု</option>
+              <option value="စက်ရုံသုံးပစ္စည်း">စက်ရုံသုံးပစ္စည်း (Gas, ဆီ)</option>
+              <option value="ဝန်ထမ်းစရိတ်">ဝန်ထမ်းစရိတ် / လစာ</option>
+              <option value="ပြုပြင်ထိန်းသိမ်းစရိတ်">ပြုပြင်ထိန်းသိမ်းစရိတ်</option>
+              <option value="အထွေထွေ">အထွေထွေ</option>
+              <option value="other">➕ အခြား (ခေါင်းစဉ်အသစ်ထည့်မည်)</option>
+            </select>
+            {/* 'အခြား' ကိုရွေးလျှင် စာရိုက်ထည့်ရန် အကွက်ပေါ်လာမည် */}
+            {category === 'other' && (
+              <input type="text" value={customCategory} onChange={e => setCustomCategory(e.target.value)} placeholder="ခေါင်းစဉ်အသစ် ရိုက်ထည့်ပါ" className="mt-3 border-2 border-red-300 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0" required autoFocus />
+            )}
           </div>
 
           <div className="md:col-span-2">
@@ -102,8 +102,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
 
           <div className="flex flex-col gap-1">
             <label className="block text-sm font-bold text-gray-700">ဘောက်ချာ ဓာတ်ပုံ</label>
-            <div className="flex gap-2 items-center">
-              <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 border-2 border-dashed border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-bold transition-colors w-full text-center flex items-center justify-center gap-2">
+            <div className="flex gap-2 items-center h-[52px]">
+              <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 border-2 border-dashed border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-bold transition-colors w-full h-full flex items-center justify-center gap-2">
                 <span>📸</span> ဓာတ်ပုံရိုက်မည် / ရွေးမည်
                 <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" />
               </label>
@@ -112,7 +112,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
 
           {receiptImage && (
             <div className="md:col-span-3 flex justify-start items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
-              <img src={receiptImage} alt="Voucher Preview" className="h-16 w-16 object-cover rounded-lg border border-gray-300 shadow-sm" />
+              <img src={receiptImage} alt="Voucher" className="h-16 w-16 object-cover rounded-lg border border-gray-300 shadow-sm" />
               <div className="text-sm text-green-600 font-bold flex-1">ဓာတ်ပုံ ထည့်သွင်းပြီးပါပြီ 📸</div>
               <button type="button" onClick={() => setReceiptImage('')} className="text-red-500 hover:text-red-700 font-bold px-3 py-1 bg-red-100 rounded-lg">ဖျက်မည်</button>
             </div>
@@ -155,6 +155,28 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
                     <td className="p-4 font-semibold text-red-600">{exp.category}</td>
                     <td className="p-4 text-gray-700">{exp.description}</td>
                     <td className="p-4 text-center">
+                      {/* အပိတ် Quote လွတ်သွားသော နေရာကို သေချာ ပြင်ဆင်ထားပါသည် */}
                       {exp.receiptImage ? (
                         <a href={exp.receiptImage} target="_blank" rel="noreferrer" className="inline-block border border-gray-300 rounded hover:shadow-md transition-shadow">
-                          <img src={exp.receiptImage} alt="Voucher" className="h-
+                          <img src={exp.receiptImage} alt="Voucher" className="h-10 w-10 object-cover rounded" title="ပုံအကြီးကြည့်ရန် နှိပ်ပါ" />
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right font-bold text-red-600">{exp.amount.toLocaleString()}</td>
+                    <td className="p-4 text-center">
+                      <button onClick={() => handleDelete(exp.id)} className="text-red-500 hover:text-red-700 font-bold bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors">
+                        ဖျက်မည်
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
