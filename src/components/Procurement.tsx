@@ -153,7 +153,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
         </form>
       )}
 
-      {/* Approval Board */}
       <div className="space-y-6">
         <h3 className="text-xl font-bold text-gray-800 border-l-4 border-indigo-500 pl-3">တင်ပြထားသော ဝယ်ယူခွင့်များ (Approval Board)</h3>
         {requests.length === 0 ? <p className="text-gray-500">တင်ပြထားသော စာရင်းမရှိသေးပါ။</p> : requests.map(req => (
@@ -175,7 +174,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <p className="text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded border leading-relaxed">{sup.qualityDesc}</p>
                   {sup.photo ? <img src={sup.photo} alt="quality" className="w-full h-32 object-cover rounded-lg shadow-sm" /> : <div className="w-full h-32 bg-gray-100 flex items-center justify-center text-gray-400 text-sm rounded-lg border">ဓာတ်ပုံမပါပါ</div>}
                   
-                  {/* Final Approval Button for MD/Manager */}
                   {req.status === 'Finance_Approved' && isMDorManager && (
                     <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg transition-colors shadow-md">
                       👑 ဤ Supplier ထံမှ ဝယ်မည်
@@ -185,7 +183,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               ))}
             </div>
 
-            {/* Action Bar */}
             <div className="bg-gray-100 p-4 border-t flex justify-end gap-3">
               {req.status === 'Pending' && isQC && (
                 <button onClick={() => updateStatus(req.id, 'QC_Approved')} className="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold shadow-md hover:bg-blue-700">🔬 အရည်အသွေး မှန်ကန်သည် (QC Approve)</button>
