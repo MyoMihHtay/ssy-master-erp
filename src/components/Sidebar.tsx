@@ -34,8 +34,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
             <span>{tab.name}</span>
           </button>
         ))}
-        {/* MD နှင့် Manager နှစ်ဦးစလုံး AC Menu ကို မြင်ရမည် */}
-        {(userRole === 'md' || userRole === 'manager') && (
+        {/* MD တစ်ဦးတည်းသာ AC Menu ကို မြင်တွေ့ခွင့်ရှိသည် */}
+        {userRole === 'md' && (
           <button onClick={() => setActiveTab('accounts')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === 'accounts' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`}>
             <span className="text-xl">👥</span>
             <span>အကောင့်စီမံခန့်ခွဲမှု</span>
