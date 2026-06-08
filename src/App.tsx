@@ -20,7 +20,7 @@ export interface PackageRecipe { id: string; skuName: string; category: string; 
 
 export default function App() {
   const [accounts, setAccounts] = useState<AccountItem[]>([
-    { id: 1, username: 'md', password: '123', role: 'md', displayName: 'Managing Director' },
+    { id: 1, username: 'md', password: '123', role: 'md', displayName: 'စက်ရုံမှူး (MD)' },
     { id: 2, username: 'finance', password: '123', role: 'finance', displayName: 'Finance Manager' },
     { id: 3, username: 'qc', password: '123', role: 'qc', displayName: 'QC / QA' },
     { id: 4, username: 'purchasing', password: '123', role: 'purchasing', displayName: 'Purchasing Officer' },
@@ -31,8 +31,9 @@ export default function App() {
 
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
     { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500 },
-    { id: 2, code: 'RM-004', name: 'Gas အိုး (60Kg)', category: 'Consumables', unit: 'ပိဿာ', inStock: 100 },
-    { id: 3, code: 'PK-001', name: '၇x၅ ပလပ်စတစ်အိတ်', category: 'Packaging', unit: 'ခု', inStock: 5000 },
+    { id: 2, code: 'RM-002', name: 'ကြက်သွန်ကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 300 },
+    { id: 3, code: 'RM-003', name: 'အာလူးကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 400 },
+    { id: 4, code: 'PK-001', name: '၇x၅ ပလပ်စတစ်အိတ်', category: 'Packaging', unit: 'ခု', inStock: 5000 },
   ]);
 
   const [finishedGoods, setFinishedGoods] = useState<FinishedGoodItem[]>([]);
@@ -40,37 +41,32 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [activeTab, setActiveTab] = useState<string>('inventory');
 
-  const [recipes, setRecipes] = useState<Recipe[]>([{
-    id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော် (အကြမ်းထည်)', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4,
-    ingredients: [
-      { itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 },
-      { itemName: 'Gas အိုး (60Kg)', requiredQty: 0.2, unit: 'ပိဿာ', defaultCost: 250 },
-    ]
-  }]);
+  const [recipes, setRecipes] = useState<Recipe[]>([
+    { id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4, ingredients: [{ itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 }] },
+    { id: 'F-002', name: 'ကြက်သွန်ပေါင်းကြော်', outputCategory: 'ကြက်သွန်ပေါင်းကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1, ingredients: [{ itemName: 'ကြက်သွန်ကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 15000 }] },
+    { id: 'F-003', name: 'အာလူးပေါင်းကြော်', outputCategory: 'အာလူးပေါင်းကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1, ingredients: [{ itemName: 'အာလူးကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 12000 }] },
+  ]);
 
-  const [packageRecipes, setPackageRecipes] = useState<PackageRecipe[]>([{
-    id: 'PK-001', skuName: 'ငါးရေခွံကြော် ၃၅g (Marlar)', category: 'ငါးရေခွံကြော်', taste: 'Marlar', gram: 35, price: 1500,
-    ingredients: [
-      { itemName: 'ငါးရေခွံကြော် (အကြမ်းထည်)', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 650 },
-      { itemName: '၇x၅ ပလပ်စတစ်အိတ်', requiredQty: 1, unit: 'ခု', defaultCost: 20 },
-    ]
-  }]);
+  const [packageRecipes, setPackageRecipes] = useState<PackageRecipe[]>([
+    { id: 'PK-001', skuName: 'ငါးရေခွံကြော် ၃၅g', category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, ingredients: [{ itemName: 'ငါးရေခွံကြော်', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 650 }] },
+    { id: 'PK-002', skuName: 'အာလူးကြော် ၃၅g', category: 'အာလူးပေါင်းကြော်', taste: 'Normal', gram: 35, price: 1000, ingredients: [{ itemName: 'အာလူးပေါင်းကြော်', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 400 }] },
+  ]);
 
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => { };
 
-  const handleConfirmProduction = (category: string, taste: string, gram: number, qty: number, bomResults: BOMResult[]) => {
-    setInventoryItems(prev => prev.map(inv => {
-      const match = bomResults.find(b => b.itemName === inv.name);
-      return match ? { ...inv, inStock: inv.inStock - match.amount } : inv;
-    }));
+  const handleConfirmProduction = (cat: string, t: string, g: number, qty: number, bom: BOMResult[]) => {
+      setInventoryItems(prev => prev.map(inv => {
+          const match = bom.find(b => b.itemName === inv.name);
+          return match ? { ...inv, inStock: inv.inStock - match.amount } : inv;
+      }));
   };
 
-  const handleConfirmPackaging = (recipe: PackageRecipe, outputQty: number, bomResults: BOMResult[]) => {
-    setInventoryItems(prev => prev.map(inv => {
-      const match = bomResults.find(b => b.itemName === inv.name);
-      return match ? { ...inv, inStock: inv.inStock - match.amount } : inv;
-    }));
-    setFinishedGoods(prev => [...prev, { id: Date.now(), category: recipe.category, taste: recipe.taste, gram: recipe.gram, price: recipe.price, stockQty: outputQty }]);
+  const handleConfirmPackaging = (recipe: PackageRecipe, outputQty: number, bom: BOMResult[]) => {
+      setInventoryItems(prev => prev.map(inv => {
+          const match = bom.find(b => b.itemName === inv.name);
+          return match ? { ...inv, inStock: inv.inStock - match.amount } : inv;
+      }));
+      setFinishedGoods(prev => [...prev, { id: Date.now(), category: recipe.category, taste: recipe.taste, gram: recipe.gram, price: recipe.price, stockQty: outputQty }]);
   };
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
