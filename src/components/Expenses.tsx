@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { ExpenseItem } from '../App';
 
 interface ExpensesProps {
@@ -9,170 +9,155 @@ interface ExpensesProps {
 }
 
 export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses, setExpenses }) => {
-  const [category, setCategory] = useState('ထုတ်လုပ်မှုစရိတ်');
+  const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
+  const [amount, setAmount] = useState<number | ''>('');
 
-  // Edit အတွက် State များ
-  const [editingExpense, setEditingExpense] = useState<ExpenseItem | null>(null);
-  const [editCategory, setEditCategory] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editAmount, setEditAmount] = useState('');
-
-  const isManager = (userRole || '').toLowerCase() === 'manager';
-
-  const categories = [
-    'ထုတ်လုပ်မှုစရိတ်', 'စက်ရုံလည်ပတ်မှုစရိတ်', 'ရုံးပိုင်းဆိုင်ရာစရိတ်', 
-    'သယ်ယူပို့ဆောင်ရေး', 'ဝန်ထမ်းရေးရာ', 'ရင်းနှီးမြှုပ်နှံမှု/အထွေထွေ', 'ကုန်ကြမ်းဝယ်ယူစရိတ်'
+  // မူလသတ်မှတ်ထားသော အသုံးစရိတ် ခေါင်းစဉ်များ
+  const predefinedCategories = [
+    'ထုတ်လုပ်မှုစရိတ်',
+    'စက်ရုံလည်ပတ်မှုစရိတ်',
+    'ရုံးပိုင်းဆိုင်ရာစရိတ်',
+    'သယ်ယူပို့ဆောင်ရေး',
+    'ဝန်ထမ်းရေးရာ',
+    'ရှင်းလင်းရေးနှင့် အထွေထွေ',
+    'ကုန်ကြမ်းဝယ်ယူစရိတ်'
   ];
 
-  // အသစ်ထည့်ရန်
+  // မူလခေါင်းစဉ်များနှင့် အသစ်ရိုက်ထည့်ထားသော ခေါင်းစဉ်များကို ပေါင်းစပ်ပေးခြင်း
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set(predefinedCategories);
+    expenses.forEach(e => cats.add(e.category));
+    return Array.from(cats);
+  }, [expenses]);
+
   const handleAddExpense = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || !amount) return;
-    setExpenses([...expenses, { 
-      id: Date.now(), 
-      date: new Date().toLocaleDateString('en-GB'), 
-      category, 
-      description, 
-      amount: Number(amount) 
-    }]);
-    setDescription(''); setAmount('');
-  };
+    if (!category || !description || !amount) return;
 
-  // ဖျက်ရန် (Manager Only)
-  const handleDelete = (id: number, desc: string) => {
-    if (window.confirm(`⚠️ "${desc}" စရိတ်ကို စာရင်းမှ ပယ်ဖျက်ရန် သေချာပါသလား?`)) {
-      setExpenses(expenses.filter(exp => exp.id !== id));
-    }
-  };
+    const newExpense: ExpenseItem = {
+      id: Date.now(),
+      date: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD format
+      category,
+      description,
+      amount: Number(amount),
+      updatedBy: userName,
+    };
 
-  // ပြင်ရန် Form ဖွင့်ရန်
-  const handleEditClick = (exp: ExpenseItem) => {
-    setEditingExpense(exp);
-    setEditCategory(exp.category);
-    setEditDescription(exp.description);
-    setEditAmount(exp.amount.toString());
-  };
-
-  // ပြင်ဆင်ချက်ကို သိမ်းဆည်းရန်
-  const handleUpdateExpense = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingExpense) return;
-    setExpenses(expenses.map(exp => 
-      exp.id === editingExpense.id 
-        ? { 
-            ...exp, 
-            category: editCategory, 
-            description: editDescription, 
-            amount: Number(editAmount),
-            updatedBy: userName, // ဘယ်သူပြင်လဲ မှတ်ရန်
-            updatedAt: new Date().toLocaleString('en-GB') // ဘယ်အချိန်ပြင်လဲ မှတ်ရန်
-          } 
-        : exp
-    ));
-    setEditingExpense(null);
+    setExpenses([...expenses, newExpense]);
+    setCategory('');
+    setDescription('');
+    setAmount('');
+    alert('✅ အသုံးစရိတ် အောင်မြင်စွာ မှတ်တမ်းတင်ပြီးပါပြီ။');
   };
 
   const totalExpense = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
+  // စာရင်းဖျက်ရန် (MD နှင့် Finance Manager သာ ဖျက်ခွင့်ရှိသည်)
+  const handleDelete = (id: number) => {
+    if (userRole !== 'md' && userRole !== 'finance') {
+      alert('⚠️ MD နှင့် Finance Manager သာလျှင် စာရင်းဖျက်ခွင့်ရှိပါသည်။');
+      return;
+    }
+    if (window.confirm('ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?')) {
+      setExpenses(expenses.filter(e => e.id !== id));
+    }
+  };
+
   return (
-    <div className="p-6 max-w-6xl mx-auto relative">
-      <h2 className="text-2xl font-bold mb-6 text-red-700 border-b pb-2">💸 စက်ရုံ အသုံးစရိတ် စီမံခန့်ခွဲမှု</h2>
-      
-      <form onSubmit={handleAddExpense} className="bg-white shadow-lg p-6 rounded-xl mb-8 border-t-4 border-red-500 flex flex-wrap gap-4 items-end">
-        <div className="w-64">
-          <label className="block text-sm font-bold text-gray-700">အုပ်စု (Category)</label>
-          <select value={category} onChange={e => setCategory(e.target.value)} className="border p-2.5 rounded-lg w-full mt-1 bg-gray-50 focus:ring-2 focus:ring-red-500 outline-none">
-            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-          </select>
-        </div>
-        <div className="flex-1 min-w-[250px]">
-          <label className="block text-sm font-bold text-gray-700">အသေးစိတ်ဖော်ပြချက် (Description)</label>
-          <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="border p-2.5 rounded-lg w-full mt-1 focus:ring-2 focus:ring-red-500 outline-none" placeholder="ဥပမာ - စက်အပိုပစ္စည်း (ပလပ်) ဝယ်ခြင်း" required />
-        </div>
-        <div className="w-40">
-          <label className="block text-sm font-bold text-gray-700">ငွေပမာဏ (Ks)</label>
-          <input type="number" value={amount} onChange={e => setAmount(e.target.value)} className="border p-2.5 rounded-lg w-full mt-1 focus:ring-2 focus:ring-red-500 outline-none" placeholder="၀၀" required />
-        </div>
-        <button type="submit" className="bg-red-600 text-white px-8 py-2.5 rounded-lg font-bold hover:bg-red-700 shadow-md">စာရင်းသွင်းမည်</button>
-      </form>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      <h2 className="text-2xl font-bold text-red-700 border-b-2 border-red-200 pb-3 flex items-center gap-3">
+        <span>💸</span> စက်ရုံ အသုံးစရိတ် စီမံခန့်ခွဲမှု
+      </h2>
 
-      {/* Edit Modal Popup */}
-      {editingExpense && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-2xl w-96 border-t-4 border-red-500">
-            <h3 className="text-xl font-bold mb-4 text-gray-800">အသုံးစရိတ် ပြင်ဆင်ရန်</h3>
-            <form onSubmit={handleUpdateExpense} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">အုပ်စု</label>
-                <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-red-500 outline-none">
-                  {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">အသေးစိတ်ဖော်ပြချက်</label>
-                <input type="text" value={editDescription} onChange={e => setEditDescription(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-red-500 outline-none" required />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">ငွေပမာဏ (Ks)</label>
-                <input type="number" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-red-500 outline-none" required />
-              </div>
-              <div className="flex justify-end gap-2 mt-6">
-                <button type="button" onClick={() => setEditingExpense(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300">ပယ်ဖျက်မည်</button>
-                <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 shadow-md">သိမ်းဆည်းမည်</button>
-              </div>
-            </form>
+      <div className="bg-white shadow-xl p-6 rounded-2xl border-t-4 border-red-500">
+        <form onSubmit={handleAddExpense} className="flex flex-wrap gap-4 items-end">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-bold text-gray-700 mb-1">အုပ်စု (Category)</label>
+            {/* HTML5 Datalist အသုံးပြုထားသဖြင့် ရွေးချယ်နိုင်သလို အသစ်လည်း ရိုက်ထည့်နိုင်ပါသည် */}
+            <input
+              list="expense-categories"
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 font-semibold text-gray-800"
+              placeholder="ရွေးချယ်ပါ (သို့) အသစ်ရိုက်ထည့်ပါ"
+              required
+            />
+            <datalist id="expense-categories">
+              {uniqueCategories.map((cat, idx) => (
+                <option key={idx} value={cat} />
+              ))}
+            </datalist>
           </div>
-        </div>
-      )}
 
-      <div className="bg-white shadow-md rounded-xl overflow-hidden border">
-        <div className="p-4 bg-gray-800 text-white font-bold text-right text-xl">စုစုပေါင်း အသုံးစရိတ် - {totalExpense.toLocaleString()} Ks</div>
-        <table className="w-full text-left">
-          <thead className="bg-gray-100 text-gray-700">
-            <tr>
-              <th className="p-4">ရက်စွဲ</th>
-              <th className="p-4">အုပ်စု</th>
-              <th className="p-4">အသေးစိတ်</th>
-              <th className="p-4 text-right">ငွေပမာဏ</th>
-              {isManager && <th className="p-4 text-center">လုပ်ဆောင်ချက်</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {expenses.map(exp => (
-              <tr key={exp.id} className="border-b hover:bg-red-50 transition-colors">
-                <td className="p-4 text-gray-600 whitespace-nowrap">{exp.date}</td>
-                <td className="p-4 font-semibold text-red-700">{exp.category}</td>
-                <td className="p-4">
-                  <div className="text-gray-800 font-medium">{exp.description}</div>
-                  {/* Audit Trail (ဘယ်သူပြင်လဲ ပြပေးမည့်နေရာ) */}
-                  {exp.updatedBy && (
-                    <div className="text-[11px] text-gray-400 mt-0.5">
-                      Edited by {exp.updatedBy} ({exp.updatedAt})
-                    </div>
-                  )}
-                </td>
-                <td className="p-4 text-right font-bold text-red-600">{exp.amount.toLocaleString()} Ks</td>
-                
-                {/* Manager ဖြစ်မှသာ ပြင်မည်/ဖျက်မည် ပေါ်မည် */}
-                {isManager && (
-                  <td className="p-4 text-center whitespace-nowrap">
-                    <button onClick={() => handleEditClick(exp)} className="text-blue-600 hover:text-blue-800 font-bold mx-1 px-2 py-1 bg-blue-50 rounded-md transition-colors">ပြင်မည်</button>
-                    <button onClick={() => handleDelete(exp.id, exp.description)} className="text-red-600 hover:text-red-800 font-bold mx-1 px-2 py-1 bg-red-50 rounded-md transition-colors">ဖျက်မည်</button>
-                  </td>
-                )}
-              </tr>
-            ))}
-            {expenses.length === 0 && (
+          <div className="flex-[2] min-w-[250px]">
+            <label className="block text-sm font-bold text-gray-700 mb-1">အသေးစိတ်ဖော်ပြချက် (Description)</label>
+            <input
+              type="text"
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0"
+              placeholder="ဥပမာ - စက်အပိုပစ္စည်း (ပလပ်) ဝယ်ခြင်း"
+              required
+            />
+          </div>
+
+          <div className="flex-1 min-w-[150px]">
+            <label className="block text-sm font-bold text-gray-700 mb-1">ငွေပမာဏ (Ks)</label>
+            <input
+              type="number"
+              value={amount}
+              onChange={e => setAmount(Number(e.target.value))}
+              className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 font-bold text-red-600"
+              placeholder="၀၀"
+              required
+            />
+          </div>
+
+          <button type="submit" className="bg-red-600 text-white px-8 py-3 rounded-xl font-bold shadow-md hover:bg-red-700 transition-colors h-[48px] flex items-center justify-center">
+            စာရင်းသွင်းမည်
+          </button>
+        </form>
+      </div>
+
+      <div className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
+        <div className="bg-gray-800 text-white p-5 flex justify-between items-center">
+          <span className="font-bold text-lg">စုစုပေါင်း အသုံးစရိတ်</span>
+          <span className="text-2xl font-black text-red-400">{totalExpense.toLocaleString()} Ks</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left whitespace-nowrap">
+            <thead className="bg-red-50 text-red-900 border-b-2 border-red-100">
               <tr>
-                <td colSpan={isManager ? 5 : 4} className="p-6 text-center text-gray-500 font-medium">
-                  အသုံးစရိတ် မှတ်တမ်း မရှိသေးပါ။
-                </td>
+                <th className="p-4 font-bold">ရက်စွဲ</th>
+                <th className="p-4 font-bold">အုပ်စု (Category)</th>
+                <th className="p-4 font-bold">အသေးစိတ်</th>
+                <th className="p-4 font-bold text-right">ငွေပမာဏ</th>
+                <th className="p-4 font-bold text-center">လုပ်ဆောင်ချက်</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {expenses.length === 0 ? (
+                <tr><td colSpan={5} className="p-6 text-center text-gray-500 font-medium italic">အသုံးစရိတ် မှတ်တမ်း မရှိသေးပါ။</td></tr>
+              ) : expenses.map((exp) => (
+                <tr key={exp.id} className="border-b hover:bg-red-50/50 transition-colors">
+                  <td className="p-4 text-gray-600 font-medium">{exp.date}</td>
+                  <td className="p-4 font-bold text-red-600">{exp.category}</td>
+                  <td className="p-4 text-gray-800 font-medium">{exp.description}</td>
+                  <td className="p-4 text-right font-bold text-gray-900">{exp.amount.toLocaleString()} Ks</td>
+                  <td className="p-4 text-center">
+                    <button
+                      onClick={() => handleDelete(exp.id)}
+                      className="text-sm bg-red-100 text-red-700 px-4 py-1.5 rounded-lg font-bold hover:bg-red-600 hover:text-white transition-colors shadow-sm"
+                    >
+                      ဖျက်မည်
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
