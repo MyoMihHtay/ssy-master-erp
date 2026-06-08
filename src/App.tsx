@@ -11,7 +11,7 @@ import { AccountManagement } from './components/AccountManagement';
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; }
 export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; }
-export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; }
+export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; }
 export interface UserSession { name: string; role: string; }
 export interface BOMResult { itemName: string; amount: number; }
 export interface RecipeIngredient { itemName: string; requiredQty: number; unit: string; defaultCost: number; }
