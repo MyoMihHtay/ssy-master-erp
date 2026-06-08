@@ -15,7 +15,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
   const [voucherNo, setVoucherNo] = useState('');
   const [receiptImage, setReceiptImage] = useState<string>('');
 
-  // ဓာတ်ပုံ ရွေးချယ်ခြင်း (သို့) ကင်မရာဖြင့် ရိုက်ခြင်း
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -62,20 +61,28 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
         <span>💸</span> စက်ရုံသုံးစရိတ် နှင့် ဘောက်ချာ မှတ်တမ်း
       </h2>
 
-      {/* အသုံးစရိတ် အသစ်ထည့်ရန် Form */}
       <div className="bg-white shadow-lg p-6 rounded-2xl border-t-4 border-red-500">
         <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
           
           <div className="md:col-span-1">
             <label className="block text-sm font-bold text-gray-700 mb-1">အသုံးစရိတ် ခေါင်းစဉ်</label>
-            <select value={category} onChange={e => setCategory(e.target.value)} className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0 font-semibold" required>
-              <option value="">-- ရွေးချယ်ပါ --</option>
-              <option value="ကုန်ကြမ်းဝယ်ယူမှု">ကုန်ကြမ်းဝယ်ယူမှု</option>
-              <option value="စက်ရုံသုံးပစ္စည်း">စက်ရုံသုံးပစ္စည်း (Gas, ဆီ)</option>
-              <option value="ဝန်ထမ်းစရိတ်">ဝန်ထမ်းစရိတ် / လစာ</option>
-              <option value="ပြုပြင်ထိန်းသိမ်းစရိတ်">ပြုပြင်ထိန်းသိမ်းစရိတ်</option>
-              <option value="အထွေထွေ">အထွေထွေ</option>
-            </select>
+            {/* ဤနေရာတွင် Dropdown အစား DataList ဖြင့် ပြောင်းထားပါသည် */}
+            <input 
+              type="text" 
+              list="expense-categories"
+              value={category} 
+              onChange={e => setCategory(e.target.value)} 
+              className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0 font-semibold" 
+              required 
+              placeholder="ရွေးချယ်ပါ (သို့) အသစ်ရိုက်ထည့်ပါ"
+            />
+            <datalist id="expense-categories">
+              <option value="ကုန်ကြမ်းဝယ်ယူမှု" />
+              <option value="စက်ရုံသုံးပစ္စည်း" />
+              <option value="ဝန်ထမ်းစရိတ် / လစာ" />
+              <option value="ပြုပြင်ထိန်းသိမ်းစရိတ်" />
+              <option value="အထွေထွေ" />
+            </datalist>
           </div>
 
           <div className="md:col-span-2">
@@ -98,7 +105,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
             <div className="flex gap-2 items-center">
               <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 border-2 border-dashed border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-bold transition-colors w-full text-center flex items-center justify-center gap-2">
                 <span>📸</span> ဓာတ်ပုံရိုက်မည် / ရွေးမည်
-                {/* accept="image/*" capture="environment" သည် ဖုန်းတွင် ကင်မရာ တိုက်ရိုက်ပွင့်စေရန်ဖြစ်သည် */}
                 <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" />
               </label>
             </div>
@@ -120,7 +126,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
         </form>
       </div>
 
-      {/* အသုံးစရိတ် စာရင်း ဇယား */}
       <div className="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-200">
         <div className="p-4 bg-gray-800 text-white font-bold flex justify-between items-center">
           <span>ယခုလ အသုံးစရိတ် မှတ်တမ်းများ</span>
@@ -152,25 +157,4 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
                     <td className="p-4 text-center">
                       {exp.receiptImage ? (
                         <a href={exp.receiptImage} target="_blank" rel="noreferrer" className="inline-block border border-gray-300 rounded hover:shadow-md transition-shadow">
-                          <img src={exp.receiptImage} alt="Voucher" className="h-10 w-10 object-cover rounded" title="ပုံအကြီးကြည့်ရန် နှိပ်ပါ" />
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right font-bold text-red-600">{exp.amount.toLocaleString()}</td>
-                    <td className="p-4 text-center">
-                      <button onClick={() => handleDelete(exp.id)} className="text-red-500 hover:text-red-700 font-bold bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors">
-                        ဖျက်မည်
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-};
+                          <img src={exp.receiptImage} alt="Voucher" className="h-
