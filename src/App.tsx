@@ -47,14 +47,12 @@ export default function App() {
   const [user, setUser] = useState<UserSession | null>(null);
   const [activeTab, setActiveTab] = useState<string>('procurement');
 
-  // ပြန်လည်ထည့်သွင်းထားသော မူလ ထုတ်လုပ်မှု Formula များ
   const [recipes, setRecipes] = useState<Recipe[]>([
     { id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4, ingredients: [{ itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 }] },
     { id: 'F-002', name: 'ကြက်သွန်ပေါင်းကြော်', outputCategory: 'ကြက်သွန်ပေါင်းကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1, ingredients: [{ itemName: 'ကြက်သွန်ကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 15000 }] },
     { id: 'F-003', name: 'အာလူးပေါင်းကြော်', outputCategory: 'အာလူးပေါင်းကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1, ingredients: [{ itemName: 'အာလူးကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 12000 }] },
   ]);
 
-  // ပြန်လည်ထည့်သွင်းထားသော မူလ ထုပ်ပိုးမှု Formula များ
   const [packageRecipes, setPackageRecipes] = useState<PackageRecipe[]>([
     { id: 'PK-001', skuName: 'ငါးရေခွံကြော် ၃၅g', category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, ingredients: [{ itemName: 'ငါးရေခွံကြော်', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 650 }] },
     { id: 'PK-002', skuName: 'အာလူးကြော် ၃၅g', category: 'အာလူးပေါင်းကြော်', taste: 'Normal', gram: 35, price: 1000, ingredients: [{ itemName: 'အာလူးပေါင်းကြော်', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 400 }] },
@@ -62,7 +60,6 @@ export default function App() {
 
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => { };
 
-  // ကုန်ကြမ်းနှုတ်မည့် Logic များ
   const handleConfirmProduction = (cat: string, t: string, g: number, qty: number, bom: BOMResult[]) => {
       setInventoryItems(prev => prev.map(inv => {
           const match = bom.find(b => b.itemName === inv.name);
@@ -81,9 +78,14 @@ export default function App() {
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
-      <main className="flex-1 p-8 overflow-y-auto">
+    <div className="flex min-h-screen bg-gray-100 print:block print:bg-white">
+      {/* Sidebar ကို Print တွင် လုံးဝဖျောက်ထားပါမည် */}
+      <div className="print:hidden flex-shrink-0">
+         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
+      </div>
+      
+      {/* Print ထုတ်ချိန်တွင် အရှည်လိုက် Scroll မပြတ်စေရန် print:overflow-visible ထည့်ထားပါသည် */}
+      <main className="flex-1 p-8 overflow-y-auto print:overflow-visible print:p-0 print:w-full">
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
