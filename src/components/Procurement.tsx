@@ -91,7 +91,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   return (
     <div className="p-2 md:p-6 max-w-7xl mx-auto space-y-8 print:p-0 print:space-y-6">
       
-      {/* Header */}
       <div className="flex items-center gap-3 border-b-2 border-indigo-200 pb-4 print:hidden">
         <span className="text-4xl">🛒</span>
         <div>
@@ -131,14 +130,23 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border-2 p-3 rounded-xl text-sm h-20 bg-gray-50 outline-none" placeholder="အရည်အသွေး ဖော်ပြချက်" />
                   <textarea value={sup.analysisNote} onChange={e => handleSupplierChange(idx, 'analysisNote', e.target.value)} className="w-full border-2 p-3 rounded-xl text-sm h-20 bg-gray-50 outline-none" placeholder="နှိုင်းယှဉ်သုံးသပ်ချက်" />
                   
+                  {/* Photo & Quotation Upload (Camera or File) */}
                   <div className="grid grid-cols-2 gap-3 mt-4">
-                    <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center text-xs font-bold flex flex-col items-center">
-                      <span className="text-lg">📸</span> <span>Take Photo</span>
-                      <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageUpload(idx, 'photo', e)} className="hidden" />
+                    <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center flex flex-col items-center hover:bg-indigo-50 transition">
+                      <span className="text-lg mb-1">📸</span> 
+                      <span className="text-xs font-bold text-gray-700">ပစ္စည်းပုံ (Product)</span>
+                      <span className="text-[10px] text-gray-400 mt-1">ကင်မရာ / ဖိုင်ရွေးမည်</span>
+                      {/* hidden အစား sr-only ကိုသုံးထားပြီး capture ကို ဖြုတ်ထားပါသည် */}
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(idx, 'photo', e)} className="sr-only" />
+                      {sup.photo && <span className="text-[10px] text-green-600 font-bold mt-1 bg-green-50 px-2 py-0.5 rounded">✓ ရွေးပြီးပါပြီ</span>}
                     </label>
-                    <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center text-xs font-bold flex flex-col items-center">
-                      <span className="text-lg">📄</span> <span>Quotation ပုံ</span>
-                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(idx, 'quotationImage', e)} className="hidden" />
+
+                    <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center flex flex-col items-center hover:bg-indigo-50 transition">
+                      <span className="text-lg mb-1">📄</span> 
+                      <span className="text-xs font-bold text-gray-700">ဘောက်ချာ (Quotation)</span>
+                      <span className="text-[10px] text-gray-400 mt-1">ကင်မရာ / ဖိုင်ရွေးမည်</span>
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(idx, 'quotationImage', e)} className="sr-only" />
+                      {sup.quotationImage && <span className="text-[10px] text-green-600 font-bold mt-1 bg-green-50 px-2 py-0.5 rounded">✓ ရွေးပြီးပါပြီ</span>}
                     </label>
                   </div>
                 </div>
@@ -151,12 +159,11 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
         </form>
       )}
 
-      {/* Approval Board (Print area) */}
+      {/* Approval Board */}
       <div className="space-y-8 print:space-y-12">
         <h3 className="text-2xl font-black text-gray-800 border-l-4 border-indigo-600 pl-4 print:hidden">တင်ပြထားသော ဝယ်ယူခွင့်များ</h3>
         
         {requests.map(req => (
-          // break-inside-avoid ကို ထည့်သွင်းထားသောကြောင့် Print ထုတ်ချိန် Box တစ်ခုထဲ ထက်ပိုင်းမပြတ်ပါ
           <div key={req.id} className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 break-inside-avoid print:shadow-none print:border-gray-800 print:mb-10">
             
             <div className="bg-gray-800 p-6 flex justify-between items-center print:bg-white print:border-b-2 print:border-gray-800 print:p-4">
@@ -187,10 +194,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               </div>
             )}
 
-            {/* Print တွင် Column ၃ ခု အတိအကျဖြစ်ရန် print:grid-cols-3 နှင့် print:p-4 ထည့်ထားပါသည် */}
             <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 bg-gray-50 print:bg-white print:grid-cols-3 print:gap-4 print:p-4">
               {req.suppliers.map((sup) => (
-                // Supplier တစ်ခုချင်းစီကိုလည်း Page Break မဖြစ်အောင် ထိန်းထားပါသည်
                 <div key={sup.id} className={`border-2 p-6 rounded-2xl relative break-inside-avoid bg-white ${req.selectedSupplierId === sup.id ? 'border-green-500 shadow-xl print:border-green-800 print:border-4' : 'border-gray-200 print:border-gray-500'}`}>
                   {req.selectedSupplierId === sup.id && (
                     <div className="absolute -top-4 -right-4 bg-green-500 text-white w-10 h-10 flex justify-center items-center rounded-full font-black shadow-lg border-4 border-white print:border-green-800 print:text-black print:bg-white">✓</div>
@@ -249,7 +254,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
         ))}
       </div>
 
-      {/* Lightbox Modal (Print ထုတ်ချိန်တွင် အလိုအလျောက် ပျောက်နေပါမည်) */}
       {previewImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 print:hidden" onClick={() => setPreviewImage(null)}>
           <div className="relative max-w-4xl w-full flex justify-center">
