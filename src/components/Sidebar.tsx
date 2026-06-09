@@ -10,11 +10,11 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userName, userRole, onLogout }) => {
   const tabs = [
+    { id: 'procurement', name: 'ဝယ်ယူရေးနှင့် တင်ဒါ', icon: '🛒' }, // <-- အပေါ်ဆုံးသို့ ရွှေ့လိုက်ပါပြီ
     { id: 'inventory', name: 'ကုန်လှောင်ရုံ', icon: '📦' },
     { id: 'production', name: 'ထုတ်လုပ်မှု', icon: '🍳' },
     { id: 'packaging', name: 'ထုပ်ပိုးမှု', icon: '🏷️' },
     { id: 'finished_goods', name: 'ကုန်ချောစာရင်း', icon: '🛍️' },
-    { id: 'procurement', name: 'ဝယ်ယူရေးနှင့် တင်ဒါ', icon: '🛒' }, // <--- အသစ်တိုးထားသော နေရာ
     { id: 'expenses', name: 'အသုံးစရိတ်များ', icon: '💰' },
   ];
 

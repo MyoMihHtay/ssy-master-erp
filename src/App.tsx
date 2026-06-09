@@ -7,7 +7,7 @@ import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
-import { Procurement } from './components/Procurement'; // <--- PurchaseRequest ကို ဖယ်လိုက်ပါပြီ
+import { Procurement } from './components/Procurement';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; }
@@ -19,9 +19,27 @@ export interface RecipeIngredient { itemName: string; requiredQty: number; unit:
 export interface Recipe { id: string; name: string; outputCategory: string; outputUnit: string; outputQtyPerBatch: number; ingredients: RecipeIngredient[]; }
 export interface PackageRecipe { id: string; skuName: string; category: string; taste: string; gram: number; price: number; ingredients: RecipeIngredient[]; }
 
-// Procurement အတွက် လိုအပ်သည်များကို App.tsx သို့ ရွှေ့လိုက်ပါပြီ (Error လုံးဝမတက်စေရန်)
-export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; photo?: string; }
-export interface PurchaseRequest { id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Rejected'; }
+// ဝယ်ယူရေးအတွက် အဆင့်မြှင့်ထားသော Data Types များ
+export interface SupplierOption { 
+  id: string; 
+  name: string; 
+  price: number; 
+  qualityDesc: string; 
+  analysisNote: string; // နှိုင်းယှဉ်သုံးသပ်ချက်
+  photo?: string; // ပစ္စည်းပုံ
+  quotationImage?: string; // ဘောက်ချာ/Quotation ပုံ
+}
+export interface PurchaseRequest { 
+  id: number; 
+  date: string; 
+  itemName: string; 
+  requestedQty: number; 
+  unit: string; 
+  suppliers: SupplierOption[]; 
+  selectedSupplierId?: string; 
+  status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Rejected'; 
+  rejectReason?: string; // ပယ်ချရသည့် အကြောင်းရင်း
+}
 
 export default function App() {
   const [accounts, setAccounts] = useState<AccountItem[]>([
@@ -45,7 +63,7 @@ export default function App() {
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [purchaseRequests, setPurchaseRequests] = useState<PurchaseRequest[]>([]);
   const [user, setUser] = useState<UserSession | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('inventory');
+  const [activeTab, setActiveTab] = useState<string>('procurement'); // Default အနေဖြင့် ဝယ်ယူရေးကို အရင်ပြမည်
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [packageRecipes, setPackageRecipes] = useState<PackageRecipe[]>([]);
@@ -60,11 +78,11 @@ export default function App() {
     <div className="flex min-h-screen bg-gray-100">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       <main className="flex-1 p-8 overflow-y-auto">
+        {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
-        {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
       </main>
