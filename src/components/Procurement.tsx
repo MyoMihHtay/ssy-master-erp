@@ -1,0 +1,262 @@
+import React, { useState } from 'react';
+import type { PurchaseRequest, SupplierOption } from '../App';
+
+interface ProcurementProps {
+  userRole: string;
+  requests: PurchaseRequest[];
+  setRequests: React.Dispatch<React.SetStateAction<PurchaseRequest[]>>;
+}
+
+export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, setRequests }) => {
+  const [itemName, setItemName] = useState('');
+  const [requestedQty, setRequestedQty] = useState('');
+  const [unit, setUnit] = useState('');
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([
+    { id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', photo: '', quotationImage: '' }
+  ]);
+
+  const isPurchasing = userRole === 'purchasing' || userRole === 'md' || userRole === 'manager';
+  const isQC = userRole === 'qc' || userRole === 'md' || userRole === 'manager';
+  const isFinance = userRole === 'finance' || userRole === 'md' || userRole === 'manager';
+  const isMDorManager = userRole === 'md' || userRole === 'manager';
+
+  const handleAddSupplier = () => {
+    if (suppliers.length < 3) {
+      setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', photo: '', quotationImage: '' }]);
+    } else {
+      alert('အများဆုံး Supplier ၃ ခုသာ နှိုင်းယှဉ်ပြသနိုင်ပါသည်။');
+    }
+  };
+
+  const handleSupplierChange = (index: number, field: keyof SupplierOption, value: any) => {
+    const updated = [...suppliers];
+    updated[index] = { ...updated[index], [field]: value };
+    setSuppliers(updated);
+  };
+
+  const handleImageUpload = (index: number, field: 'photo' | 'quotationImage', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        handleSupplierChange(index, field, reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmitPR = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!itemName || !requestedQty || !unit || suppliers.length === 0) return alert('အချက်အလက် ပြည့်စုံစွာ ဖြည့်ပါ။');
+    
+    const newPR: PurchaseRequest = {
+      id: Date.now(),
+      date: new Date().toLocaleDateString('en-GB'),
+      itemName,
+      requestedQty: Number(requestedQty),
+      unit,
+      suppliers,
+      status: 'Pending'
+    };
+    setRequests([newPR, ...requests]);
+    setItemName(''); setRequestedQty(''); setUnit(''); 
+    setSuppliers([{ id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', photo: '', quotationImage: '' }]);
+    alert('✅ ဝယ်ယူခွင့် (PR) တင်ပြခြင်း အောင်မြင်ပါသည်။ (QC သို့ ရောက်ရှိသွားပါပြီ)');
+  };
+
+  const updateStatus = (id: number, newStatus: PurchaseRequest['status'], selectedId?: string, reason?: string) => {
+    setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus, selectedSupplierId: selectedId || r.selectedSupplierId, rejectReason: reason || r.rejectReason } : r));
+  };
+
+  const handleReject = (id: number) => {
+    const reason = window.prompt("ပယ်ချရသည့် အကြောင်းရင်းကို ရေးပါ (ဥပမာ - ဈေးများနေသည်၊ အရည်အသွေးမမီပါ):");
+    if (reason) {
+      updateStatus(id, 'Rejected', undefined, reason);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-bold border border-orange-200 shadow-sm">⏳ Pending (QC စစ်ဆေးရန် စောင့်ဆိုင်းဆဲ)</span>;
+      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-bold border border-blue-200 shadow-sm">🔬 QC မှန်ကန်သည် (Finance စစ်ဆေးရန်)</span>;
+      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-bold border border-purple-200 shadow-sm">💰 Finance မှန်ကန်သည် (MD အတည်ပြုရန်)</span>;
+      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-bold border border-green-200 shadow-sm">✅ အတည်ပြုပြီး (ဝယ်ယူနိုင်ပါပြီ)</span>;
+      case 'Rejected': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold border border-red-200 shadow-sm">❌ ပယ်ချလိုက်သည်</span>;
+      default: return null;
+    }
+  };
+
+  return (
+    <div className="p-6 max-w-7xl mx-auto space-y-8">
+      <div className="flex items-center gap-3 border-b-2 border-indigo-200 pb-4">
+        <span className="text-4xl">🛒</span>
+        <div>
+          <h2 className="text-2xl font-extrabold text-indigo-900">ဝယ်ယူရေးနှင့် အဆင့်ဆင့် အတည်ပြုစနစ် (Maker-Checker Flow)</h2>
+          <p className="text-sm text-gray-500 font-medium mt-1">Purchasing ➔ QC ➔ Finance ➔ MD / Manager</p>
+        </div>
+      </div>
+      
+      {isPurchasing && (
+        <form onSubmit={handleSubmitPR} className="bg-white shadow-xl p-6 rounded-2xl border-t-4 border-indigo-500">
+          <div className="flex justify-between items-center mb-6">
+             <h3 className="text-lg font-bold text-gray-800">📝 ဝယ်ယူခွင့် တောင်းခံလွှာ အသစ် (PR)</h3>
+             <button type="button" onClick={handleAddSupplier} className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg font-bold hover:bg-indigo-100 transition shadow-sm">+ Supplier နှိုင်းယှဉ်ရန် ထပ်ထည့်မည်</button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 bg-gray-50 p-6 rounded-xl border border-gray-200">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">ဝယ်ယူမည့် ပစ္စည်းအမည်</label>
+              <input type="text" value={itemName} onChange={e => setItemName(e.target.value)} required className="w-full border-2 border-gray-300 p-3 rounded-lg focus:border-indigo-500 outline-none" placeholder="ဥပမာ - ကြက်သွန်နီ" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">အရေအတွက် (Quantity)</label>
+              <input type="number" value={requestedQty} onChange={e => setRequestedQty(e.target.value)} required className="w-full border-2 border-gray-300 p-3 rounded-lg focus:border-indigo-500 outline-none" placeholder="ဥပမာ - ၁၀၀" />
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">ယူနစ် (Unit)</label>
+              <input type="text" value={unit} onChange={e => setUnit(e.target.value)} required className="w-full border-2 border-gray-300 p-3 rounded-lg focus:border-indigo-500 outline-none" placeholder="ဥပမာ - ပိဿာ / ခု / ပုလင်း" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {suppliers.map((sup, idx) => (
+              <div key={sup.id} className="border-2 border-dashed border-gray-300 p-5 rounded-xl bg-white hover:border-indigo-400 transition">
+                <h4 className="font-bold text-indigo-700 mb-4 border-b pb-2 flex justify-between">
+                  <span>Supplier {idx + 1}</span>
+                </h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">ဆိုင်အမည် / ပွဲရုံ</label>
+                    <input type="text" value={sup.name} onChange={e => handleSupplierChange(idx, 'name', e.target.value)} required className="w-full border-b-2 border-gray-200 p-2 focus:border-indigo-500 outline-none font-bold text-gray-800" placeholder="ဆိုင်အမည်" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">ဈေးနှုန်း (Ks)</label>
+                    <input type="number" value={sup.price || ''} onChange={e => handleSupplierChange(idx, 'price', Number(e.target.value))} required className="w-full border-b-2 border-gray-200 p-2 focus:border-indigo-500 outline-none font-black text-red-600" placeholder="0" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">အရည်အသွေး (Quality & Taste)</label>
+                    <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border p-2 rounded-lg text-sm h-16 bg-gray-50" placeholder="အရည်အသွေး၊ အရောင်၊ အနံ့" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-500">နှိုင်းယှဉ်သုံးသပ်ချက် (Analysis Note)</label>
+                    <textarea value={sup.analysisNote} onChange={e => handleSupplierChange(idx, 'analysisNote', e.target.value)} className="w-full border p-2 rounded-lg text-sm h-16 bg-gray-50" placeholder="အခြားဆိုင်နှင့်စာလျှင် အားသာချက်/အားနည်းချက်" />
+                  </div>
+                  
+                  {/* Photo Uploads */}
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <label className="cursor-pointer bg-gray-100 border p-2 rounded-lg text-center text-xs font-bold hover:bg-gray-200 flex flex-col items-center justify-center">
+                      <span>📸 ပစ္စည်းပုံ</span>
+                      <input type="file" accept="image/*" capture="environment" onChange={(e) => handleImageUpload(idx, 'photo', e)} className="hidden" />
+                      {sup.photo && <span className="text-green-600 mt-1">✓ ရွေးပြီးပါပြီ</span>}
+                    </label>
+                    <label className="cursor-pointer bg-gray-100 border p-2 rounded-lg text-center text-xs font-bold hover:bg-gray-200 flex flex-col items-center justify-center">
+                      <span>📄 Quotation ပုံ</span>
+                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(idx, 'quotationImage', e)} className="hidden" />
+                      {sup.quotationImage && <span className="text-green-600 mt-1">✓ ရွေးပြီးပါပြီ</span>}
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition-colors text-lg tracking-wide">
+            အတည်ပြုချက် စတင်တောင်းခံမည် 🚀
+          </button>
+        </form>
+      )}
+
+      {/* Approval Board */}
+      <div className="space-y-6">
+        <h3 className="text-xl font-bold text-gray-800 border-l-4 border-indigo-500 pl-3">တင်ပြထားသော ဝယ်ယူခွင့်များ (Approval Board)</h3>
+        {requests.length === 0 ? <p className="text-gray-500 bg-gray-50 p-6 rounded-xl border text-center font-medium">လက်ရှိတွင် တောင်းခံထားသော စာရင်းမရှိသေးပါ။</p> : requests.map(req => (
+          <div key={req.id} className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200">
+            <div className="bg-gray-50 p-5 border-b flex flex-col md:flex-row justify-between md:items-center gap-4">
+              <div>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{req.date}</span>
+                <h4 className="text-2xl font-black text-gray-800 mt-1">
+                  {req.itemName} 
+                  <span className="ml-3 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-lg border border-indigo-200">
+                    <span className="font-bold">{req.requestedQty.toLocaleString()}</span> <span className="text-sm font-medium">{req.unit}</span>
+                  </span>
+                </h4>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                 {getStatusBadge(req.status)}
+                 {req.status === 'Rejected' && req.rejectReason && (
+                    <div className="text-red-600 text-sm font-bold bg-red-50 px-3 py-1 rounded border border-red-200">အကြောင်းရင်း: {req.rejectReason}</div>
+                 )}
+              </div>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {req.suppliers.map((sup, idx) => (
+                <div key={sup.id} className={`border-2 p-5 rounded-xl relative transition-all ${req.selectedSupplierId === sup.id ? 'border-green-500 bg-green-50 shadow-md transform scale-[1.02]' : 'border-gray-200 bg-white'}`}>
+                  {req.selectedSupplierId === sup.id && <div className="absolute -top-4 -right-4 bg-green-500 text-white w-10 h-10 flex justify-center items-center rounded-full font-bold shadow-lg text-xl border-4 border-white">✓</div>}
+                  
+                  <h5 className="font-black text-lg text-gray-800 border-b pb-2 mb-3">{sup.name}</h5>
+                  <div className="text-red-600 font-black text-2xl mb-4">{sup.price.toLocaleString()} <span className="text-sm text-gray-500">Ks</span></div>
+                  
+                  <div className="space-y-3 mb-4">
+                     <div>
+                       <div className="text-xs font-bold text-gray-500 mb-1">အရည်အသွေး (Quality)</div>
+                       <p className="text-sm text-gray-700 bg-gray-50 p-2 rounded border leading-relaxed">{sup.qualityDesc}</p>
+                     </div>
+                     {sup.analysisNote && (
+                       <div>
+                         <div className="text-xs font-bold text-gray-500 mb-1">သုံးသပ်ချက် (Note)</div>
+                         <p className="text-sm text-blue-700 bg-blue-50 p-2 rounded border border-blue-100 leading-relaxed font-medium">{sup.analysisNote}</p>
+                       </div>
+                     )}
+                  </div>
+
+                  <div className="flex gap-2 mb-4">
+                    {sup.photo ? (
+                       <a href={sup.photo} target="_blank" rel="noreferrer" className="flex-1">
+                          <img src={sup.photo} alt="Product" className="w-full h-24 object-cover rounded-lg shadow-sm border border-gray-300 hover:opacity-80 transition" title="ပစ္စည်းပုံ အကြီးကြည့်ရန်နှိပ်ပါ" />
+                       </a>
+                    ) : <div className="flex-1 h-24 bg-gray-100 flex items-center justify-center text-gray-400 text-xs rounded-lg border">ပစ္စည်းပုံ မပါပါ</div>}
+                    
+                    {sup.quotationImage ? (
+                       <a href={sup.quotationImage} target="_blank" rel="noreferrer" className="flex-1">
+                          <img src={sup.quotationImage} alt="Quotation" className="w-full h-24 object-cover rounded-lg shadow-sm border border-gray-300 hover:opacity-80 transition" title="Quotation အကြီးကြည့်ရန်နှိပ်ပါ" />
+                       </a>
+                    ) : <div className="flex-1 h-24 bg-gray-100 flex items-center justify-center text-gray-400 text-xs rounded-lg border">ဘောက်ချာပုံ မပါပါ</div>}
+                  </div>
+                  
+                  {/* Final Approval Button for MD/Manager */}
+                  {(req.status === 'Finance_Approved' || req.status === 'Pending' || req.status === 'QC_Approved') && isMDorManager && req.status !== 'MD_Approved' && req.status !== 'Rejected' && (
+                    <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition-colors shadow-md flex justify-center items-center gap-2">
+                      <span>👑</span> ဤ Supplier ထံမှ ဝယ်မည်
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Action Bar based on Roles */}
+            {req.status !== 'MD_Approved' && req.status !== 'Rejected' && (
+              <div className="bg-gray-100 p-5 border-t flex flex-wrap justify-end gap-3 items-center">
+                <span className="text-sm font-bold text-gray-500 mr-auto">လုပ်ဆောင်ရန် (Actions):</span>
+                
+                {/* QC Action */}
+                {req.status === 'Pending' && isQC && (
+                  <button onClick={() => updateStatus(req.id, 'QC_Approved')} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-md hover:bg-blue-700 transition">🔬 အရည်အသွေး မှန်ကန်သည် (Approve)</button>
+                )}
+                
+                {/* Finance Action */}
+                {req.status === 'QC_Approved' && isFinance && (
+                  <button onClick={() => updateStatus(req.id, 'Finance_Approved')} className="bg-purple-600 text-white px-6 py-2.5 rounded-xl font-bold shadow-md hover:bg-purple-700 transition">💰 ဈေးနှုန်း မှန်ကန်သည် (Approve)</button>
+                )}
+                
+                {/* Reject Action (Available to QC, Finance, MD, Manager) */}
+                {(isQC || isFinance || isMDorManager) && (
+                   <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-2.5 rounded-xl font-bold hover:bg-red-50 transition shadow-sm">❌ ပယ်ချမည် (Reject)</button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
