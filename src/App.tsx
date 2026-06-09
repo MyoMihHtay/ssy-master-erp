@@ -78,14 +78,16 @@ export default function App() {
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
   return (
-    <div className="flex min-h-screen bg-gray-100 print:block print:bg-white">
-      {/* Sidebar ကို Print တွင် လုံးဝဖျောက်ထားပါမည် */}
-      <div className="print:hidden flex-shrink-0">
+    // h-screen ဖြင့် အပြည့်ယူပြီး၊ Main ထဲတွင်သာ Scroll လုပ်ခွင့်ပေးထားပါသည်
+    <div className="flex h-screen w-full bg-gray-100 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
+      
+      {/* Sidebar နေရာကို အသေ (Fixed height) သတ်မှတ်ထားပါသည် */}
+      <div className="h-full bg-gray-900 print:hidden flex-shrink-0">
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       </div>
       
-      {/* Print ထုတ်ချိန်တွင် အရှည်လိုက် Scroll မပြတ်စေရန် print:overflow-visible ထည့်ထားပါသည် */}
-      <main className="flex-1 p-8 overflow-y-auto print:overflow-visible print:p-0 print:w-full">
+      {/* ညာဘက် အချက်အလက်ပြသည့်နေရာ (ဤနေရာကိုသာ Scroll ဆွဲ၍ရမည်) */}
+      <main className="flex-1 h-full p-8 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto">
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
@@ -94,6 +96,7 @@ export default function App() {
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
       </main>
+      
     </div>
   );
 }
