@@ -1,23 +1,5 @@
 import React, { useState } from 'react';
-
-export interface SupplierOption {
-  id: string;
-  name: string;
-  price: number;
-  qualityDesc: string;
-  photo?: string;
-}
-
-export interface PurchaseRequest {
-  id: number;
-  date: string;
-  itemName: string;
-  requestedQty: number;
-  unit: string;
-  suppliers: SupplierOption[];
-  selectedSupplierId?: string;
-  status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Rejected';
-}
+import type { PurchaseRequest, SupplierOption } from '../App';
 
 interface ProcurementProps {
   userRole: string;

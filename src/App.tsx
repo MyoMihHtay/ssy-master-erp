@@ -7,7 +7,7 @@ import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
-import { Procurement, PurchaseRequest } from './components/Procurement';
+import { Procurement } from './components/Procurement'; // <--- PurchaseRequest ကို ဖယ်လိုက်ပါပြီ
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; }
@@ -18,6 +18,10 @@ export interface BOMResult { itemName: string; amount: number; }
 export interface RecipeIngredient { itemName: string; requiredQty: number; unit: string; defaultCost: number; }
 export interface Recipe { id: string; name: string; outputCategory: string; outputUnit: string; outputQtyPerBatch: number; ingredients: RecipeIngredient[]; }
 export interface PackageRecipe { id: string; skuName: string; category: string; taste: string; gram: number; price: number; ingredients: RecipeIngredient[]; }
+
+// Procurement အတွက် လိုအပ်သည်များကို App.tsx သို့ ရွှေ့လိုက်ပါပြီ (Error လုံးဝမတက်စေရန်)
+export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; photo?: string; }
+export interface PurchaseRequest { id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Rejected'; }
 
 export default function App() {
   const [accounts, setAccounts] = useState<AccountItem[]>([
