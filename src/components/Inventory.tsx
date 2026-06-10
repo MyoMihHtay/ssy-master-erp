@@ -29,7 +29,7 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
   const [editName, setEditName] = useState('');
   const [editUnit, setEditUnit] = useState('');
 
-  const isManager = (userRole || '').toLowerCase() === 'manager';
+  const isManager = (userRole || '').toLowerCase() === 'manager' || (userRole || '').toLowerCase() === 'md';
 
   const filteredItems = useMemo(() => {
     return items.filter(item => 
@@ -71,7 +71,6 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
     setEditUnit(item.unit);
   };
 
-  // ⭐️ ဤနေရာတွင် ဘယ်သူပြင်သည်၊ ဘယ်အချိန်ပြင်သည်ကို မှတ်သားပါသည် ⭐️
   const handleUpdateItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem) return;
@@ -82,8 +81,8 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
             code: editCode, 
             name: editName, 
             unit: editUnit,
-            updatedBy: userName, // ပြင်ဆင်သူ အမည်မှတ်ခြင်း
-            updatedAt: new Date().toLocaleString('en-GB') // ပြင်ဆင်သည့် အချိန်မှတ်ခြင်း
+            updatedBy: userName,
+            updatedAt: new Date().toLocaleDateString('en-GB')
           } 
         : item
     ));
@@ -92,12 +91,13 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto relative">
+    <div className="p-2 md:p-6 max-w-6xl mx-auto relative">
       <h2 className="text-2xl font-bold mb-6 text-blue-800 border-b-2 pb-2">📦 ကုန်လှောင်ရုံ စီမံခန့်ခွဲမှု</h2>
-      <div className="flex gap-4 mb-6">
-        <button onClick={() => setActiveTab('balance')} className={`px-6 py-2 rounded-lg font-bold transition-colors ${activeTab === 'balance' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 hover:bg-gray-300'}`}>လက်ကျန်စာရင်း</button>
-        <button onClick={() => setActiveTab('stockIn')} className={`px-6 py-2 rounded-lg font-bold transition-colors ${activeTab === 'stockIn' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-200 hover:bg-gray-300'}`}>ပစ္စည်းအဝင် (Stock In)</button>
-        <button onClick={() => setActiveTab('newItem')} className={`px-6 py-2 rounded-lg font-bold transition-colors ${activeTab === 'newItem' ? 'bg-orange-600 text-white shadow-md' : 'bg-gray-200 hover:bg-gray-300'}`}>+ ပစ္စည်းသစ်</button>
+      
+      <div className="flex flex-wrap gap-2 md:gap-4 mb-6">
+        <button onClick={() => setActiveTab('balance')} className={`px-4 md:px-6 py-2 rounded-lg font-bold transition-colors text-sm md:text-base ${activeTab === 'balance' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 hover:bg-gray-300'}`}>လက်ကျန်စာရင်း</button>
+        <button onClick={() => setActiveTab('stockIn')} className={`px-4 md:px-6 py-2 rounded-lg font-bold transition-colors text-sm md:text-base ${activeTab === 'stockIn' ? 'bg-green-600 text-white shadow-md' : 'bg-gray-200 hover:bg-gray-300'}`}>ပစ္စည်းအဝင် (Stock In)</button>
+        <button onClick={() => setActiveTab('newItem')} className={`px-4 md:px-6 py-2 rounded-lg font-bold transition-colors text-sm md:text-base ${activeTab === 'newItem' ? 'bg-orange-600 text-white shadow-md' : 'bg-gray-200 hover:bg-gray-300'}`}>+ ပစ္စည်းသစ်</button>
       </div>
 
       {activeTab === 'balance' && (
@@ -108,75 +108,77 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
               placeholder="🔍 Code သို့မဟုတ် အမည်ဖြင့် ရှာရန်..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="border border-gray-300 p-2 rounded-lg w-72 focus:ring-2 focus:ring-blue-500 outline-none"
+              className="border border-gray-300 p-2.5 rounded-lg w-full md:w-72 focus:ring-2 focus:ring-blue-500 outline-none"
             />
           </div>
-          <table className="w-full text-left">
-            <thead className="bg-blue-50">
-              <tr>
-                <th className="p-4 font-bold text-gray-700">Code</th>
-                <th className="p-4 font-bold text-gray-700">အမည်</th>
-                <th className="p-4 font-bold text-gray-700 text-right">လက်ကျန်</th>
-                {isManager && <th className="p-4 font-bold text-gray-700 text-center">လုပ်ဆောင်ချက်</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredItems.length > 0 ? (
-                filteredItems.map(item => (
-                  <tr key={item.id} className="border-b hover:bg-blue-50 transition-colors">
-                    <td className="p-4 text-gray-600 font-medium">{item.code}</td>
-                    
-                    {/* ⭐️ ဤနေရာတွင် ပစ္စည်းအမည်အောက်၌ ဘယ်သူပြင်လဲ ပြပေးမည် ⭐️ */}
-                    <td className="p-4">
-                      <div className="font-bold text-gray-800">{item.name}</div>
-                      {item.updatedBy && (
-                        <div className="text-[11px] text-gray-400 mt-0.5">
-                          Edited by {item.updatedBy} ({item.updatedAt})
-                        </div>
-                      )}
-                    </td>
-                    
-                    <td className="p-4 text-right font-bold text-blue-700">{item.inStock} {item.unit}</td>
-                    {isManager && (
-                      <td className="p-4 text-center">
-                        <button onClick={() => handleEditClick(item)} className="text-blue-600 hover:text-blue-800 font-bold mx-2 px-2 py-1 bg-blue-100 rounded-md transition-colors">ပြင်မည်</button>
-                        <button onClick={() => handleDelete(item)} className="text-red-600 hover:text-red-800 font-bold mx-2 px-2 py-1 bg-red-100 rounded-md transition-colors">ဖျက်မည်</button>
-                      </td>
-                    )}
-                  </tr>
-                ))
-              ) : (
+          
+          {/* 🌟 ဇယားအား ဘယ်ညာပွတ်ဆွဲ၍ရအောင် ပြင်ဆင်ထားသော နေရာ 🌟 */}
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left min-w-[600px] md:min-w-full">
+              <thead className="bg-blue-50">
                 <tr>
-                  <td colSpan={isManager ? 4 : 3} className="p-6 text-center text-gray-500 font-medium">
-                    ရှာဖွေမှုနှင့် ကိုက်ညီသော ပစ္စည်းမရှိပါ။
-                  </td>
+                  <th className="p-4 font-bold text-gray-700 whitespace-nowrap">Code</th>
+                  <th className="p-4 font-bold text-gray-700 whitespace-nowrap">အမည်</th>
+                  <th className="p-4 font-bold text-gray-700 text-right whitespace-nowrap">လက်ကျန်</th>
+                  {isManager && <th className="p-4 font-bold text-gray-700 text-center whitespace-nowrap">လုပ်ဆောင်ချက်</th>}
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredItems.length > 0 ? (
+                  filteredItems.map(item => (
+                    <tr key={item.id} className="border-b hover:bg-blue-50 transition-colors">
+                      <td className="p-4 text-gray-600 font-medium whitespace-nowrap">{item.code}</td>
+                      <td className="p-4 whitespace-nowrap">
+                        <div className="font-bold text-gray-800">{item.name}</div>
+                        {item.updatedBy && (
+                          <div className="text-[11px] text-gray-400 mt-0.5">
+                            Edited by {item.updatedBy} ({item.updatedAt})
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-4 text-right font-bold text-blue-700 whitespace-nowrap">{item.inStock.toLocaleString()} {item.unit}</td>
+                      {isManager && (
+                        <td className="p-4 text-center whitespace-nowrap">
+                          <button onClick={() => handleEditClick(item)} className="text-blue-600 hover:text-blue-800 font-bold mx-1 md:mx-2 px-3 py-1.5 bg-blue-100 rounded-md transition-colors text-sm">ပြင်မည်</button>
+                          <button onClick={() => handleDelete(item)} className="text-red-600 hover:text-red-800 font-bold mx-1 md:mx-2 px-3 py-1.5 bg-red-100 rounded-md transition-colors text-sm">ဖျက်မည်</button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={isManager ? 4 : 3} className="p-6 text-center text-gray-500 font-medium">
+                      ရှာဖွေမှုနှင့် ကိုက်ညီသော ပစ္စည်းမရှိပါ။
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
+      {/* Edit Modal */}
       {editingItem && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-2xl w-96 border-t-4 border-blue-500">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md border-t-4 border-blue-500">
             <h3 className="text-xl font-bold mb-4 text-gray-800">ပစ္စည်းအချက်အလက် ပြင်ဆင်ရန်</h3>
             <form onSubmit={handleUpdateItem} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Code</label>
-                <input type="text" value={editCode} onChange={e => setEditCode(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-blue-500" required />
+                <input type="text" value={editCode} onChange={e => setEditCode(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">အမည်</label>
-                <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-blue-500" required />
+                <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
-                <input type="text" value={editUnit} onChange={e => setEditUnit(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-blue-500" required />
+                <input type="text" value={editUnit} onChange={e => setEditUnit(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-blue-500 outline-none" required />
               </div>
-              <div className="flex justify-end gap-2 mt-6">
-                <button type="button" onClick={() => setEditingItem(null)} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300">ပယ်ဖျက်မည်</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md">သိမ်းဆည်းမည်</button>
+              <div className="flex justify-end gap-3 mt-6">
+                <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300">ပယ်ဖျက်မည်</button>
+                <button type="submit" className="px-5 py-2.5 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md">သိမ်းဆည်းမည်</button>
               </div>
             </form>
           </div>
@@ -185,22 +187,22 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
 
       {activeTab === 'stockIn' && (
         <form onSubmit={handleStockInSubmit} className="bg-white shadow-lg p-6 rounded-xl border-t-4 border-green-500 flex flex-wrap gap-4 items-end">
-          <div className="flex-1">
+          <div className="w-full md:flex-1">
             <label className="block text-sm font-semibold text-gray-700 mb-1">ပစ္စည်းအမည်</label>
-            <select value={selectedItem} onChange={e => setSelectedItem(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full bg-gray-50 focus:ring-2 focus:ring-green-500" required>
+            <select value={selectedItem} onChange={e => setSelectedItem(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full bg-gray-50 focus:ring-2 focus:ring-green-500 outline-none" required>
               <option value="">ရွေးချယ်ပါ</option>
               {items.map(i => <option key={i.id} value={i.name}>{i.name}</option>)}
             </select>
           </div>
-          <div className="w-32">
+          <div className="w-full md:w-32">
             <label className="block text-sm font-semibold text-gray-700 mb-1">အရေအတွက်</label>
-            <input type="number" value={inQty} onChange={e => setInQty(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-green-500" min="1" required />
+            <input type="number" value={inQty} onChange={e => setInQty(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-green-500 outline-none" min="1" required />
           </div>
-          <div className="w-48">
+          <div className="w-full md:w-48">
             <label className="block text-sm font-semibold text-gray-700 mb-1">ကျသင့်ငွေ (Ks)</label>
-            <input type="number" value={totalCost} onChange={e => setTotalCost(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-green-500" />
+            <input type="number" value={totalCost} onChange={e => setTotalCost(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-green-500 outline-none" />
           </div>
-          <button type="submit" className="bg-green-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-md hover:bg-green-700 transition-colors">
+          <button type="submit" className="w-full md:w-auto bg-green-600 text-white px-6 py-3 rounded-lg font-bold shadow-md hover:bg-green-700 transition-colors">
             အဝင်စာရင်းသွင်းမည်
           </button>
         </form>
@@ -208,19 +210,19 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
 
       {activeTab === 'newItem' && (
         <form onSubmit={handleAddNewItem} className="bg-white shadow-lg p-6 rounded-xl border-t-4 border-orange-500 flex flex-wrap gap-4 items-end">
-          <div>
+          <div className="w-full md:w-auto">
             <label className="block text-sm font-semibold text-gray-700 mb-1">Code</label>
-            <input type="text" value={newCode} onChange={e => setNewCode(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-orange-500" required />
+            <input type="text" value={newCode} onChange={e => setNewCode(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-orange-500 outline-none" required />
           </div>
-          <div className="flex-1">
+          <div className="w-full md:flex-1">
             <label className="block text-sm font-semibold text-gray-700 mb-1">အမည်</label>
-            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-orange-500" required />
+            <input type="text" value={newName} onChange={e => setNewName(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-orange-500 outline-none" required />
           </div>
-          <div>
+          <div className="w-full md:w-auto">
             <label className="block text-sm font-semibold text-gray-700 mb-1">Unit</label>
-            <input type="text" value={newUnit} onChange={e => setNewUnit(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-orange-500" required />
+            <input type="text" value={newUnit} onChange={e => setNewUnit(e.target.value)} className="border border-gray-300 p-2.5 rounded-lg w-full focus:ring-2 focus:ring-orange-500 outline-none" required />
           </div>
-          <button type="submit" className="bg-orange-600 text-white px-6 py-2.5 rounded-lg font-bold shadow-md hover:bg-orange-700 transition-colors">
+          <button type="submit" className="w-full md:w-auto bg-orange-600 text-white px-6 py-3 rounded-lg font-bold shadow-md hover:bg-orange-700 transition-colors">
             သိမ်းဆည်းမည်
           </button>
         </form>
