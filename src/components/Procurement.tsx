@@ -114,13 +114,12 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။');
   };
 
-  // 🌟 အဆင့်မြှင့်တင်ထားသော Update Status Function (Remarks များပါ လက်ခံနိုင်ရန်)
   const updateStatus = (
     id: number, 
     newStatus: PurchaseRequest['status'], 
     selectedId?: string, 
     reason?: string,
-    roleData?: { qcSupId?: string; qcRem?: string; finSupId?: string; finRem?: string }
+    roleData?: { qcSupId?: string; qcRem?: string; finSupId?: string; finRem?: string; storeRem?: string }
   ) => {
     setRequests(requests.map(r => r.id === id ? { 
       ...r, 
@@ -130,7 +129,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       qcSelectedSupplierId: roleData?.qcSupId || r.qcSelectedSupplierId,
       qcRemark: roleData?.qcRem || r.qcRemark,
       financeSelectedSupplierId: roleData?.finSupId || r.financeSelectedSupplierId,
-      financeRemark: roleData?.finRem || r.financeRemark
+      financeRemark: roleData?.finRem || r.financeRemark,
+      storeRemark: roleData?.storeRem || r.storeRemark // Store Keeper ၏ မှတ်ချက်
     } : r));
     
     if (newStatus === 'Completed') {
@@ -139,19 +139,21 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     }
   };
 
-  // 🌟 QC မှ Supplier ရွေးချယ်ပြီး မှတ်ချက်ရေးရန်
   const handleQCRecommend = (reqId: number, supId: string) => {
     const remark = window.prompt("QC ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ (ဥပမာ - အရည်အသွေးအကောင်းဆုံးဖြစ်သည်) :");
-    if (remark) {
-      updateStatus(reqId, 'QC_Approved', undefined, undefined, { qcSupId: supId, qcRem: remark });
-    }
+    if (remark) updateStatus(reqId, 'QC_Approved', undefined, undefined, { qcSupId: supId, qcRem: remark });
   };
 
-  // 🌟 Finance မှ Supplier ရွေးချယ်ပြီး မှတ်ချက်ရေးရန်
   const handleFinanceRecommend = (reqId: number, supId: string) => {
     const remark = window.prompt("Finance ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ (ဥပမာ - ဈေးအသက်သာဆုံးဖြစ်သည်) :");
+    if (remark) updateStatus(reqId, 'Finance_Approved', undefined, undefined, { finSupId: supId, finRem: remark });
+  };
+
+  // 🌟 ဂိုထောင်မှူး (Store Keeper) မှ ပစ္စည်းစစ်ဆေးပြီး မှတ်ချက်ရေးရန် Function 🌟
+  const handleStoreReceive = (reqId: number) => {
+    const remark = window.prompt("ပစ္စည်းလက်ခံရရှိမှု အခြေအနေကို မှတ်ချက်ရေးပါ\n(ဥပမာ - အားလုံးကောင်းမွန်သည်၊ အရေအတွက်ပြည့်မီသည်၊ သို့မဟုတ် ၂ ခု ပျက်စီးနေသည်) :");
     if (remark) {
-      updateStatus(reqId, 'Finance_Approved', undefined, undefined, { finSupId: supId, finRem: remark });
+      updateStatus(reqId, 'Store_Received', undefined, undefined, { storeRem: remark });
     }
   };
 
@@ -162,15 +164,15 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
   const getStatusBadge = (status: string) => {
     switch(status) {
-      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-200 shadow-sm print:border-none">⏳ Pending (QC စစ်ဆေးရန်)</span>;
-      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold border border-blue-200 shadow-sm print:border-none">🔬 QC Pass (Finance သို့)</span>;
-      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-sm font-bold border border-purple-200 shadow-sm print:border-none">💰 Finance Pass (MD အတည်ပြုရန်)</span>;
-      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold border border-green-200 shadow-sm print:border-none">✅ MD ခွင့်ပြုပြီး (ဝယ်ယူရန်)</span>;
-      case 'Purchased': return <span className="bg-yellow-100 text-yellow-800 px-4 py-1.5 rounded-full text-sm font-bold border border-yellow-300 shadow-sm">🛒 ဝယ်ယူပြီး (ပစ္စည်းရောက်ရန်စောင့်ဆိုင်း)</span>;
-      case 'QC_Received': return <span className="bg-cyan-100 text-cyan-800 px-4 py-1.5 rounded-full text-sm font-bold border border-cyan-300 shadow-sm">🔍 ပစ္စည်းရောက် (QC စစ်ဆေးပြီး)</span>;
-      case 'Store_Received': return <span className="bg-blue-200 text-blue-900 px-4 py-1.5 rounded-full text-sm font-bold border border-blue-300 shadow-sm">📦 ဂိုထောင်ရောက် (စာရင်းသွင်းရန်)</span>;
-      case 'Completed': return <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-md">🎯 ပြီးစီး (Inventory သို့ဝင်သွားပါပြီ)</span>;
-      case 'Rejected': return <span className="bg-red-100 text-red-700 px-4 py-1.5 rounded-full text-sm font-bold border border-red-200 shadow-sm">❌ ပယ်ချထားသည်</span>;
+      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">⏳ Pending (QC စစ်ဆေးရန်)</span>;
+      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">🔬 QC Pass (Finance သို့)</span>;
+      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">💰 Finance Pass (MD သို့)</span>;
+      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">✅ MD ခွင့်ပြုပြီး (ဝယ်ယူရန်)</span>;
+      case 'Purchased': return <span className="bg-yellow-100 text-yellow-800 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">🛒 ဝယ်ယူပြီး (ပစ္စည်းရောက်ရန်စောင့်ဆိုင်း)</span>;
+      case 'QC_Received': return <span className="bg-cyan-100 text-cyan-800 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">🔍 ပစ္စည်းရောက် (QC မှန်ကန်)</span>;
+      case 'Store_Received': return <span className="bg-blue-200 text-blue-900 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">📦 ဂိုထောင်လက်ခံပြီး (Finance စစ်ရန်)</span>;
+      case 'Completed': return <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-md">🎯 ပြီးစီး (Inventory ဝင်ပါပြီ)</span>;
+      case 'Rejected': return <span className="bg-red-100 text-red-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">❌ ပယ်ချထားသည်</span>;
       default: return null;
     }
   };
@@ -184,7 +186,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       
       {isPurchasing && (
         <form onSubmit={handleSubmitPR} className="bg-white shadow-lg p-6 rounded-2xl border-t-4 border-indigo-600 print:hidden">
-          {/* PR Form is identical to previous version... */}
           <div className="flex justify-between items-center mb-6 border-b pb-4">
              <h3 className="text-xl font-bold text-gray-800">📝 ဝယ်ယူခွင့် တောင်းခံလွှာ</h3>
              <button type="button" onClick={handleAddSupplier} className="bg-indigo-50 text-indigo-700 px-5 py-2.5 rounded-xl font-bold border border-indigo-200">+ Supplier ထပ်ထည့်မည်</button>
@@ -248,7 +249,13 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               </div>
             </div>
 
-            {/* Supplier Cards with Recommendation Logic */}
+            {req.status === 'Rejected' && req.rejectReason && (
+              <div className="bg-red-50 p-4 border-b border-red-100 flex items-start gap-3 print:border-b-2 print:border-black">
+                 <span className="text-2xl print:hidden">⚠️</span>
+                 <div><h5 className="font-bold text-red-800 text-sm uppercase">ပယ်ချရသည့် အကြောင်းရင်း</h5><p className="text-red-600 font-medium print:text-black">{req.rejectReason}</p></div>
+              </div>
+            )}
+
             <div className="p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8 bg-gray-50 print:bg-white print:grid-cols-3 print:gap-4 print:p-4">
               {req.suppliers.map((sup) => (
                 <div key={sup.id} className={`border-2 p-6 rounded-2xl relative break-inside-avoid bg-white ${req.selectedSupplierId === sup.id ? 'border-green-500 shadow-xl ring-4 ring-green-50' : 'border-gray-200 print:border-gray-500'}`}>
@@ -260,7 +267,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                      {sup.analysisNote && <div><div className="text-[10px] font-bold text-blue-400 uppercase mb-1">သုံးသပ်ချက်</div><p className="text-sm text-blue-800 bg-blue-50 p-2.5 rounded-xl border">{sup.analysisNote}</p></div>}
                   </div>
 
-                  {/* 🌟 QC နှင့် Finance တို့၏ ထောက်ခံချက် (Remarks) ပြသရန် နေရာ 🌟 */}
                   <div className="space-y-2 mb-4">
                      {req.qcSelectedSupplierId === sup.id && (
                         <div className="bg-blue-100 border border-blue-300 p-3 rounded-xl shadow-inner">
@@ -276,35 +282,42 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                      )}
                   </div>
 
-                  {/* 🌟 Recommendation Buttons for QC, Finance & Final Approval for MD 🌟 */}
                   <div className="mt-4 print:hidden space-y-2">
-                    {req.status === 'Pending' && isQC && (
-                      <button onClick={() => handleQCRecommend(req.id, sup.id)} className="w-full bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-300 font-bold py-2.5 rounded-xl transition-colors">🔬 QC ထောက်ခံမည်</button>
-                    )}
-                    {req.status === 'QC_Approved' && isFinance && (
-                      <button onClick={() => handleFinanceRecommend(req.id, sup.id)} className="w-full bg-purple-100 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 font-bold py-2.5 rounded-xl transition-colors">💰 Finance ထောက်ခံမည်</button>
-                    )}
-                    {req.status === 'Finance_Approved' && isMDorManager && !req.selectedSupplierId && (
-                      <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-md"><span className="text-xl">👑</span> ဤဆိုင်မှ ဝယ်မည် (Approve)</button>
-                    )}
+                    {req.status === 'Pending' && isQC && <button onClick={() => handleQCRecommend(req.id, sup.id)} className="w-full bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-300 font-bold py-2.5 rounded-xl transition-colors">🔬 QC ထောက်ခံမည်</button>}
+                    {req.status === 'QC_Approved' && isFinance && <button onClick={() => handleFinanceRecommend(req.id, sup.id)} className="w-full bg-purple-100 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 font-bold py-2.5 rounded-xl transition-colors">💰 Finance ထောက်ခံမည်</button>}
+                    {req.status === 'Finance_Approved' && isMDorManager && !req.selectedSupplierId && <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="w-full bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-md"><span className="text-xl">👑</span> ဤဆိုင်မှ ဝယ်မည် (Approve)</button>}
                   </div>
 
                 </div>
               ))}
             </div>
 
-            {/* P2P Process Bar (ဝယ်ယူရေးမှူး မှသည် Inventory ထဲရောက်သည်အထိ အဆင့်ဆင့်) */}
+            {/* 🌟 ဤနေရာတွင် Store Keeper ၏ မှတ်ချက်ကို ပြသပါမည် 🌟 */}
+            {req.storeRemark && (
+              <div className="mx-6 md:mx-8 mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-xl">
+                 <h5 className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-1 flex items-center gap-2">📦 ဂိုထောင်မှူး၏ လက်ခံရရှိမှု မှတ်ချက်</h5>
+                 <p className="text-sm font-bold text-orange-900">{req.storeRemark}</p>
+              </div>
+            )}
+
             {req.status !== 'Completed' && req.status !== 'Rejected' && (
               <div className="bg-indigo-50 p-6 flex flex-wrap justify-end gap-3 items-center print:hidden border-t border-indigo-100">
                 <span className="text-sm font-black text-indigo-800 mr-auto"><span>⚙️</span> Next Action</span>
                 
-                {/* 🌟 P2P Auto Flow Logic 🌟 */}
+                {/* 🌟 အဆင့်ဆင့် တာဝန်ယူမှု အပြည့်အစုံ (Purchasing -> QC -> Store Keeper -> Finance -> Inventory) 🌟 */}
                 {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-xl font-black shadow-lg">🛒 ဝယ်ယူလိုက်ပါပြီ</button>}
-                {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-xl font-black shadow-lg">🔬 ပစ္စည်းရောက်/စစ်ဆေးပြီး</button>}
-                {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => updateStatus(req.id, 'Store_Received')} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-black shadow-lg">📦 ဂိုထောင်သို့ သိမ်းဆည်းပြီးပါပြီ</button>}
-                {req.status === 'Store_Received' && isFinance && <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl font-black shadow-lg animate-pulse">✅ အတည်ပြု/စာရင်းသွင်းမည် (Auto Inventory +)</button>}
+                {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-xl font-black shadow-lg">🔬 ပစ္စည်းရောက်/အရည်အသွေးမှန်ကန်သည်</button>}
                 
-                {/* ပယ်ချရန်ခလုတ် (Approve မပြီးမချင်း ပယ်ချခွင့်ရှိသည်) */}
+                {/* Store Keeper မှ လက်ခံပြီး မှတ်ချက်ပေးမည့် နေရာ */}
+                {req.status === 'QC_Received' && isStoreKeeper && (
+                   <button onClick={() => handleStoreReceive(req.id)} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-blue-700">📦 ဂိုထောင်သို့ လက်ခံရရှိကြောင်း မှတ်ချက်ရေးမည်</button>
+                )}
+                
+                {/* Finance မှ Store Keeper ၏ မှတ်ချက်ကို ဖတ်ပြီးမှ အပြီးသတ် စာရင်းသွင်းမည် */}
+                {req.status === 'Store_Received' && isFinance && (
+                   <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-teal-700 animate-pulse">✅ ဘဏ္ဍာရေးမှူးမှ အပြီးသတ် စာရင်းသွင်းမည် (Auto Inventory +)</button>
+                )}
+                
                 {(isQC || isFinance || isMDorManager) && req.status !== 'Purchased' && req.status !== 'QC_Received' && req.status !== 'Store_Received' && (
                    <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold ml-4">❌ ပယ်ချမည်</button>
                 )}

@@ -21,7 +21,7 @@ export interface PackageRecipe { id: string; skuName: string; category: string; 
 export interface AttachedFile { name: string; dataUrl: string; type: string; }
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; }
 
-// QC နှင့် Finance ထောက်ခံချက်များ မှတ်သားရန် တိုးထားပါသည်
+// 🌟 Store Keeper ၏ မှတ်ချက်အတွက် storeRemark ထပ်တိုးထားပါသည်
 export interface PurchaseRequest { 
   id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
@@ -30,9 +30,9 @@ export interface PurchaseRequest {
   qcRemark?: string;
   financeSelectedSupplierId?: string;
   financeRemark?: string;
+  storeRemark?: string; // 📦 ဂိုထောင်မှူး၏ မှတ်ချက်
 }
 
-// 🌟 App ပိတ်သွားလည်း Data မပျောက်စေရန် Local Storage ထဲ သိမ်းပေးမည့် Hook 🌟
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try {
@@ -50,7 +50,7 @@ function useLocalStorage<T>(key: string, initialValue: T) {
       window.localStorage.setItem(key, JSON.stringify(valueToStore));
     } catch (error) {
       console.error(error);
-      alert("⚠️ ဖုန်း Storage ပြည့်နေပါသည်။ ဓာတ်ပုံများလွန်းနေနိုင်ပါသည်။");
+      alert("⚠️ ဖုန်း Storage ပြည့်နေပါသည်။");
     }
   };
   return [storedValue, setValue] as const;
@@ -78,8 +78,6 @@ export default function App() {
   const [finishedGoods, setFinishedGoods] = useLocalStorage<FinishedGoodItem[]>('ssy_finished_goods', []);
   const [expenses, setExpenses] = useLocalStorage<ExpenseItem[]>('ssy_expenses', []);
   const [purchaseRequests, setPurchaseRequests] = useLocalStorage<PurchaseRequest[]>('ssy_pr', []);
-  
-  // User Login State ကိုပါ သိမ်းထားပါမည်
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
   const [activeTab, setActiveTab] = useState<string>('procurement');
 
@@ -131,7 +129,7 @@ export default function App() {
       <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl">
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       </div>
-      <main className="flex-1 h-full p-4 md:p-8 pt-6 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10">
+      <main className="flex-1 h-full p-4 md:p-8 pt-6 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
