@@ -10,7 +10,8 @@ import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
-export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; }
+// 🌟 ဂိုထောင်အမျိုးအစား ခွဲခြားရန် warehouse: 'RM' | 'SFG' | 'FG' ကို ထပ်တိုးထားပါသည်
+export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'FG'; }
 export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; }
 export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; }
 export interface UserSession { name: string; role: string; }
@@ -21,37 +22,19 @@ export interface PackageRecipe { id: string; skuName: string; category: string; 
 export interface AttachedFile { name: string; dataUrl: string; type: string; }
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; }
 
-// 🌟 Store Keeper ၏ မှတ်ချက်အတွက် storeRemark ထပ်တိုးထားပါသည်
 export interface PurchaseRequest { 
   id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
-  rejectReason?: string;
-  qcSelectedSupplierId?: string;
-  qcRemark?: string;
-  financeSelectedSupplierId?: string;
-  financeRemark?: string;
-  storeRemark?: string; // 📦 ဂိုထောင်မှူး၏ မှတ်ချက်
+  rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
+  targetWarehouse?: 'RM' | 'SFG'; // 🌟 ဝယ်ယူမည့်ပစ္စည်းသည် မည်သည့်ဂိုထောင်သို့ ဝင်မည်ကို ရွေးချယ်ရန်
 }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
-    } catch (error) {
-      return initialValue;
-    }
+    try { const item = window.localStorage.getItem(key); return item ? JSON.parse(item) : initialValue; } catch (error) { return initialValue; }
   });
-
   const setValue = (value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(error);
-      alert("⚠️ ဖုန်း Storage ပြည့်နေပါသည်။");
-    }
+    try { const valueToStore = value instanceof Function ? value(storedValue) : value; setStoredValue(valueToStore); window.localStorage.setItem(key, JSON.stringify(valueToStore)); } catch (error) { console.error(error); }
   };
   return [storedValue, setValue] as const;
 }
@@ -69,10 +52,9 @@ export default function App() {
   ]);
 
   const [inventoryItems, setInventoryItems] = useLocalStorage<InventoryItem[]>('ssy_inventory', [
-    { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500 },
-    { id: 2, code: 'RM-002', name: 'ကြက်သွန်ကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 300 },
-    { id: 3, code: 'RM-003', name: 'အာလူးကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 400 },
-    { id: 4, code: 'PK-001', name: '၇x၅ ပလပ်စတစ်အိတ်', category: 'Packaging', unit: 'ခု', inStock: 5000 },
+    { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM' },
+    { id: 2, code: 'RM-002', name: 'ကြက်သွန်ကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 300, warehouse: 'RM' },
+    { id: 3, code: 'RM-003', name: 'အာလူးကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 400, warehouse: 'RM' },
   ]);
 
   const [finishedGoods, setFinishedGoods] = useLocalStorage<FinishedGoodItem[]>('ssy_finished_goods', []);
@@ -89,37 +71,60 @@ export default function App() {
 
   const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', [
     { id: 'PK-001', skuName: 'ငါးရေခွံကြော် ၃၅g', category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, ingredients: [{ itemName: 'ငါးရေခွံကြော်', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 650 }] },
-    { id: 'PK-002', skuName: 'အာလူးကြော် ၃၅g', category: 'အာလူးပေါင်းကြော်', taste: 'Normal', gram: 35, price: 1000, ingredients: [{ itemName: 'အာလူးပေါင်းကြော်', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 400 }] },
   ]);
 
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => { };
 
-  const handleConfirmProduction = (cat: string, t: string, g: number, qty: number, bom: BOMResult[]) => {
-      setInventoryItems(prev => prev.map(inv => {
-          const match = bom.find(b => b.itemName === inv.name);
-          return match ? { ...inv, inStock: inv.inStock - match.amount } : inv;
-      }));
+  // 🌟 Phase 1 Auto Logic: ထုတ်လုပ်မှု အတည်ပြုလျှင် RM မှနှုတ်၍ SFG သို့ ပေါင်းမည် 🌟
+  const handleConfirmProduction = (recipe: Recipe, outputQty: number, bom: BOMResult[]) => {
+      setInventoryItems(prev => {
+          let updatedItems = [...prev];
+          
+          // 1. RM (ကုန်ကြမ်း) မှ လိုအပ်သောအရေအတွက် နှုတ်မည်
+          bom.forEach(b => {
+              const idx = updatedItems.findIndex(i => i.name === b.itemName && (i.warehouse === 'RM' || !i.warehouse));
+              if (idx !== -1) {
+                  updatedItems[idx] = { ...updatedItems[idx], inStock: updatedItems[idx].inStock - b.amount };
+              }
+          });
+
+          // 2. SFG (ကုန်ပိုင်း) သို့ ထွက်ရှိလာသော အရေအတွက် ပေါင်းထည့်မည်
+          const sfgIdx = updatedItems.findIndex(i => i.name === recipe.name && i.warehouse === 'SFG');
+          if (sfgIdx !== -1) {
+              updatedItems[sfgIdx] = { ...updatedItems[sfgIdx], inStock: updatedItems[sfgIdx].inStock + outputQty };
+          } else {
+              updatedItems.push({
+                  id: Date.now(),
+                  code: `SFG-${Date.now().toString().slice(-4)}`,
+                  name: recipe.name,
+                  category: recipe.outputCategory,
+                  unit: recipe.outputUnit,
+                  inStock: outputQty,
+                  warehouse: 'SFG'
+              });
+          }
+          return updatedItems;
+      });
+      alert(`✅ ${recipe.name} (${outputQty} ${recipe.outputUnit}) အား SFG ဂိုထောင်သို့ ထည့်သွင်းပြီး၊ သက်ဆိုင်ရာ ကုန်ကြမ်းများကို RM မှ နှုတ်လိုက်ပါပြီ။`);
   };
 
   const handleConfirmPackaging = (recipe: PackageRecipe, outputQty: number, bom: BOMResult[]) => {
-      setInventoryItems(prev => prev.map(inv => {
-          const match = bom.find(b => b.itemName === inv.name);
-          return match ? { ...inv, inStock: inv.inStock - match.amount } : inv;
-      }));
-      setFinishedGoods(prev => [...prev, { id: Date.now(), category: recipe.category, taste: recipe.taste, gram: recipe.gram, price: recipe.price, stockQty: outputQty }]);
+      // Packaging will deduct from SFG and add to FG (Will finalize in Phase 2)
   };
 
+  // 🌟 Procurement ပြီးစီးလျှင် ရွေးချယ်ထားသော ဂိုထောင်သို့ ဝင်မည်
   const handleProcurementComplete = (pr: PurchaseRequest) => {
+    const targetWH = pr.targetWarehouse || 'RM';
     setInventoryItems(prev => {
-      const existingItem = prev.find(item => item.name === pr.itemName);
+      const existingItem = prev.find(item => item.name === pr.itemName && (item.warehouse === targetWH || (!item.warehouse && targetWH === 'RM')));
       if (existingItem) {
-        return prev.map(item => item.id === existingItem.id ? { ...item, inStock: item.inStock + pr.requestedQty } : item);
+        return prev.map(item => item.id === existingItem.id ? { ...item, inStock: item.inStock + pr.requestedQty, warehouse: targetWH } : item);
       } else {
-        const newItem: InventoryItem = { id: Date.now(), code: `NEW-${Date.now().toString().slice(-4)}`, name: pr.itemName, category: 'Purchased Items', unit: pr.unit, inStock: pr.requestedQty };
+        const newItem: InventoryItem = { id: Date.now(), code: `NEW-${Date.now().toString().slice(-4)}`, name: pr.itemName, category: 'Purchased Items', unit: pr.unit, inStock: pr.requestedQty, warehouse: targetWH };
         return [...prev, newItem];
       }
     });
-    alert(`✅ ${pr.itemName} (${pr.requestedQty} ${pr.unit}) အား ကုန်လှောင်ရုံစာရင်းသို့ အလိုအလျောက် ပေါင်းထည့်ပြီးပါပြီ။`);
+    alert(`✅ ${pr.itemName} (${pr.requestedQty} ${pr.unit}) အား [${targetWH}] ဂိုထောင်သို့ ပေါင်းထည့်ပြီးပါပြီ။`);
   };
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
