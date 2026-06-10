@@ -8,36 +8,44 @@ interface ProcurementProps {
   onComplete: (pr: PurchaseRequest) => void; 
 }
 
-// 🌟 Android Camera 12MB+ ပုံကြီးများကို 200KB ဝန်းကျင်ဖြစ်အောင် Auto ကျုံ့ပေးမည့် Function (MRS POS Standard)
+// 🌟 Android / iOS ပုံကြီးများကို 200KB ဝန်းကျင်ဖြစ်အောင် Auto ကျုံ့ပေးမည့် စနစ် (Race Condition ကာကွယ်ထားပါသည်)
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.readAsDataURL(file);
     reader.onload = (event) => {
       const img = new Image();
-      img.src = event.target?.result as string;
       img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1024;
-        const MAX_HEIGHT = 1024;
-        let width = img.width;
-        let height = img.height;
+        try {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1024;
+          const MAX_HEIGHT = 1024;
+          let width = img.width;
+          let height = img.height;
 
-        if (width > height) {
-          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
-        } else {
-          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+          if (width > height) {
+            if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+          } else {
+            if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error("Canvas context is null"));
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+        } catch (err) {
+          reject(err);
         }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% Quality ဖြင့် RAM မစားအောင် အပြတ်ကျုံ့ပါမည်
       };
       img.onerror = (err) => reject(err);
+      img.src = event.target?.result as string; // Handler များပတ်ပြီးမှ src သတ်မှတ်ရပါမည်
     };
     reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
   });
 };
 
@@ -66,12 +74,15 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   };
 
   const handleSupplierChange = (index: number, field: keyof SupplierOption, value: any) => {
-    const updated = [...suppliers];
-    updated[index] = { ...updated[index], [field]: value };
-    setSuppliers(updated);
+    setSuppliers(prev => {
+      const updated = [...prev];
+      if (!updated[index]) return prev;
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
-  // 🌟 ၁။ ကင်မရာတိုက်ရိုက်ရိုက်ကူးမှုအတွက် Single Image Upload + Compression (White Screen လုံးဝအဖြေရှင်းနည်း)
+  // 🌟 ၁။ ကင်မရာတိုက်ရိုက်ရိုက်ကူးမှုအတွက် Safety Guard ပါဝင်သော ပုံကျုံ့စနစ် (Functional Update ပြောင်းလဲထားပါသည်)
   const handleCameraCapture = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -80,57 +91,61 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       const compressedDataUrl = await compressImage(file);
       const newFile: AttachedFile = { name: `Camera_${Date.now()}.jpg`, dataUrl: compressedDataUrl, type: 'image/jpeg' };
       
-      const updated = [...suppliers];
-      const existing = updated[index][field] || [];
-      updated[index] = { ...updated[index], [field]: [...existing, newFile] };
-      setSuppliers(updated);
+      setSuppliers(prev => {
+        const updated = [...prev];
+        if (!updated[index]) return prev; // Supplier ကွက်မရှိပါက စာရင်းမသွင်းဘဲ Crash မဖြစ်အောင် တားဆီးမည် (Safety Guard)
+        const existing = updated[index][field] || [];
+        updated[index] = { ...updated[index], [field]: [...existing, newFile] };
+        return updated;
+      });
     } catch (error) {
       console.error("Camera image compress failed", error);
       alert("ဓာတ်ပုံသိမ်းဆည်းမှု မအောင်မြင်ပါ။ နောက်တကြိမ် ပြန်စမ်းကြည့်ပါ။");
     }
-    // သန့်ရှင်းရေးလုပ်ရန်
     e.target.value = '';
   };
 
-  // 🌟 ၂။ ဖိုင်ရွေးချယ်မှုအတွက် Multiple Files Upload (ပုံ၊ PDF, Word, Excel အစုံရမည်)
+  // 🌟 ၂။ ဖိုင်ရွေးချယ်မှုအတွက် Safety Guard ပါဝင်သော စနစ် (Functional Update ပြောင်းလဲထားပါသည်)
   const handleMultipleFilesSelect = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const newAttachments = await Promise.all(files.map(async (file) => {
-      if (file.type.startsWith('image/')) {
-        try {
+    try {
+      const newAttachments = await Promise.all(files.map(async (file) => {
+        if (file.type.startsWith('image/')) {
           const compressedDataUrl = await compressImage(file);
           return { name: file.name, dataUrl: compressedDataUrl, type: 'image/jpeg' };
-        } catch {
+        } else {
           return new Promise<AttachedFile>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve({ name: file.name, dataUrl: reader.result as string, type: file.type });
             reader.readAsDataURL(file);
           });
         }
-      } else {
-        return new Promise<AttachedFile>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve({ name: file.name, dataUrl: reader.result as string, type: file.type });
-          reader.readAsDataURL(file);
-        });
-      }
-    }));
+      }));
 
-    const updated = [...suppliers];
-    const existing = updated[index][field] || [];
-    updated[index] = { ...updated[index], [field]: [...existing, ...newAttachments] };
-    setSuppliers(updated);
+      setSuppliers(prev => {
+        const updated = [...prev];
+        if (!updated[index]) return prev; // Safety Guard
+        const existing = updated[index][field] || [];
+        updated[index] = { ...updated[index], [field]: [...existing, ...newAttachments] };
+        return updated;
+      });
+    } catch (error) {
+      console.error("Files select failed", error);
+    }
     e.target.value = '';
   };
 
   const removeFile = (supIndex: number, field: 'productFiles' | 'quotationFiles', fileIndex: number) => {
-    const updated = [...suppliers];
-    const files = [...(updated[supIndex][field] || [])];
-    files.splice(fileIndex, 1);
-    updated[supIndex] = { ...updated[supIndex], [field]: files };
-    setSuppliers(updated);
+    setSuppliers(prev => {
+      const updated = [...prev];
+      if (!updated[supIndex]) return prev;
+      const files = [...(updated[supIndex][field] || [])];
+      files.splice(fileIndex, 1);
+      updated[supIndex] = { ...updated[supIndex], [field]: files };
+      return updated;
+    });
   };
 
   const handleSubmitPR = (e: React.FormEvent) => {
@@ -215,17 +230,17 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border-2 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none" placeholder="အရည်အသွေး ဖော်ပြချက်" />
                   <textarea value={sup.analysisNote} onChange={e => handleSupplierChange(idx, 'analysisNote', e.target.value)} className="w-full border-2 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none" placeholder="နှိုင်းယှဉ်သုံးသပ်ချက်" />
                   
-                  {/* 🌟 ဓာတ်ပုံရိုက်ခြင်း နှင့် ဖိုင်ရွေးခြင်းအား White Screen မဖြစ်စေရန် သီးသန့်ခွဲထုတ်ထားသည့်နေရာ 🌟 */}
+                  {/* Multiple Attachments Section */}
                   <div className="space-y-3 mt-4">
                     <div>
                         <div className="text-[11px] font-bold text-gray-700 mb-1">ပစ္စည်းပုံ (Product)</div>
                         <div className="flex gap-2">
                            <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-center hover:bg-blue-100 transition flex flex-col items-center justify-center">
-                             <span className="text-base">📸 ကင်မရာ</span>
+                             <span className="text-sm">📸 ကင်မရာ</span>
                              <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'productFiles', e)} className="sr-only" />
                            </label>
                            <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-center hover:bg-gray-100 transition flex flex-col items-center justify-center">
-                             <span className="text-base">📂 ဖိုင်ရွေးမည်</span>
+                             <span className="text-sm">📂 ဖိုင်ရွေးမည်</span>
                              <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'productFiles', e)} className="sr-only" />
                            </label>
                         </div>
@@ -243,11 +258,11 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                         <div className="text-[11px] font-bold text-gray-700 mb-1 mt-1">ဘောက်ချာ (Quotation)</div>
                         <div className="flex gap-2">
                            <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-center hover:bg-blue-100 transition flex flex-col items-center justify-center">
-                             <span className="text-base">📸 ကင်မရာ</span>
+                             <span className="text-sm">📸 ကင်မရာ</span>
                              <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'quotationFiles', e)} className="sr-only" />
                            </label>
                            <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-center hover:bg-gray-100 transition flex flex-col items-center justify-center">
-                             <span className="text-base">📂 ဖိုင်ရွေးမည်</span>
+                             <span className="text-sm">📂 ဖိုင်ရွေးမည်</span>
                              <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'quotationFiles', e)} className="sr-only" />
                            </label>
                         </div>
@@ -345,8 +360,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                 {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-yellow-600">🛒 ဝယ်ယူလိုက်ပါပြီ</button>}
                 {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-cyan-700">🔬 ပစ္စည်းရောက်/စစ်ဆေးပြီး</button>}
                 {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => updateStatus(req.id, 'Store_Received')} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-blue-700">📦 ဂိုထောင်သို့ သိမ်းဆည်းပြီးပါပြီ</button>}
-                {req.status === 'Store_Received' && isFinance && <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-teal-700 animate-pulse">✅ အတည်ပြု/စာရင်းသွင်းမည် (Auto Inventory +)</button>}
-                {(isQC || isFinance || isMDorManager) && req.status !== 'Purchased' && req.status !== 'QC_Received' && req.status !== 'Store_Received' && <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold ml-4">❌ ปယ်ချမည်</button>}
+                {req.status === 'QC_Received' && isFinance && <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-teal-700 animate-pulse">✅ အတည်ပြု/စာရင်းသွင်းမည် (Auto Inventory +)</button>}
+                {(isQC || isFinance || isMDorManager) && req.status !== 'Purchased' && req.status !== 'QC_Received' && req.status !== 'Store_Received' && <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold ml-4">❌ ပယ်ချမည်</button>}
               </div>
             )}
           </div>
