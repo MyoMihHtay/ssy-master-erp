@@ -19,10 +19,15 @@ export interface RecipeIngredient { itemName: string; requiredQty: number; unit:
 export interface Recipe { id: string; name: string; outputCategory: string; outputUnit: string; outputQtyPerBatch: number; ingredients: RecipeIngredient[]; }
 export interface PackageRecipe { id: string; skuName: string; category: string; taste: string; gram: number; price: number; ingredients: RecipeIngredient[]; }
 
-// ဖိုင်အစုံ၊ အများကြီး ထည့်နိုင်ရန် Data Type သစ်
 export interface AttachedFile { name: string; dataUrl: string; type: string; }
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; photo?: string; quotationImage?: string; }
-export interface PurchaseRequest { id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Rejected'; rejectReason?: string; }
+
+// Status များ ထပ်တိုးထားပါသည် (Purchased, QC_Received, Store_Received, Completed)
+export interface PurchaseRequest { 
+  id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; 
+  status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
+  rejectReason?: string; 
+}
 
 export default function App() {
   const [accounts, setAccounts] = useState<AccountItem[]>([
@@ -77,6 +82,30 @@ export default function App() {
       setFinishedGoods(prev => [...prev, { id: Date.now(), category: recipe.category, taste: recipe.taste, gram: recipe.gram, price: recipe.price, stockQty: outputQty }]);
   };
 
+  // ✅ ဝယ်ယူမှုပြီးစီးပါက Inventory သို့ Auto အပေါင်းထည့်မည့် စနစ်
+  const handleProcurementComplete = (pr: PurchaseRequest) => {
+    setInventoryItems(prev => {
+      // ၁။ ရှိပြီးသား ပစ္စည်းဆိုလျှင် အရေအတွက် ပေါင်းထည့်မည်
+      const existingItem = prev.find(item => item.name === pr.itemName);
+      if (existingItem) {
+        return prev.map(item => item.id === existingItem.id ? { ...item, inStock: item.inStock + pr.requestedQty } : item);
+      } 
+      // ၂။ ပစ္စည်းအသစ်ဆိုလျှင် Inventory ထဲသို့ အသစ်စတင်ထည့်သွင်းမည်
+      else {
+        const newItem: InventoryItem = {
+          id: Date.now(),
+          code: `NEW-${Date.now().toString().slice(-4)}`, // အလိုအလျောက် Code ထုတ်ပေးမည်
+          name: pr.itemName,
+          category: 'Purchased Items',
+          unit: pr.unit,
+          inStock: pr.requestedQty
+        };
+        return [...prev, newItem];
+      }
+    });
+    alert(`✅ ${pr.itemName} (${pr.requestedQty} ${pr.unit}) အား ကုန်လှောင်ရုံစာရင်းသို့ အလိုအလျောက် ပေါင်းထည့်ပြီးပါပြီ။`);
+  };
+
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
   return (
@@ -85,7 +114,7 @@ export default function App() {
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       </div>
       <main className="flex-1 h-full p-8 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto">
-        {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} />}
+        {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
