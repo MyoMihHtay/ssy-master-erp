@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { InventoryItem, Recipe, BOMResult } from '../App';
+import type { InventoryItem, Recipe, BOMResult, RecipeIngredient } from '../App';
 
 interface ProductionProps {
   userRole: string;
@@ -9,21 +9,36 @@ interface ProductionProps {
   onProductionConfirm: (recipe: Recipe, outputQty: number, bom: BOMResult[]) => void;
 }
 
-export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems, recipes, onProductionConfirm }) => {
+export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems, recipes, setRecipes, onProductionConfirm }) => {
+  const [activeTab, setActiveTab] = useState<'execute' | 'manage'>('execute');
+
+  // Execution State
   const [selectedRecipeId, setSelectedRecipeId] = useState<string>('');
   const [batchCount, setBatchCount] = useState<number>(1);
 
+  // Manage Recipe State (Formula Bar)
+  const [newRecipeName, setNewRecipeName] = useState('');
+  const [outputCategory, setOutputCategory] = useState('');
+  const [outputUnit, setOutputUnit] = useState('');
+  const [outputQty, setOutputQty] = useState('');
+  const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+  const [ingName, setIngName] = useState('');
+  const [ingQty, setIngQty] = useState('');
+  const [ingUnit, setIngUnit] = useState('');
+
+  const isManager = userRole === 'manager' || userRole === 'md';
   const selectedRecipe = recipes.find(r => r.id === selectedRecipeId);
 
+  // ထုတ်လုပ်မှု အတည်ပြုခြင်း (Deduct RM, Add SFG)
   const handleConfirm = () => {
     if (!selectedRecipe) return;
-    const outputQty = selectedRecipe.outputQtyPerBatch * batchCount;
+    const finalOutputQty = selectedRecipe.outputQtyPerBatch * batchCount;
     const bom: BOMResult[] = selectedRecipe.ingredients.map(ing => ({
       itemName: ing.itemName,
       amount: ing.requiredQty * batchCount
     }));
     
-    // Check stock in RM Warehouse
+    // RM ဂိုထောင်တွင် ပစ္စည်းလုံလောက်မှု ရှိမရှိ စစ်ဆေးခြင်း
     for (const b of bom) {
        const stockItem = inventoryItems.find(i => i.name === b.itemName && (i.warehouse === 'RM' || !i.warehouse));
        const currentStock = stockItem ? stockItem.inStock : 0;
@@ -33,67 +48,133 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
        }
     }
 
-    if(window.confirm(`⚠️ အတည်ပြုပါသလား?\n\nRM ဂိုထောင်မှ ကုန်ကြမ်းများကို နှုတ်ပြီး၊ SFG ဂိုထောင်သို့ ${outputQty} ${selectedRecipe.outputUnit} ပေါင်းထည့်ပါမည်။`)) {
-       onProductionConfirm(selectedRecipe, outputQty, bom);
+    if(window.confirm(`⚠️ အတည်ပြုပါသလား?\n\nRM ဂိုထောင်မှ ကုန်ကြမ်းများကို နှုတ်ပြီး၊ SFG ဂိုထောင်သို့ ${finalOutputQty} ${selectedRecipe.outputUnit} ပေါင်းထည့်ပါမည်။`)) {
+       onProductionConfirm(selectedRecipe, finalOutputQty, bom);
        setSelectedRecipeId('');
        setBatchCount(1);
     }
   };
 
+  // Formula (Recipe) အသစ်ထည့်ခြင်း
+  const handleAddIngredient = () => {
+    if (!ingName || !ingQty || !ingUnit) return;
+    setIngredients([...ingredients, { itemName: ingName, requiredQty: Number(ingQty), unit: ingUnit, defaultCost: 0 }]);
+    setIngName(''); setIngQty(''); setIngUnit('');
+  };
+
+  const handleSaveRecipe = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newRecipeName || !outputCategory || !outputUnit || !outputQty || ingredients.length === 0) return alert('အချက်အလက် ပြည့်စုံစွာ ဖြည့်ပါ။');
+    
+    const newRecipe: Recipe = {
+      id: `F-${Date.now()}`,
+      name: newRecipeName,
+      outputCategory,
+      outputUnit,
+      outputQtyPerBatch: Number(outputQty),
+      ingredients
+    };
+    setRecipes([...recipes, newRecipe]);
+    setNewRecipeName(''); setOutputCategory(''); setOutputUnit(''); setOutputQty(''); setIngredients([]);
+    alert('✅ ဖော်မြူလာ အသစ် သိမ်းဆည်းပြီးပါပြီ။');
+    setActiveTab('execute');
+  };
+
   return (
-    <div className="p-2 md:p-6 max-w-5xl mx-auto">
-      <div className="flex items-center gap-3 border-b-2 border-blue-200 pb-4 mb-6">
+    <div className="p-2 md:p-6 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center gap-3 border-b-2 border-blue-200 pb-4">
         <span className="text-4xl">🍳</span>
-        <h2 className="text-2xl font-extrabold text-blue-900">ထုတ်လုပ်မှု စီမံခန့်ခွဲမှု (Production to SFG)</h2>
+        <h2 className="text-2xl font-extrabold text-blue-900">ထုတ်လုပ်မှု စီမံခန့်ခွဲမှု (Production)</h2>
       </div>
 
-      <div className="bg-white shadow-xl rounded-2xl p-6 border-t-4 border-blue-500">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">ထုတ်လုပ်မည့် ကုန်ပိုင်း (Recipe)</label>
-            <select value={selectedRecipeId} onChange={e => setSelectedRecipeId(e.target.value)} className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-blue-900 outline-none">
-              <option value="">ရွေးချယ်ပါ...</option>
-              {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-            </select>
+      <div className="flex gap-4 mb-6">
+        <button onClick={() => setActiveTab('execute')} className={`px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'execute' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>ထုတ်လုပ်မည် (To SFG)</button>
+        {isManager && <button onClick={() => setActiveTab('manage')} className={`px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'manage' ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>ဖော်မြူလာ သတ်မှတ်မည်</button>}
+      </div>
+
+      {activeTab === 'execute' && (
+        <div className="bg-white shadow-xl rounded-2xl p-6 border-t-4 border-blue-500">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">ထုတ်လုပ်မည့် ကုန်ပိုင်း (Recipe)</label>
+              <select value={selectedRecipeId} onChange={e => setSelectedRecipeId(e.target.value)} className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold text-blue-900 outline-none focus:border-blue-500">
+                <option value="">ရွေးချယ်ပါ...</option>
+                {recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">အကြိမ်အရေအတွက် (Batches)</label>
+              <input type="number" min="1" value={batchCount} onChange={e => setBatchCount(Number(e.target.value))} className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold outline-none focus:border-blue-500" />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2">အကြိမ်အရေအတွက် (Batches)</label>
-            <input type="number" min="1" value={batchCount} onChange={e => setBatchCount(Number(e.target.value))} className="w-full border-2 border-gray-200 p-3 rounded-xl font-bold outline-none" />
-          </div>
+
+          {selectedRecipe && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mt-4">
+               <h4 className="font-black text-blue-800 mb-4 flex items-center gap-2"><span>🔄</span> လုပ်ငန်းစဉ် ခန့်မှန်းတွက်ချက်မှု</h4>
+               
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-red-100">
+                     <div className="text-xs font-bold text-red-500 uppercase tracking-widest mb-3 border-b pb-2">RM ဂိုထောင်မှ နှုတ်မည့် ကုန်ကြမ်းများ</div>
+                     <ul className="space-y-2">
+                       {selectedRecipe.ingredients.map((ing, idx) => (
+                         <li key={idx} className="flex justify-between font-bold text-gray-700">
+                           <span>{ing.itemName}</span>
+                           <span className="text-red-600">- {(ing.requiredQty * batchCount).toLocaleString()} {ing.unit}</span>
+                         </li>
+                       ))}
+                     </ul>
+                  </div>
+
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-green-100">
+                     <div className="text-xs font-bold text-green-600 uppercase tracking-widest mb-3 border-b pb-2">SFG ဂိုထောင်သို့ ဝင်မည့် ကုန်ပိုင်း</div>
+                     <div className="flex justify-between items-center h-full pb-4">
+                        <span className="font-black text-lg text-gray-800">{selectedRecipe.name}</span>
+                        <span className="text-2xl font-black text-green-600">+ {(selectedRecipe.outputQtyPerBatch * batchCount).toLocaleString()} <span className="text-sm font-bold">{selectedRecipe.outputUnit}</span></span>
+                     </div>
+                  </div>
+               </div>
+
+               <button onClick={handleConfirm} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-lg transition-transform active:scale-95 text-lg">
+                 အတည်ပြု၍ ထုတ်လုပ်မည် (Deduct RM & Add to SFG)
+               </button>
+            </div>
+          )}
         </div>
+      )}
 
-        {selectedRecipe && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mt-4">
-             <h4 className="font-black text-blue-800 mb-4 flex items-center gap-2"><span>🔄</span> လုပ်ငန်းစဉ် ခန့်မှန်းတွက်ချက်မှု</h4>
-             
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-red-100">
-                   <div className="text-xs font-bold text-red-500 uppercase tracking-widest mb-3 border-b pb-2">RM ဂိုထောင်မှ နှုတ်မည့် ကုန်ကြမ်းများ</div>
-                   <ul className="space-y-2">
-                     {selectedRecipe.ingredients.map((ing, idx) => (
-                       <li key={idx} className="flex justify-between font-bold text-gray-700">
-                         <span>{ing.itemName}</span>
-                         <span className="text-red-600">- {(ing.requiredQty * batchCount).toLocaleString()} {ing.unit}</span>
-                       </li>
-                     ))}
-                   </ul>
-                </div>
+      {activeTab === 'manage' && isManager && (
+        <form onSubmit={handleSaveRecipe} className="bg-white shadow-xl rounded-2xl p-6 border-t-4 border-purple-500">
+          <h3 className="text-xl font-bold text-gray-800 mb-6 border-b pb-3">ဖော်မြူလာ အသစ်ဖန်တီးရန် (Formula Bar)</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div><label className="block text-sm font-bold text-gray-700 mb-1">ကုန်ပိုင်းအမည်</label><input type="text" value={newRecipeName} onChange={e => setNewRecipeName(e.target.value)} required className="w-full border-2 p-2.5 rounded-lg outline-none focus:border-purple-500" placeholder="ဥပမာ - ငါးရေခွံကြော်" /></div>
+            <div><label className="block text-sm font-bold text-gray-700 mb-1">အမျိုးအစား</label><input type="text" value={outputCategory} onChange={e => setOutputCategory(e.target.value)} required className="w-full border-2 p-2.5 rounded-lg outline-none focus:border-purple-500" /></div>
+            <div><label className="block text-sm font-bold text-gray-700 mb-1">ထွက်ရှိမည့် အရေအတွက် (1 Batch)</label><input type="number" value={outputQty} onChange={e => setOutputQty(e.target.value)} required className="w-full border-2 p-2.5 rounded-lg outline-none focus:border-purple-500" /></div>
+            <div><label className="block text-sm font-bold text-gray-700 mb-1">ယူနစ်</label><input type="text" value={outputUnit} onChange={e => setOutputUnit(e.target.value)} required className="w-full border-2 p-2.5 rounded-lg outline-none focus:border-purple-500" placeholder="ပိဿာ / ကီလို" /></div>
+          </div>
 
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-green-100">
-                   <div className="text-xs font-bold text-green-600 uppercase tracking-widest mb-3 border-b pb-2">SFG ဂိုထောင်သို့ ဝင်မည့် ကုန်ပိုင်း</div>
-                   <div className="flex justify-between items-center h-full pb-4">
-                      <span className="font-black text-lg text-gray-800">{selectedRecipe.name}</span>
-                      <span className="text-2xl font-black text-green-600">+ {(selectedRecipe.outputQtyPerBatch * batchCount).toLocaleString()} <span className="text-sm font-bold">{selectedRecipe.outputUnit}</span></span>
-                   </div>
-                </div>
+          <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-6">
+             <h4 className="font-bold text-purple-800 mb-3">ပါဝင်ပစ္စည်းများ (Ingredients)</h4>
+             <div className="flex flex-wrap gap-2 items-end mb-4">
+               <div className="flex-1"><label className="block text-xs font-bold text-gray-600 mb-1">ကုန်ကြမ်းအမည်</label><input type="text" value={ingName} onChange={e => setIngName(e.target.value)} className="w-full border-2 p-2 rounded-lg outline-none" /></div>
+               <div className="w-32"><label className="block text-xs font-bold text-gray-600 mb-1">အရေအတွက်</label><input type="number" value={ingQty} onChange={e => setIngQty(e.target.value)} className="w-full border-2 p-2 rounded-lg outline-none" /></div>
+               <div className="w-32"><label className="block text-xs font-bold text-gray-600 mb-1">ယူနစ်</label><input type="text" value={ingUnit} onChange={e => setIngUnit(e.target.value)} className="w-full border-2 p-2 rounded-lg outline-none" /></div>
+               <button type="button" onClick={handleAddIngredient} className="bg-purple-600 text-white px-4 py-2.5 rounded-lg font-bold">ပေါင်းထည့်မည်</button>
              </div>
 
-             <button onClick={handleConfirm} className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-lg transition-transform active:scale-95 text-lg">
-               အတည်ပြု၍ ထုတ်လုပ်မည် (Deduct RM & Add to SFG)
-             </button>
+             <ul className="space-y-2">
+               {ingredients.map((ing, idx) => (
+                 <li key={idx} className="bg-white p-3 rounded-lg shadow-sm flex justify-between font-bold text-gray-700">
+                   <span>{ing.itemName}</span>
+                   <span>{ing.requiredQty} {ing.unit}</span>
+                 </li>
+               ))}
+             </ul>
           </div>
-        )}
-      </div>
+          
+          <button type="submit" className="w-full bg-purple-600 text-white font-black py-4 rounded-xl shadow-lg text-lg hover:bg-purple-700">ဖော်မြူလာ သိမ်းဆည်းမည်</button>
+        </form>
+      )}
     </div>
   );
 };
