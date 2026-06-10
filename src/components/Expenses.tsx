@@ -10,6 +10,39 @@ interface ExpensesProps {
 
 const defaultCategories = ['ကုန်ကြမ်းဝယ်ယူမှု', 'လစာနှင့် လုပ်အားခ', 'စက်ရုံသုံးစရိတ်', 'သယ်ယူပို့ဆောင်ရေး', 'အထွေထွေ', 'အခြား'];
 
+// 🌟 ပုံ Size ကြီးလွန်းပါက အလိုအလျောက် သေးငယ်သွားစေရန် Compress လုပ်ပေးမည့် Function 🌟
+const compressImage = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1024; // အများဆုံး အကျယ်
+        const MAX_HEIGHT = 1024; // အများဆုံး အမြင့်
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+        } else {
+          if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% Quality ဖြင့် ကျုံ့ပါမည်
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
 export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses, setExpenses }) => {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [category, setCategory] = useState(defaultCategories[0]);
@@ -23,9 +56,20 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
 
   const isFinanceOrMD = userRole === 'finance' || userRole === 'md' || userRole === 'manager';
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    // ပုံဖြစ်ပါက Compress လုပ်မည်၊ အခြားဖိုင် (PDF/Doc) ဖြစ်ပါက ရိုးရိုးသာ ဖတ်မည်
+    if (file.type.startsWith('image/')) {
+      try {
+        const compressedBase64 = await compressImage(file);
+        setReceiptImage(compressedBase64);
+      } catch (error) {
+        console.error("Image compression failed", error);
+        alert("ပုံထည့်သွင်းခြင်း မအောင်မြင်ပါ။ အခြားပုံ ပြောင်းစမ်းကြည့်ပါ။");
+      }
+    } else {
       const reader = new FileReader();
       reader.onloadend = () => setReceiptImage(reader.result as string);
       reader.readAsDataURL(file);
@@ -75,7 +119,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-        {/* Expense Form */}
         <div className="lg:col-span-1">
           <form onSubmit={handleSubmit} className="bg-white shadow-xl rounded-2xl p-5 md:p-6 border-t-4 border-red-500 sticky top-4">
             <h3 className="text-lg font-bold text-gray-800 mb-5 border-b pb-2">စာရင်းအသစ်သွင်းရန်</h3>
@@ -106,7 +149,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
                   <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none font-black text-red-600 text-lg" placeholder="0" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">ဘောက်ချာ / ပြေစာ အမှတ် (ရှိလျှင်)</label>
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">ဘောက်ချာ / ပြေစာ အမှတ်</label>
                   <input type="text" value={voucherNo} onChange={e => setVoucherNo(e.target.value)} className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none text-sm font-bold" placeholder="ဥပမာ - V-00123" />
                 </div>
               </div>
@@ -114,7 +157,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
               <div>
                 <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">ဘောက်ချာ ဓာတ်ပုံ / ဖိုင်</label>
                 
-                {/* 🌟 ခလုတ် (၂) ခု ခွဲထုတ်လိုက်သော နေရာ (Android / iOS အဆင်ပြေစေရန်) 🌟 */}
                 <div className="flex gap-2">
                   <label className="flex-1 cursor-pointer bg-blue-50 border-2 border-blue-200 p-3 rounded-xl text-center hover:bg-blue-100 transition flex flex-col items-center justify-center shadow-sm">
                     <span className="text-2xl mb-1">📸</span>
@@ -148,14 +190,12 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
           </form>
         </div>
 
-        {/* Expense List */}
         <div className="lg:col-span-2">
           <div className="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-200">
             <div className="bg-gray-800 p-4 md:p-5 border-b border-gray-700">
               <h3 className="text-lg font-bold text-white flex items-center gap-2"><span>📜</span> အသုံးစရိတ် မှတ်တမ်းများ</h3>
             </div>
             
-            {/* ဇယားကို Mobile တွင် ဘယ်ညာပွတ်ဆွဲနိုင်ရန် overflow-x-auto ခံထားပါသည် */}
             <div className="overflow-x-auto">
               <table className="w-full text-left min-w-[700px]">
                 <thead className="bg-gray-50 border-b-2 border-gray-200">
@@ -215,7 +255,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
         </div>
       </div>
 
-      {/* 🌟 ဓာတ်ပုံ အကြီးချဲ့ကြည့်သည့် Lightbox Modal 🌟 */}
       {previewImage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={() => setPreviewImage(null)}>
           <div className="relative max-w-4xl w-full flex justify-center">
@@ -224,7 +263,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
           </div>
         </div>
       )}
-
     </div>
   );
 };
