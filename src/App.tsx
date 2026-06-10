@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
 import { Production } from './components/Production';
+import { FinishedGoods } from './components/FinishedGoods';
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
@@ -65,7 +66,6 @@ export default function App() {
 
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => { };
 
-  // Production Algorithm: RM နှုတ်၍ SFG သို့ ပေါင်းထည့်ခြင်း
   const handleConfirmProduction = (recipe: Recipe, outputQty: number, bom: BOMResult[]) => {
       setInventoryItems(prev => {
           let updatedItems = [...prev];
@@ -109,7 +109,8 @@ export default function App() {
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
-        {activeTab === 'packaging' && <div className="p-6 bg-white rounded-2xl shadow font-bold text-gray-500">ထုပ်ပိုးမှု Module (Phase 2 တွင် ချိတ်ဆက်ပါမည်)</div>}
+        {/* 🌟 White Screen အား ဖြေရှင်းထားပြီး Phase 2 အတွက် အသင့်ပြင်ဆင်ထားသော နေရာ 🌟 */}
+        {activeTab === 'packaging' && <div className="p-6 md:p-10 bg-white rounded-2xl shadow-lg font-bold text-gray-500 flex flex-col items-center justify-center border-t-4 border-orange-500 h-64"><span className="text-6xl mb-4">📦</span><span className="text-2xl text-orange-600">ထုပ်ပိုးမှု Module</span><span className="text-sm font-medium mt-2">Phase 2 တွင် ဆက်လက်ချိတ်ဆက်ပါမည်</span></div>}
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
