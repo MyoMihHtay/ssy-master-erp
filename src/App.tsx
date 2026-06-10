@@ -22,7 +22,6 @@ export interface PackageRecipe { id: string; skuName: string; category: string; 
 export interface AttachedFile { name: string; dataUrl: string; type: string; }
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; photo?: string; quotationImage?: string; }
 
-// Status များ ထပ်တိုးထားပါသည် (Purchased, QC_Received, Store_Received, Completed)
 export interface PurchaseRequest { 
   id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
@@ -82,24 +81,13 @@ export default function App() {
       setFinishedGoods(prev => [...prev, { id: Date.now(), category: recipe.category, taste: recipe.taste, gram: recipe.gram, price: recipe.price, stockQty: outputQty }]);
   };
 
-  // ✅ ဝယ်ယူမှုပြီးစီးပါက Inventory သို့ Auto အပေါင်းထည့်မည့် စနစ်
   const handleProcurementComplete = (pr: PurchaseRequest) => {
     setInventoryItems(prev => {
-      // ၁။ ရှိပြီးသား ပစ္စည်းဆိုလျှင် အရေအတွက် ပေါင်းထည့်မည်
       const existingItem = prev.find(item => item.name === pr.itemName);
       if (existingItem) {
         return prev.map(item => item.id === existingItem.id ? { ...item, inStock: item.inStock + pr.requestedQty } : item);
-      } 
-      // ၂။ ပစ္စည်းအသစ်ဆိုလျှင် Inventory ထဲသို့ အသစ်စတင်ထည့်သွင်းမည်
-      else {
-        const newItem: InventoryItem = {
-          id: Date.now(),
-          code: `NEW-${Date.now().toString().slice(-4)}`, // အလိုအလျောက် Code ထုတ်ပေးမည်
-          name: pr.itemName,
-          category: 'Purchased Items',
-          unit: pr.unit,
-          inStock: pr.requestedQty
-        };
+      } else {
+        const newItem: InventoryItem = { id: Date.now(), code: `NEW-${Date.now().toString().slice(-4)}`, name: pr.itemName, category: 'Purchased Items', unit: pr.unit, inStock: pr.requestedQty };
         return [...prev, newItem];
       }
     });
@@ -109,11 +97,16 @@ export default function App() {
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
   return (
-    <div className="flex h-screen w-full bg-gray-100 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
-      <div className="h-full bg-gray-900 print:hidden flex-shrink-0">
+    // 🌟 ဤနေရာတွင် Mobile အတွက် flex-col နှင့် Desktop အတွက် md:flex-row ဟု ပြင်ဆင်ထားပါသည်
+    <div className="flex flex-col md:flex-row h-screen w-full bg-gray-100 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
+      
+      {/* 🌟 Sidebar သည် Desktop တွင်သာ h-full ဖြစ်ပြီး, Mobile တွင် အပေါ်၌ ကပ်နေပါမည် */}
+      <div className="md:h-full w-full md:w-64 bg-gray-900 print:hidden flex-shrink-0 z-40 shadow-md">
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       </div>
-      <main className="flex-1 h-full p-8 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto">
+      
+      {/* 🌟 Content Area သည် Mobile တွင် အောက်၌ အပြည့်နေရာယူပါမည် */}
+      <main className="flex-1 h-full p-4 md:p-8 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto">
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
