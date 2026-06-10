@@ -26,7 +26,8 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
   const [ingQty, setIngQty] = useState('');
   const [ingUnit, setIngUnit] = useState('');
 
-  const isManager = userRole === 'manager' || userRole === 'md';
+  // 🌟 MD နှင့် Manager နှစ်ဦးစလုံး ဖော်မြူလာပြင်ခွင့်ရှိရန် သေချာစစ်ဆေးခြင်း 🌟
+  const isManager = userRole.toLowerCase() === 'manager' || userRole.toLowerCase() === 'md';
   const selectedRecipe = recipes.find(r => r.id === selectedRecipeId);
 
   // ထုတ်လုပ်မှု အတည်ပြုခြင်း (Deduct RM, Add SFG)
@@ -89,7 +90,12 @@ export const Production: React.FC<ProductionProps> = ({ userRole, inventoryItems
 
       <div className="flex gap-4 mb-6">
         <button onClick={() => setActiveTab('execute')} className={`px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'execute' ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>ထုတ်လုပ်မည် (To SFG)</button>
-        {isManager && <button onClick={() => setActiveTab('manage')} className={`px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'manage' ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>ဖော်မြူလာ သတ်မှတ်မည်</button>}
+        {/* 🌟 ဤနေရာတွင် Manager/MD အကောင့်ဖြင့် ဝင်လျှင် ဖော်မြူလာ ခလုတ်ပေါ်လာပါမည် */}
+        {isManager && (
+          <button onClick={() => setActiveTab('manage')} className={`px-6 py-2.5 rounded-xl font-bold transition-all ${activeTab === 'manage' ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+             ဖော်မြူလာ သတ်မှတ်မည် (Formula)
+          </button>
+        )}
       </div>
 
       {activeTab === 'execute' && (
