@@ -3,8 +3,6 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
 import { Production } from './components/Production';
-import { Packaging } from './components/Packaging';
-import { FinishedGoods } from './components/FinishedGoods';
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
@@ -65,20 +63,17 @@ export default function App() {
     { id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4, ingredients: [{ itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 }] },
   ]);
 
-  const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', [
-    { id: 'PK-001', skuName: 'ငါးရေခွံကြော် ၃၅g', category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, ingredients: [{ itemName: 'ငါးရေခွံကြော်', requiredQty: 0.021, unit: 'ပိဿာ', defaultCost: 650 }] },
-  ]);
-
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => { };
 
+  // Production Algorithm: RM နှုတ်၍ SFG သို့ ပေါင်းထည့်ခြင်း
   const handleConfirmProduction = (recipe: Recipe, outputQty: number, bom: BOMResult[]) => {
       setInventoryItems(prev => {
           let updatedItems = [...prev];
           bom.forEach(b => {
-              const idx = updatedItems.findIndex(i => i.name === b.itemName && (i.warehouse === 'RM' || !i.warehouse));
+              const idx = updatedItems.findIndex(i => i && i.name === b.itemName && (i.warehouse === 'RM' || !i.warehouse));
               if (idx !== -1) updatedItems[idx] = { ...updatedItems[idx], inStock: updatedItems[idx].inStock - b.amount };
           });
-          const sfgIdx = updatedItems.findIndex(i => i?.name === recipe?.name && i?.warehouse === 'SFG');
+          const sfgIdx = updatedItems.findIndex(i => i && i.name === recipe.name && i.warehouse === 'SFG');
           if (sfgIdx !== -1) {
               updatedItems[sfgIdx] = { ...updatedItems[sfgIdx], inStock: updatedItems[sfgIdx].inStock + outputQty };
           } else {
@@ -88,9 +83,8 @@ export default function App() {
       });
   };
 
-  // 🌟 Safe Flow Checker Logic
   const handleProcurementComplete = (pr: PurchaseRequest) => {
-    if (!pr || !pr.itemName) return; // Type Guard ကာကွယ်မှု
+    if (!pr || !pr.itemName) return;
     const targetWH = pr.targetWarehouse || 'RM';
     setInventoryItems(prev => {
       const existingItem = prev.find(item => item && item.name === pr.itemName && item.warehouse === targetWH);
@@ -115,7 +109,7 @@ export default function App() {
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
-        {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onProductionConfirm={handleConfirmProduction} />}
+        {activeTab === 'packaging' && <div className="p-6 bg-white rounded-2xl shadow font-bold text-gray-500">ထုပ်ပိုးမှု Module (Phase 2 တွင် ချိတ်ဆက်ပါမည်)</div>}
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}

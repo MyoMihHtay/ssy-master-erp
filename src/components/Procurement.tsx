@@ -3,7 +3,6 @@ import type { PurchaseRequest, SupplierOption, AttachedFile } from '../App';
 
 interface ProcurementProps { userRole: string; requests: PurchaseRequest[]; setRequests: React.Dispatch<React.SetStateAction<PurchaseRequest[]>>; onComplete: (pr: PurchaseRequest) => void; }
 
-// 🌟 Ultra-Lightweight Image Compression Logic (RAM အသက်သာဆုံး စနစ်)
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader(); reader.readAsDataURL(file);
@@ -12,12 +11,11 @@ const compressImage = (file: File): Promise<string> => {
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width; let height = img.height;
-        // အမြင့်ဆုံး 600px သို့ ချုံ့ချမည် (ဒါမှ ဖုန်းမကြောင်ဘဲ 100KB အောက်ပဲ ရှိတော့မည်)
         if (width > height) { if (width > 600) { height *= 600 / width; width = 600; } } 
         else { if (height > 600) { width *= 600 / height; height = 600; } }
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d'); ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.5)); // 50% High-optimized Quality
+        resolve(canvas.toDataURL('image/jpeg', 0.5)); 
       };
       img.onerror = reject;
     };
@@ -93,28 +91,18 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။');
   };
 
-  // 🌟 Race-Condition Crash အား ကာကွယ်ရန် Direct Memory Mutation စနစ်သို့ ပြောင်းလဲခြင်း 🌟
   const updateStatus = (id: number, newStatus: PurchaseRequest['status'], selectedId?: string, reason?: string, roleData?: any) => {
     let targetPR: PurchaseRequest | null = null;
-    
     setRequests(prevRequests => {
       return prevRequests.map(r => {
         if (r.id === id) {
-          const updatedRequest: PurchaseRequest = { 
-            ...r, 
-            status: newStatus, 
-            selectedSupplierId: selectedId || r.selectedSupplierId, 
-            rejectReason: reason || r.rejectReason, 
-            ...roleData 
-          };
-          targetPR = updatedRequest; // အသစ်စက်စက် ပြောင်းလဲထားသော Object အား တိုက်ရိုက်ဆွဲယူမှတ်သားခြင်း
+          const updatedRequest: PurchaseRequest = { ...r, status: newStatus, selectedSupplierId: selectedId || r.selectedSupplierId, rejectReason: reason || r.rejectReason, ...roleData };
+          targetPR = updatedRequest;
           return updatedRequest;
         }
         return r;
       });
     });
-
-    // အချက်အလက်အဟောင်းကို သွားဖတ်ပြီး Crash ဖြစ်ခြင်းမှ ကာကွယ်ရန် တိုက်ရိုက် Execution ပေးခြင်း
     if (newStatus === 'Completed' && targetPR) {
       onComplete(targetPR);
     }
@@ -123,6 +111,21 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const handleStoreReceive = (reqId: number) => {
     const remark = window.prompt("ပစ္စည်းလက်ခံရရှိမှု အခြေအနေ မှတ်ချက်ရေးပါ :");
     if (remark) updateStatus(reqId, 'Store_Received', undefined, undefined, { storeRem: remark });
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch(status) {
+      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">⏳ Pending (QC စစ်ဆေးရန်)</span>;
+      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">🔬 QC Pass (Finance)</span>;
+      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">💰 Finance Pass (MD)</span>;
+      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">✅ MD ခွင့်ပြုပြီး</span>;
+      case 'Purchased': return <span className="bg-yellow-100 text-yellow-800 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">🛒 ဝယ်ယူပြီး</span>;
+      case 'QC_Received': return <span className="bg-cyan-100 text-cyan-800 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">🔍 ပစ္စည်းရောက် (QC)</span>;
+      case 'Store_Received': return <span className="bg-blue-200 text-blue-900 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">📦 ဂိုထောင်ရောက်</span>;
+      case 'Completed': return <span className="bg-teal-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-md">🎯 ပြီးစီး (Inventory ဝင်ပါပြီ)</span>;
+      case 'Rejected': return <span className="bg-red-100 text-red-700 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">❌ ပယ်ချထားသည်</span>;
+      default: return null;
+    }
   };
 
   return (
@@ -171,7 +174,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                         <div className="flex flex-wrap gap-1 mt-2">
                            {sup.productFiles?.map((file, i) => (
                              <div key={i} className="relative group w-10 h-10 border rounded bg-gray-50 flex items-center justify-center overflow-hidden">
-                               {file.type.startsWith('image/') ? <img src={file.dataUrl} className="w-full h-full object-cover"/> : <span className="text-[10px]">📄</span>}
+                               {file.type?.startsWith('image/') ? <img src={file.dataUrl} className="w-full h-full object-cover"/> : <span className="text-[10px]">📄</span>}
                                <button type="button" onClick={() => removeFile(idx, 'productFiles', i)} className="absolute inset-0 bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">✕</button>
                              </div>
                            ))}
@@ -186,7 +189,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
         </form>
       )}
 
-      {/* Approval Board */}
       <div className="space-y-8 print:space-y-4">
         {requests?.map(req => (
           <div key={req.id} className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 break-inside-avoid print:border-gray-400 print:shadow-none">
@@ -246,7 +248,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                 {req.status === 'QC_Approved' && isFinance && <button onClick={() => updateStatus(req.id, 'Finance_Approved')} className="bg-purple-600 text-white px-5 py-2 rounded-xl font-bold text-sm">💰 Finance အတည်ပြုမည်</button>}
                 {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 text-white px-6 py-2.5 rounded-xl font-black text-sm">🛒 ဝယ်ယူလိုက်ပါပြီ</button>}
                 {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 text-white px-6 py-2.5 rounded-xl font-black text-sm">🔬 ပစ္စည်းရောက်/စစ်ပြီး</button>}
-                {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => handleStoreReceive(req.id)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-black text-sm">📦 ဂိုထောင်လက်ခံမည်</button>}
+                {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => handleStoreReceive(req.id)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-black text-sm">📦 ဂျိုထောင်လက်ခံမည်</button>}
                 {req.status === 'Store_Received' && isFinance && <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-black text-sm animate-pulse">✅ စာရင်းသွင်းမည် (Auto +)</button>}
               </div>
             )}

@@ -4,13 +4,13 @@ import type { InventoryItem } from '../App';
 interface InventoryProps { userRole: string; userName: string; items: InventoryItem[]; setItems: React.Dispatch<React.SetStateAction<InventoryItem[]>>; onStockIn: (itemName: string, qty: number, totalCost: number) => void; }
 
 export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items, setItems, onStockIn }) => {
-  const [warehouseTab, setWarehouseTab] = useState<'RM' | 'SFG' | 'PKG'>('RM'); // 🌟 ဂိုထောင် ၃ ခုစနစ်
+  const [warehouseTab, setWarehouseTab] = useState<'RM' | 'SFG' | 'PKG'>('RM'); 
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredItems = useMemo(() => {
     return items.filter(item => 
-      (item.warehouse === warehouseTab || (!item.warehouse && warehouseTab === 'RM')) &&
-      (item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.code.toLowerCase().includes(searchQuery.toLowerCase()))
+      item && (item.warehouse === warehouseTab || (!item.warehouse && warehouseTab === 'RM')) &&
+      (item.name?.toLowerCase().includes(searchQuery.toLowerCase()) || item.code?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [items, searchQuery, warehouseTab]);
 
@@ -18,7 +18,6 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
     <div className="p-2 md:p-6 max-w-6xl mx-auto relative">
       <h2 className="text-2xl font-bold mb-6 text-blue-800 border-b-2 pb-2">📦 ကုန်လှောင်ရုံ စီမံခန့်ခွဲမှု (Triple Warehouse)</h2>
       
-      {/* 🌟 ဂိုထောင် ၃ ခု ခွဲပြထားသော ခလုတ်တန်း */}
       <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6 bg-white p-2 rounded-xl shadow-sm border">
         <button onClick={() => setWarehouseTab('RM')} className={`py-3 rounded-lg font-black text-xs md:text-lg transition-all ${warehouseTab === 'RM' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-50 text-gray-500'}`}>
            📦 RM (ကုန်ကြမ်း)
@@ -53,7 +52,7 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
                 <tr key={item.id} className="border-b hover:bg-gray-50 transition-colors">
                   <td className="p-4 text-gray-600 font-medium">{item.code}</td>
                   <td className="p-4 font-bold text-gray-800">{item.name}</td>
-                  <td className="p-4 text-right font-black text-lg text-indigo-700">{item.inStock.toLocaleString()} <span className="text-sm font-medium text-gray-500">{item.unit}</span></td>
+                  <td className="p-4 text-right font-black text-lg text-indigo-700">{item.inStock?.toLocaleString()} <span className="text-sm font-medium text-gray-500">{item.unit}</span></td>
                 </tr>
               ))}
               {filteredItems.length === 0 && (
