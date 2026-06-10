@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { PurchaseRequest, SupplierOption } from '../App';
+import type { PurchaseRequest, SupplierOption, AttachedFile } from '../App';
 
 interface ProcurementProps {
   userRole: string;
@@ -12,7 +12,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const [requestedQty, setRequestedQty] = useState('');
   const [unit, setUnit] = useState('');
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([
-    { id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', photo: '', quotationImage: '' }
+    { id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }
   ]);
   
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
   const handleAddSupplier = () => {
     if (suppliers.length < 3) {
-      setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', photo: '', quotationImage: '' }]);
+      setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]);
     } else {
       alert('အများဆုံး Supplier ၃ ခုသာ ယှဉ်ပြနိုင်ပါသည်။');
     }
@@ -36,15 +36,32 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     setSuppliers(updated);
   };
 
-  const handleImageUpload = (index: number, field: 'photo' | 'quotationImage', e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  // ဖိုင်အများကြီး (Multiple) နှင့် အမျိုးအစားစုံ လက်ခံသည့် Function
+  const handleFileUpload = (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    Promise.all(files.map(file => new Promise<AttachedFile>((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        handleSupplierChange(index, field, reader.result as string);
+        resolve({ name: file.name, dataUrl: reader.result as string, type: file.type });
       };
       reader.readAsDataURL(file);
-    }
+    }))).then(newAttachments => {
+      const updated = [...suppliers];
+      const existing = updated[index][field] || [];
+      updated[index] = { ...updated[index], [field]: [...existing, ...newAttachments] };
+      setSuppliers(updated);
+    });
+  };
+
+  // မှားရွေးမိသည့် ဖိုင်ကို ပြန်ဖျက်သည့် Function
+  const removeFile = (supIndex: number, field: 'productFiles' | 'quotationFiles', fileIndex: number) => {
+    const updated = [...suppliers];
+    const files = [...(updated[supIndex][field] || [])];
+    files.splice(fileIndex, 1);
+    updated[supIndex] = { ...updated[supIndex], [field]: files };
+    setSuppliers(updated);
   };
 
   const handleSubmitPR = (e: React.FormEvent) => {
@@ -62,7 +79,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     };
     setRequests([newPR, ...requests]);
     setItemName(''); setRequestedQty(''); setUnit(''); 
-    setSuppliers([{ id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', photo: '', quotationImage: '' }]);
+    setSuppliers([{ id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]);
     alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။');
   };
 
@@ -80,8 +97,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const getStatusBadge = (status: string) => {
     switch(status) {
       case 'Pending': return <span className="bg-orange-100 text-orange-700 px-4 py-1.5 rounded-full text-sm font-bold border border-orange-200 shadow-sm print:border-black print:bg-white print:text-black print:shadow-none">⏳ Pending (QC စစ်ဆေးရန်)</span>;
-      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold border border-blue-200 shadow-sm print:border-black print:bg-white print:text-black print:shadow-none">🔬 QC Pass (Finance စစ်ဆေးရန်)</span>;
-      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-sm font-bold border border-purple-200 shadow-sm print:border-black print:bg-white print:text-black print:shadow-none">💰 Finance Pass (MD အတည်ပြုရန်)</span>;
+      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-4 py-1.5 rounded-full text-sm font-bold border border-blue-200 shadow-sm print:border-black print:bg-white print:text-black print:shadow-none">🔬 QC Pass (Finance)</span>;
+      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-4 py-1.5 rounded-full text-sm font-bold border border-purple-200 shadow-sm print:border-black print:bg-white print:text-black print:shadow-none">💰 Finance Pass (MD)</span>;
       case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-sm font-bold border border-green-200 shadow-sm print:border-black print:bg-white print:text-black print:shadow-none">✅ MD ခွင့်ပြုပြီး</span>;
       case 'Rejected': return <span className="bg-red-100 text-red-700 px-4 py-1.5 rounded-full text-sm font-bold border border-red-200 shadow-sm print:border-black print:bg-white print:text-black print:shadow-none">❌ ပယ်ချထားသည်</span>;
       default: return null;
@@ -101,7 +118,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       {isPurchasing && (
         <form onSubmit={handleSubmitPR} className="bg-white shadow-lg p-6 rounded-2xl border-t-4 border-indigo-600 print:hidden">
           <div className="flex justify-between items-center mb-6 border-b pb-4">
-             <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><span>📝</span> ဝယ်ယူခွင့် တောင်းခံလွှာ အသစ် (PR)</h3>
+             <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><span>📝</span> ဝယ်ယူခွင့် တောင်းခံလွှာ အသစ်</h3>
              <button type="button" onClick={handleAddSupplier} className="bg-indigo-50 text-indigo-700 px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-100 border border-indigo-200">+ Supplier ထပ်ထည့်မည်</button>
           </div>
           
@@ -127,28 +144,48 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                 <div className="space-y-4">
                   <input type="text" value={sup.name} onChange={e => handleSupplierChange(idx, 'name', e.target.value)} required className="w-full border-b-2 border-gray-200 p-2 font-bold text-gray-800 outline-none" placeholder="ဆိုင်အမည်" />
                   <input type="number" value={sup.price || ''} onChange={e => handleSupplierChange(idx, 'price', Number(e.target.value))} required className="w-full border-b-2 border-gray-200 p-2 font-black text-red-600 outline-none" placeholder="ဈေးနှုန်း Ks" />
-                  <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border-2 p-3 rounded-xl text-sm h-20 bg-gray-50 outline-none" placeholder="အရည်အသွေး ဖော်ပြချက်" />
-                  <textarea value={sup.analysisNote} onChange={e => handleSupplierChange(idx, 'analysisNote', e.target.value)} className="w-full border-2 p-3 rounded-xl text-sm h-20 bg-gray-50 outline-none" placeholder="နှိုင်းယှဉ်သုံးသပ်ချက်" />
+                  <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border-2 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none" placeholder="အရည်အသွေး ဖော်ပြချက်" />
+                  <textarea value={sup.analysisNote} onChange={e => handleSupplierChange(idx, 'analysisNote', e.target.value)} className="w-full border-2 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none" placeholder="နှိုင်းယှဉ်သုံးသပ်ချက်" />
                   
-                  {/* Photo & Quotation Upload (Camera or File) */}
+                  {/* File Upload Buttons (Accepts multiple files, images, pdf, doc, excel) */}
                   <div className="grid grid-cols-2 gap-3 mt-4">
-                    <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center flex flex-col items-center hover:bg-indigo-50 transition">
-                      <span className="text-lg mb-1">📸</span> 
-                      <span className="text-xs font-bold text-gray-700">ပစ္စည်းပုံ (Product)</span>
-                      <span className="text-[10px] text-gray-400 mt-1">ကင်မရာ / ဖိုင်ရွေးမည်</span>
-                      {/* hidden အစား sr-only ကိုသုံးထားပြီး capture ကို ဖြုတ်ထားပါသည် */}
-                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(idx, 'photo', e)} className="sr-only" />
-                      {sup.photo && <span className="text-[10px] text-green-600 font-bold mt-1 bg-green-50 px-2 py-0.5 rounded">✓ ရွေးပြီးပါပြီ</span>}
-                    </label>
+                    <div>
+                        <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center flex flex-col items-center hover:bg-indigo-50 transition h-full justify-center">
+                          <span className="text-lg mb-1">📸/📄</span> 
+                          <span className="text-[11px] font-bold text-gray-700">ပစ္စည်းပုံ (Product)</span>
+                          <span className="text-[9px] text-gray-400 mt-0.5">အများကြီး ရွေးနိုင်သည်</span>
+                          <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleFileUpload(idx, 'productFiles', e)} className="sr-only" />
+                        </label>
+                        {/* Selected Product Files Preview */}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                           {sup.productFiles?.map((file, i) => (
+                             <div key={i} className="relative group w-10 h-10 border rounded shadow-sm bg-gray-50 flex items-center justify-center overflow-hidden" title={file.name}>
+                               {file.type.startsWith('image/') ? <img src={file.dataUrl} className="w-full h-full object-cover"/> : <span className="text-[10px]">📄</span>}
+                               <button type="button" onClick={() => removeFile(idx, 'productFiles', i)} className="absolute inset-0 bg-red-500/90 text-white text-[10px] hidden group-hover:flex items-center justify-center font-bold">✕</button>
+                             </div>
+                           ))}
+                        </div>
+                    </div>
 
-                    <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center flex flex-col items-center hover:bg-indigo-50 transition">
-                      <span className="text-lg mb-1">📄</span> 
-                      <span className="text-xs font-bold text-gray-700">ဘောက်ချာ (Quotation)</span>
-                      <span className="text-[10px] text-gray-400 mt-1">ကင်မရာ / ဖိုင်ရွေးမည်</span>
-                      <input type="file" accept="image/*" onChange={(e) => handleImageUpload(idx, 'quotationImage', e)} className="sr-only" />
-                      {sup.quotationImage && <span className="text-[10px] text-green-600 font-bold mt-1 bg-green-50 px-2 py-0.5 rounded">✓ ရွေးပြီးပါပြီ</span>}
-                    </label>
+                    <div>
+                        <label className="cursor-pointer bg-white border-2 border-gray-200 p-2 rounded-xl text-center flex flex-col items-center hover:bg-indigo-50 transition h-full justify-center">
+                          <span className="text-lg mb-1">🧾/📄</span> 
+                          <span className="text-[11px] font-bold text-gray-700">ဘောက်ချာ (Quotation)</span>
+                          <span className="text-[9px] text-gray-400 mt-0.5">အများကြီး ရွေးနိုင်သည်</span>
+                          <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleFileUpload(idx, 'quotationFiles', e)} className="sr-only" />
+                        </label>
+                        {/* Selected Quotation Files Preview */}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                           {sup.quotationFiles?.map((file, i) => (
+                             <div key={i} className="relative group w-10 h-10 border rounded shadow-sm bg-gray-50 flex items-center justify-center overflow-hidden" title={file.name}>
+                               {file.type.startsWith('image/') ? <img src={file.dataUrl} className="w-full h-full object-cover"/> : <span className="text-[10px]">📄</span>}
+                               <button type="button" onClick={() => removeFile(idx, 'quotationFiles', i)} className="absolute inset-0 bg-red-500/90 text-white text-[10px] hidden group-hover:flex items-center justify-center font-bold">✕</button>
+                             </div>
+                           ))}
+                        </div>
+                    </div>
                   </div>
+
                 </div>
               </div>
             ))}
@@ -169,7 +206,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
             <div className="bg-gray-800 p-6 flex justify-between items-center print:bg-white print:border-b-2 print:border-gray-800 print:p-4">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                   <span className="text-xs font-bold text-gray-400 uppercase tracking-widest print:text-black">PR Date: {req.date}</span>
+                   <span className="text-xs font-bold text-gray-400 uppercase print:text-black">PR Date: {req.date}</span>
                    {getStatusBadge(req.status)}
                 </div>
                 <h4 className="text-3xl font-black text-white flex items-center gap-3 print:text-black">
@@ -202,39 +239,62 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   )}
                   
                   <h5 className="font-black text-xl text-gray-800 mb-2">{sup.name}</h5>
-                  <div className="text-red-600 font-black text-3xl mb-6 print:text-black">{sup.price.toLocaleString()} <span className="text-base text-gray-500">Ks</span></div>
+                  <div className="text-red-600 font-black text-3xl mb-4 print:text-black">{sup.price.toLocaleString()} <span className="text-base text-gray-500">Ks</span></div>
                   
                   <div className="space-y-4 mb-6">
                      <div>
-                       <div className="text-xs font-bold text-gray-400 uppercase mb-1.5 print:text-gray-800">အရည်အသွေး (Quality)</div>
-                       <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-xl border border-gray-100 print:border-gray-400 print:bg-white">{sup.qualityDesc}</p>
+                       <div className="text-[10px] font-bold text-gray-400 uppercase mb-1 print:text-gray-800">အရည်အသွေး</div>
+                       <p className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded-xl border border-gray-100 print:border-gray-400 print:bg-white">{sup.qualityDesc}</p>
                      </div>
                      {sup.analysisNote && (
                        <div>
-                         <div className="text-xs font-bold text-blue-400 uppercase mb-1.5 print:text-gray-800">သုံးသပ်ချက် (Note)</div>
-                         <p className="text-sm text-blue-800 bg-blue-50 p-3 rounded-xl border border-blue-100 font-medium print:border-gray-400 print:bg-white print:text-black">{sup.analysisNote}</p>
+                         <div className="text-[10px] font-bold text-blue-400 uppercase mb-1 print:text-gray-800">သုံးသပ်ချက်</div>
+                         <p className="text-sm text-blue-800 bg-blue-50 p-2.5 rounded-xl border border-blue-100 font-medium print:border-gray-400 print:bg-white print:text-black">{sup.analysisNote}</p>
                        </div>
                      )}
                   </div>
 
-                  <div className="flex gap-3 mt-4 print:hidden">
-                    {sup.photo ? (
-                       <button onClick={() => setPreviewImage(sup.photo!)} className="flex-1 text-left group">
-                          <div className="text-xs font-bold text-gray-500 mb-1">ပစ္စည်းပုံ</div>
-                          <img src={sup.photo} alt="P" className="w-full h-24 object-cover rounded-xl border-2 border-gray-200 group-hover:border-indigo-400" />
-                       </button>
-                    ) : null}
+                  {/* Uploaded Files Display */}
+                  <div className="space-y-3 mt-4 print:hidden">
+                    {sup.productFiles && sup.productFiles.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-500 mb-1 border-b pb-1">ပစ္စည်းပုံ / ဖိုင်များ ({sup.productFiles.length})</div>
+                        <div className="flex flex-wrap gap-2">
+                          {sup.productFiles.map((file, i) => (
+                            file.type.startsWith('image/') ? (
+                               <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer hover:border-indigo-500 shadow-sm" />
+                            ) : (
+                               <a key={i} href={file.dataUrl} download={file.name} className="w-12 h-12 flex flex-col items-center justify-center border border-gray-300 rounded bg-gray-50 hover:bg-indigo-50 text-[8px] p-1 text-center truncate shadow-sm text-indigo-700 font-bold" title="ဖိုင်ဒေါင်းလုတ်ဆွဲရန် နှိပ်ပါ">
+                                 <span className="text-lg">📄</span>
+                                 <span className="truncate w-full mt-0.5">{file.name}</span>
+                               </a>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     
-                    {sup.quotationImage ? (
-                       <button onClick={() => setPreviewImage(sup.quotationImage!)} className="flex-1 text-left group">
-                          <div className="text-xs font-bold text-gray-500 mb-1">Quotation</div>
-                          <img src={sup.quotationImage} alt="Q" className="w-full h-24 object-cover rounded-xl border-2 border-gray-200 group-hover:border-indigo-400" />
-                       </button>
-                    ) : null}
+                    {sup.quotationFiles && sup.quotationFiles.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-bold text-gray-500 mb-1 border-b pb-1">Quotation ဖိုင်များ ({sup.quotationFiles.length})</div>
+                        <div className="flex flex-wrap gap-2">
+                          {sup.quotationFiles.map((file, i) => (
+                            file.type.startsWith('image/') ? (
+                               <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer hover:border-indigo-500 shadow-sm" />
+                            ) : (
+                               <a key={i} href={file.dataUrl} download={file.name} className="w-12 h-12 flex flex-col items-center justify-center border border-gray-300 rounded bg-gray-50 hover:bg-indigo-50 text-[8px] p-1 text-center truncate shadow-sm text-indigo-700 font-bold" title="ဖိုင်ဒေါင်းလုတ်ဆွဲရန် နှိပ်ပါ">
+                                 <span className="text-lg">📄</span>
+                                 <span className="truncate w-full mt-0.5">{file.name}</span>
+                               </a>
+                            )
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {(req.status === 'Finance_Approved' || req.status === 'Pending' || req.status === 'QC_Approved') && isMDorManager && req.status !== 'MD_Approved' && req.status !== 'Rejected' && (
-                    <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="mt-6 w-full bg-green-600 text-white font-bold py-3.5 rounded-xl print:hidden">
+                    <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="mt-6 w-full bg-green-600 text-white font-bold py-3.5 rounded-xl print:hidden shadow-md">
                       <span className="text-xl">👑</span> ဤ ဆိုင်မှ ဝယ်မည်
                     </button>
                   )}
@@ -245,9 +305,9 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
             {req.status !== 'MD_Approved' && req.status !== 'Rejected' && (
               <div className="bg-gray-100 p-6 flex flex-wrap justify-end gap-3 items-center print:hidden border-t">
                 <span className="text-sm font-bold text-gray-500 mr-auto uppercase">လုပ်ဆောင်ရန်</span>
-                {req.status === 'Pending' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Approved')} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold">🔬 အရည်အသွေး မှန်ကန်သည်</button>}
-                {req.status === 'QC_Approved' && isFinance && <button onClick={() => updateStatus(req.id, 'Finance_Approved')} className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold">💰 ဈေးနှုန်း မှန်ကန်သည်</button>}
-                {(isQC || isFinance || isMDorManager) && <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold">❌ ပယ်ချမည်</button>}
+                {req.status === 'Pending' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Approved')} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow">🔬 အရည်အသွေး မှန်ကန်သည်</button>}
+                {req.status === 'QC_Approved' && isFinance && <button onClick={() => updateStatus(req.id, 'Finance_Approved')} className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold shadow">💰 ဈေးနှုန်း မှန်ကန်သည်</button>}
+                {(isQC || isFinance || isMDorManager) && <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold shadow">❌ ပယ်ချမည်</button>}
               </div>
             )}
           </div>
@@ -258,7 +318,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 print:hidden" onClick={() => setPreviewImage(null)}>
           <div className="relative max-w-4xl w-full flex justify-center">
              <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
-             <button onClick={() => setPreviewImage(null)} className="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center">✕</button>
+             <button onClick={() => setPreviewImage(null)} className="absolute -top-4 -right-4 bg-red-600 text-white w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center border-2 border-white">✕</button>
           </div>
         </div>
       )}

@@ -19,7 +19,9 @@ export interface RecipeIngredient { itemName: string; requiredQty: number; unit:
 export interface Recipe { id: string; name: string; outputCategory: string; outputUnit: string; outputQtyPerBatch: number; ingredients: RecipeIngredient[]; }
 export interface PackageRecipe { id: string; skuName: string; category: string; taste: string; gram: number; price: number; ingredients: RecipeIngredient[]; }
 
-export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; photo?: string; quotationImage?: string; }
+// ဖိုင်အစုံ၊ အများကြီး ထည့်နိုင်ရန် Data Type သစ်
+export interface AttachedFile { name: string; dataUrl: string; type: string; }
+export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; photo?: string; quotationImage?: string; }
 export interface PurchaseRequest { id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Rejected'; rejectReason?: string; }
 
 export default function App() {
@@ -78,15 +80,10 @@ export default function App() {
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
   return (
-    // h-screen ဖြင့် အပြည့်ယူပြီး၊ Main ထဲတွင်သာ Scroll လုပ်ခွင့်ပေးထားပါသည်
     <div className="flex h-screen w-full bg-gray-100 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
-      
-      {/* Sidebar နေရာကို အသေ (Fixed height) သတ်မှတ်ထားပါသည် */}
       <div className="h-full bg-gray-900 print:hidden flex-shrink-0">
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       </div>
-      
-      {/* ညာဘက် အချက်အလက်ပြသည့်နေရာ (ဤနေရာကိုသာ Scroll ဆွဲ၍ရမည်) */}
       <main className="flex-1 h-full p-8 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto">
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
@@ -96,7 +93,6 @@ export default function App() {
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
       </main>
-      
     </div>
   );
 }
