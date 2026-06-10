@@ -8,7 +8,7 @@ interface ProcurementProps {
   onComplete: (pr: PurchaseRequest) => void; 
 }
 
-// 🌟 ပုံ Size အလိုအလျောက် သေးငယ်စေရန် 🌟
+// 🌟 Android Camera 12MB+ ပုံကြီးများကို 200KB ဝန်းကျင်ဖြစ်အောင် Auto ကျုံ့ပေးမည့် Function (MRS POS Standard)
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -33,7 +33,7 @@ const compressImage = (file: File): Promise<string> => {
         canvas.height = height;
         const ctx = canvas.getContext('2d');
         ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.7)); 
+        resolve(canvas.toDataURL('image/jpeg', 0.7)); // 70% Quality ဖြင့် RAM မစားအောင် အပြတ်ကျုံ့ပါမည်
       };
       img.onerror = (err) => reject(err);
     };
@@ -71,7 +71,29 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     setSuppliers(updated);
   };
 
-  const handleFileUpload = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
+  // 🌟 ၁။ ကင်မရာတိုက်ရိုက်ရိုက်ကူးမှုအတွက် Single Image Upload + Compression (White Screen လုံးဝအဖြေရှင်းနည်း)
+  const handleCameraCapture = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const compressedDataUrl = await compressImage(file);
+      const newFile: AttachedFile = { name: `Camera_${Date.now()}.jpg`, dataUrl: compressedDataUrl, type: 'image/jpeg' };
+      
+      const updated = [...suppliers];
+      const existing = updated[index][field] || [];
+      updated[index] = { ...updated[index], [field]: [...existing, newFile] };
+      setSuppliers(updated);
+    } catch (error) {
+      console.error("Camera image compress failed", error);
+      alert("ဓာတ်ပုံသိမ်းဆည်းမှု မအောင်မြင်ပါ။ နောက်တကြိမ် ပြန်စမ်းကြည့်ပါ။");
+    }
+    // သန့်ရှင်းရေးလုပ်ရန်
+    e.target.value = '';
+  };
+
+  // 🌟 ၂။ ဖိုင်ရွေးချယ်မှုအတွက် Multiple Files Upload (ပုံ၊ PDF, Word, Excel အစုံရမည်)
+  const handleMultipleFilesSelect = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
@@ -80,9 +102,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
         try {
           const compressedDataUrl = await compressImage(file);
           return { name: file.name, dataUrl: compressedDataUrl, type: 'image/jpeg' };
-        } catch (error) {
-          console.error("Compression failed", error);
-          // Fallback to normal if compress fails
+        } catch {
           return new Promise<AttachedFile>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve({ name: file.name, dataUrl: reader.result as string, type: file.type });
@@ -102,6 +122,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     const existing = updated[index][field] || [];
     updated[index] = { ...updated[index], [field]: [...existing, ...newAttachments] };
     setSuppliers(updated);
+    e.target.value = '';
   };
 
   const removeFile = (supIndex: number, field: 'productFiles' | 'quotationFiles', fileIndex: number) => {
@@ -194,19 +215,18 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border-2 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none" placeholder="အရည်အသွေး ဖော်ပြချက်" />
                   <textarea value={sup.analysisNote} onChange={e => handleSupplierChange(idx, 'analysisNote', e.target.value)} className="w-full border-2 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none" placeholder="နှိုင်းယှဉ်သုံးသပ်ချက်" />
                   
-                  {/* File Upload Buttons with 2 options each */}
+                  {/* 🌟 ဓာတ်ပုံရိုက်ခြင်း နှင့် ဖိုင်ရွေးခြင်းအား White Screen မဖြစ်စေရန် သီးသန့်ခွဲထုတ်ထားသည့်နေရာ 🌟 */}
                   <div className="space-y-3 mt-4">
-                    
                     <div>
                         <div className="text-[11px] font-bold text-gray-700 mb-1">ပစ္စည်းပုံ (Product)</div>
                         <div className="flex gap-2">
-                           <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2 rounded-lg text-center hover:bg-blue-100 transition flex flex-col items-center">
-                             <span className="text-sm">📸 ကင်မရာ</span>
-                             <input type="file" multiple accept="image/*" capture="environment" onChange={(e) => handleFileUpload(idx, 'productFiles', e)} className="sr-only" />
+                           <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-center hover:bg-blue-100 transition flex flex-col items-center justify-center">
+                             <span className="text-base">📸 ကင်မရာ</span>
+                             <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'productFiles', e)} className="sr-only" />
                            </label>
-                           <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 p-2 rounded-lg text-center hover:bg-gray-100 transition flex flex-col items-center">
-                             <span className="text-sm">📂 ဖိုင်ရွေးမည်</span>
-                             <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleFileUpload(idx, 'productFiles', e)} className="sr-only" />
+                           <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-center hover:bg-gray-100 transition flex flex-col items-center justify-center">
+                             <span className="text-base">📂 ဖိုင်ရွေးမည်</span>
+                             <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'productFiles', e)} className="sr-only" />
                            </label>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
@@ -220,15 +240,15 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                     </div>
 
                     <div>
-                        <div className="text-[11px] font-bold text-gray-700 mb-1 mt-2">ဘောက်ချာ (Quotation)</div>
+                        <div className="text-[11px] font-bold text-gray-700 mb-1 mt-1">ဘောက်ချာ (Quotation)</div>
                         <div className="flex gap-2">
-                           <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2 rounded-lg text-center hover:bg-blue-100 transition flex flex-col items-center">
-                             <span className="text-sm">📸 ကင်မရာ</span>
-                             <input type="file" multiple accept="image/*" capture="environment" onChange={(e) => handleFileUpload(idx, 'quotationFiles', e)} className="sr-only" />
+                           <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-xl text-center hover:bg-blue-100 transition flex flex-col items-center justify-center">
+                             <span className="text-base">📸 ကင်မရာ</span>
+                             <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'quotationFiles', e)} className="sr-only" />
                            </label>
-                           <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 p-2 rounded-lg text-center hover:bg-gray-100 transition flex flex-col items-center">
-                             <span className="text-sm">📂 ဖိုင်ရွေးမည်</span>
-                             <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleFileUpload(idx, 'quotationFiles', e)} className="sr-only" />
+                           <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-center hover:bg-gray-100 transition flex flex-col items-center justify-center">
+                             <span className="text-base">📂 ဖိုင်ရွေးမည်</span>
+                             <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'quotationFiles', e)} className="sr-only" />
                            </label>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
@@ -240,8 +260,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                            ))}
                         </div>
                     </div>
-
                   </div>
+
                 </div>
               </div>
             ))}
@@ -297,14 +317,14 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                     {sup.productFiles && sup.productFiles.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {sup.productFiles.map((file, i) => (
-                          file.type.startsWith('image/') ? <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-10 h-10 object-cover rounded cursor-pointer border" /> : <a key={i} href={file.dataUrl} download={file.name} className="w-10 h-10 flex items-center justify-center border rounded text-[10px]">📄</a>
+                          file.type.startsWith('image/') ? <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-10 h-10 object-cover rounded cursor-pointer border shadow-sm" /> : <a key={i} href={file.dataUrl} download={file.name} className="w-10 h-10 flex items-center justify-center border rounded text-[10px] bg-gray-50">📄</a>
                         ))}
                       </div>
                     )}
                     {sup.quotationFiles && sup.quotationFiles.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t">
+                      <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-dashed">
                         {sup.quotationFiles.map((file, i) => (
-                          file.type.startsWith('image/') ? <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-10 h-10 object-cover rounded cursor-pointer border" /> : <a key={i} href={file.dataUrl} download={file.name} className="w-10 h-10 flex items-center justify-center border rounded text-[10px]">📄</a>
+                          file.type.startsWith('image/') ? <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-10 h-10 object-cover rounded cursor-pointer border shadow-sm" /> : <a key={i} href={file.dataUrl} download={file.name} className="w-10 h-10 flex items-center justify-center border rounded text-[10px] bg-gray-50">📄</a>
                         ))}
                       </div>
                     )}
@@ -319,14 +339,14 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
             {req.status !== 'Completed' && req.status !== 'Rejected' && (
               <div className="bg-indigo-50 p-6 flex flex-wrap justify-end gap-3 items-center print:hidden border-t border-indigo-100">
-                <span className="text-sm font-black text-indigo-800 mr-auto flex items-center gap-2"><span>⚙️</span> လုပ်ဆောင်ရန် (Next Action)</span>
+                <span className="text-sm font-black text-indigo-800 mr-auto flex items-center gap-2"><span>⚙️</span> Next Action</span>
                 {req.status === 'Pending' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Approved')} className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow">🔬 အရည်အသွေးစစ်ဆေးပြီး</button>}
                 {req.status === 'QC_Approved' && isFinance && <button onClick={() => updateStatus(req.id, 'Finance_Approved')} className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold shadow">💰 ဈေးနှုန်း မှန်ကန်သည်</button>}
                 {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 hover:bg-yellow-600 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-yellow-600">🛒 ဝယ်ယူလိုက်ပါပြီ</button>}
-                {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-cyan-700">🔬 ပစ္စည်းရောက်/အရည်အသွေးမှန်ကန်သည်</button>}
+                {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 hover:bg-cyan-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-cyan-700">🔬 ပစ္စည်းရောက်/စစ်ဆေးပြီး</button>}
                 {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => updateStatus(req.id, 'Store_Received')} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-blue-700">📦 ဂိုထောင်သို့ သိမ်းဆည်းပြီးပါပြီ</button>}
                 {req.status === 'Store_Received' && isFinance && <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-3 rounded-xl font-black shadow-lg border-2 border-teal-700 animate-pulse">✅ အတည်ပြု/စာရင်းသွင်းမည် (Auto Inventory +)</button>}
-                {(isQC || isFinance || isMDorManager) && req.status !== 'Purchased' && req.status !== 'QC_Received' && req.status !== 'Store_Received' && <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold ml-4">❌ ပယ်ချမည်</button>}
+                {(isQC || isFinance || isMDorManager) && req.status !== 'Purchased' && req.status !== 'QC_Received' && req.status !== 'Store_Received' && <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-3 rounded-xl font-bold ml-4">❌ ปယ်ချမည်</button>}
               </div>
             )}
           </div>
