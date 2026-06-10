@@ -3,6 +3,7 @@ import type { PurchaseRequest, SupplierOption, AttachedFile } from '../App';
 
 interface ProcurementProps { userRole: string; requests: PurchaseRequest[]; setRequests: React.Dispatch<React.SetStateAction<PurchaseRequest[]>>; onComplete: (pr: PurchaseRequest) => void; }
 
+// 🌟 Ultra-Lightweight Image Compression Logic (RAM အသက်သာဆုံး စနစ်)
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader(); reader.readAsDataURL(file);
@@ -11,11 +12,12 @@ const compressImage = (file: File): Promise<string> => {
       img.onload = () => {
         const canvas = document.createElement('canvas');
         let width = img.width; let height = img.height;
-        if (width > height) { if (width > 800) { height *= 800 / width; width = 800; } } 
-        else { if (height > 800) { width *= 800 / height; height = 800; } }
+        // အမြင့်ဆုံး 600px သို့ ချုံ့ချမည် (ဒါမှ ဖုန်းမကြောင်ဘဲ 100KB အောက်ပဲ ရှိတော့မည်)
+        if (width > height) { if (width > 600) { height *= 600 / width; width = 600; } } 
+        else { if (height > 600) { width *= 600 / height; height = 600; } }
         canvas.width = width; canvas.height = height;
         const ctx = canvas.getContext('2d'); ctx?.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL('image/jpeg', 0.6)); 
+        resolve(canvas.toDataURL('image/jpeg', 0.5)); // 50% High-optimized Quality
       };
       img.onerror = reject;
     };
@@ -27,7 +29,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const [itemName, setItemName] = useState('');
   const [requestedQty, setRequestedQty] = useState('');
   const [unit, setUnit] = useState('');
-  const [targetWH, setTargetWH] = useState<'RM' | 'SFG' | 'PKG'>('RM'); // 🌟 PKG တိုးချဲ့မှု
+  const [targetWH, setTargetWH] = useState<'RM' | 'SFG' | 'PKG'>('RM');
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([
     { id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }
   ]);
@@ -50,7 +52,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     const updated = [...suppliers]; updated[index] = { ...updated[index], [field]: value }; setSuppliers(updated);
   };
 
-  // 🌟 တစ်ပုံချင်းစီ ကင်မရာရိုက်ပြီး စာရင်းထဲသို့ အဆက်မပြတ် ပေါင်းထည့်မည့် စနစ်
   const handleCameraCapture = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     try {
@@ -59,34 +60,21 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       const updated = [...suppliers];
       updated[index][field] = [...(updated[index][field] || []), newFile];
       setSuppliers(updated);
-    } catch (error) { alert("ဓာတ်ပုံရိုက်ကူးမှု မအောင်မြင်ပါ။"); }
+    } catch (error) { alert("ဓာတ်ပုံသိမ်းဆည်းမှု မအောင်မြင်ပါ။"); }
     e.target.value = '';
   };
 
-  // 🌟 ဖိုင်တွဲများစွာ (ပုံ/PDF/Excel) အကန့်အသတ်မရှိ တစ်ပြိုင်နက် ရွေးချယ်နိုင်သော စနစ်
   const handleMultipleFilesSelect = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []); if (files.length === 0) return;
-    
     const newAttachments = await Promise.all(files.map(async (file) => {
       if (file.type.startsWith('image/')) {
-        try {
-          const compressedDataUrl = await compressImage(file);
-          return { name: file.name, dataUrl: compressedDataUrl, type: 'image/jpeg' };
-        } catch {
-          return new Promise<AttachedFile>((res) => {
-            const r = new FileReader(); r.onloadend = () => res({ name: file.name, dataUrl: r.result as string, type: file.type }); r.readAsDataURL(file);
-          });
-        }
+        try { const compressedDataUrl = await compressImage(file); return { name: file.name, dataUrl: compressedDataUrl, type: 'image/jpeg' }; } 
+        catch { return new Promise<AttachedFile>((res) => { const r = new FileReader(); r.onloadend = () => res({ name: file.name, dataUrl: r.result as string, type: file.type }); r.readAsDataURL(file); }); }
       } else {
-        return new Promise<AttachedFile>((res) => {
-          const r = new FileReader(); r.onloadend = () => res({ name: file.name, dataUrl: r.result as string, type: file.type }); r.readAsDataURL(file);
-        });
+        return new Promise<AttachedFile>((res) => { const r = new FileReader(); r.onloadend = () => res({ name: file.name, dataUrl: r.result as string, type: file.type }); r.readAsDataURL(file); });
       }
     }));
-
-    const updated = [...suppliers];
-    updated[index][field] = [...(updated[index][field] || []), ...newAttachments];
-    setSuppliers(updated);
+    const updated = [...suppliers]; updated[index][field] = [...(updated[index][field] || []), ...newAttachments]; setSuppliers(updated);
     e.target.value = '';
   };
 
@@ -105,9 +93,31 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။');
   };
 
+  // 🌟 Race-Condition Crash အား ကာကွယ်ရန် Direct Memory Mutation စနစ်သို့ ပြောင်းလဲခြင်း 🌟
   const updateStatus = (id: number, newStatus: PurchaseRequest['status'], selectedId?: string, reason?: string, roleData?: any) => {
-    setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus, selectedSupplierId: selectedId || r.selectedSupplierId, rejectReason: reason || r.rejectReason, ...roleData } : r));
-    if (newStatus === 'Completed') { const completedPR = requests.find(r => r.id === id); if (completedPR) onComplete(completedPR); }
+    let targetPR: PurchaseRequest | null = null;
+    
+    setRequests(prevRequests => {
+      return prevRequests.map(r => {
+        if (r.id === id) {
+          const updatedRequest: PurchaseRequest = { 
+            ...r, 
+            status: newStatus, 
+            selectedSupplierId: selectedId || r.selectedSupplierId, 
+            rejectReason: reason || r.rejectReason, 
+            ...roleData 
+          };
+          targetPR = updatedRequest; // အသစ်စက်စက် ပြောင်းလဲထားသော Object အား တိုက်ရိုက်ဆွဲယူမှတ်သားခြင်း
+          return updatedRequest;
+        }
+        return r;
+      });
+    });
+
+    // အချက်အလက်အဟောင်းကို သွားဖတ်ပြီး Crash ဖြစ်ခြင်းမှ ကာကွယ်ရန် တိုက်ရိုက် Execution ပေးခြင်း
+    if (newStatus === 'Completed' && targetPR) {
+      onComplete(targetPR);
+    }
   };
 
   const handleStoreReceive = (reqId: number) => {
@@ -156,7 +166,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                         <div className="text-[11px] font-bold text-gray-700 mb-1">ပစ္စည်းပုံနှင့် ဘောက်ချာဖိုင်များ</div>
                         <div className="flex gap-2">
                            <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2 rounded-lg text-center text-xs font-bold">📸 ကင်မရာ <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'productFiles', e)} className="sr-only" /></label>
-                           {/* 🌟 multiple attribute ထည့်သွင်းထားသဖြင့် စိတ်ကြိုက်ဖိုင်အများကြီး တပြိုင်နက်ရွေးနိုင်ပါသည် */}
                            <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-200 p-2 rounded-lg text-center text-xs font-bold">📂 ဖိုင်အစုံရွေးရန် <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'productFiles', e)} className="sr-only" /></label>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-2">
@@ -179,13 +188,13 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
       {/* Approval Board */}
       <div className="space-y-8 print:space-y-4">
-        {requests.map(req => (
+        {requests?.map(req => (
           <div key={req.id} className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-200 break-inside-avoid print:border-gray-400 print:shadow-none">
             <div className="bg-gray-800 p-6 flex justify-between items-center print:bg-white print:border-b-2 print:border-gray-800 print:p-2">
               <div>
                 <div className="text-xs font-bold text-gray-400 mb-1 print:text-black">PR Date: {req.date}</div>
                 <h4 className="text-2xl font-black text-white flex flex-wrap items-center gap-2 print:text-black">
-                  {req.itemName} <span className="bg-indigo-500 text-white px-3 py-1 rounded-lg text-lg print:border print:text-black print:bg-white">{req.requestedQty.toLocaleString()} {req.unit}</span>
+                  {req.itemName} <span className="bg-indigo-500 text-white px-3 py-1 rounded-lg text-lg print:border print:text-black print:bg-white">{req.requestedQty?.toLocaleString()} {req.unit}</span>
                   <span className="bg-yellow-500 text-yellow-900 px-3 py-1 rounded-lg text-xs print:border print:text-black print:bg-white">ဂိုထောင်: {req.targetWarehouse || 'RM'}</span>
                   {getStatusBadge(req.status)}
                 </h4>
@@ -194,27 +203,28 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
             </div>
 
             <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 bg-gray-50 print:bg-white print:grid-cols-3 print:gap-2 print:p-2">
-              {req.suppliers.map((sup) => (
+              {req.suppliers?.map((sup) => (
                 <div key={sup.id} className={`border-2 p-4 rounded-2xl relative bg-white ${req.selectedSupplierId === sup.id ? 'border-green-500 shadow-md ring-2 ring-green-50 print:border-green-700' : 'border-gray-200'}`}>
                   {req.selectedSupplierId === sup.id && <div className="absolute -top-3 -right-3 bg-green-500 text-white w-8 h-8 flex justify-center items-center rounded-full font-black shadow print:hidden">✓</div>}
                   <h5 className="font-black text-lg text-gray-800 mb-1">{sup.name}</h5>
-                  <div className="text-red-600 font-black text-2xl mb-3 print:text-black">{sup.price.toLocaleString()} Ks</div>
+                  <div className="text-red-600 font-black text-2xl mb-3 print:text-black">{sup.price?.toLocaleString()} Ks</div>
                   <div className="text-xs text-gray-700 bg-gray-50 p-2 rounded-xl border mb-3 print:bg-white">{sup.qualityDesc}</div>
 
-                  {/* 🌟 Print ထုတ်ချိန်တွင် ပုံများပါဝင်စေရန် print:flex ဖြစ်အောင် ပြင်ဆင်ထားပါသည် */}
                   {sup.productFiles && sup.productFiles.length > 0 && (
                     <div className="mt-3 pt-2 border-t border-dashed">
                       <div className="text-[10px] font-bold text-gray-400 uppercase mb-1 print:text-black">သက်သေခံ ဖိုင်/ပုံများ:</div>
                       <div className="flex flex-wrap gap-1.5">
                         {sup.productFiles.map((file, i) => (
-                          file.type.startsWith('image/') ? (
-                             <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer print:w-16 print:h-16 print:object-contain" />
-                          ) : (
-                             <a key={i} href={file.dataUrl} download={file.name} className="w-12 h-12 flex flex-col items-center justify-center border rounded bg-gray-50 text-[8px] p-1 truncate text-indigo-700 font-bold print:border-black">
-                               <span className="text-sm">📄</span>
-                               <span className="truncate w-full text-center">{file.name.slice(0,5)}</span>
-                             </a>
-                          )
+                          file?.dataUrl ? (
+                            file.type?.startsWith('image/') ? (
+                               <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-12 h-12 object-cover rounded border border-gray-300 cursor-pointer print:w-16 print:h-16 print:object-contain" />
+                            ) : (
+                               <a key={i} href={file.dataUrl} download={file.name} className="w-12 h-12 flex flex-col items-center justify-center border rounded bg-gray-50 text-[8px] p-1 truncate text-indigo-700 font-bold print:border-black">
+                                 <span className="text-sm">📄</span>
+                                 <span className="truncate w-full text-center">{file.name?.slice(0,5)}</span>
+                               </a>
+                            )
+                          ) : null
                         ))}
                       </div>
                     </div>
@@ -229,7 +239,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               ))}
             </div>
 
-            {/* P2P Process Action Bar */}
             {req.status !== 'Completed' && req.status !== 'Rejected' && (
               <div className="bg-indigo-50 p-4 flex flex-wrap justify-end gap-3 items-center print:hidden border-t">
                 <span className="text-sm font-black text-indigo-800 mr-auto">⚙️ Next Action</span>

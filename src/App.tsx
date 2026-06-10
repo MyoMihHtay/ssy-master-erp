@@ -10,7 +10,6 @@ import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
-// 🌟 warehouse format တွင် 'PKG' (ထုပ်ပိုးပစ္စည်းဂိုထောင်) တိုးထားပါသည်
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; }
 export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; }
 export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; }
@@ -26,7 +25,7 @@ export interface PurchaseRequest {
   id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
-  targetWarehouse?: 'RM' | 'SFG' | 'PKG'; // 🌟 Target Warehouse တွင် PKG တိုးထားပါသည်
+  targetWarehouse?: 'RM' | 'SFG' | 'PKG'; 
 }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
@@ -79,7 +78,7 @@ export default function App() {
               const idx = updatedItems.findIndex(i => i.name === b.itemName && (i.warehouse === 'RM' || !i.warehouse));
               if (idx !== -1) updatedItems[idx] = { ...updatedItems[idx], inStock: updatedItems[idx].inStock - b.amount };
           });
-          const sfgIdx = updatedItems.findIndex(i => i.name === recipe.name && i.warehouse === 'SFG');
+          const sfgIdx = updatedItems.findIndex(i => i?.name === recipe?.name && i?.warehouse === 'SFG');
           if (sfgIdx !== -1) {
               updatedItems[sfgIdx] = { ...updatedItems[sfgIdx], inStock: updatedItems[sfgIdx].inStock + outputQty };
           } else {
@@ -89,10 +88,12 @@ export default function App() {
       });
   };
 
+  // 🌟 Safe Flow Checker Logic
   const handleProcurementComplete = (pr: PurchaseRequest) => {
+    if (!pr || !pr.itemName) return; // Type Guard ကာကွယ်မှု
     const targetWH = pr.targetWarehouse || 'RM';
     setInventoryItems(prev => {
-      const existingItem = prev.find(item => item.name === pr.itemName && item.warehouse === targetWH);
+      const existingItem = prev.find(item => item && item.name === pr.itemName && item.warehouse === targetWH);
       if (existingItem) {
         return prev.map(item => item.id === existingItem.id ? { ...item, inStock: item.inStock + pr.requestedQty } : item);
       } else {
@@ -100,7 +101,7 @@ export default function App() {
         return [...prev, newItem];
       }
     });
-    alert(`✅ ${pr.itemName} (${pr.requestedQty} ${pr.unit}) အား [${targetWH} ဂိုထောင်] သို့ အလိုအလျောက် ထည့်သွင်းပြီးပါပြီ။`);
+    alert(`✅ ${pr.itemName} (${pr.requestedQty} ${pr.unit}) အား [${targetWH} ဂိုထောင်] သို့ ထည့်သွင်းပြီးပါပြီ။`);
   };
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
@@ -114,7 +115,7 @@ export default function App() {
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
-        {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmProduction} />}
+        {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
