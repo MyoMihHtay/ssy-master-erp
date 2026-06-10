@@ -248,7 +248,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                 {req.status === 'QC_Approved' && isFinance && <button onClick={() => updateStatus(req.id, 'Finance_Approved')} className="bg-purple-600 text-white px-5 py-2 rounded-xl font-bold text-sm">💰 Finance အတည်ပြုမည်</button>}
                 {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 text-white px-6 py-2.5 rounded-xl font-black text-sm">🛒 ဝယ်ယူလိုက်ပါပြီ</button>}
                 {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 text-white px-6 py-2.5 rounded-xl font-black text-sm">🔬 ပစ္စည်းရောက်/စစ်ပြီး</button>}
-                {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => handleStoreReceive(req.id)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-black text-sm">📦 ဂျိုထောင်လက်ခံမည်</button>}
+                {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => handleStoreReceive(req.id)} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl font-black text-sm">📦 ဂိုထောင်လက်ခံမည်</button>}
                 {req.status === 'Store_Received' && isFinance && <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 text-white px-6 py-2.5 rounded-xl font-black text-sm animate-pulse">✅ စာရင်းသွင်းမည် (Auto +)</button>}
               </div>
             )}
