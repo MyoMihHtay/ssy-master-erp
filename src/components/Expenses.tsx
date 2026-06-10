@@ -8,175 +8,223 @@ interface ExpensesProps {
   setExpenses: React.Dispatch<React.SetStateAction<ExpenseItem[]>>;
 }
 
+const defaultCategories = ['ကုန်ကြမ်းဝယ်ယူမှု', 'လစာနှင့် လုပ်အားခ', 'စက်ရုံသုံးစရိတ်', 'သယ်ယူပို့ဆောင်ရေး', 'အထွေထွေ', 'အခြား'];
+
 export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses, setExpenses }) => {
-  const [category, setCategory] = useState('');
-  const [customCategory, setCustomCategory] = useState(''); // ခေါင်းစဉ်အသစ်အတွက် State
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [category, setCategory] = useState(defaultCategories[0]);
+  const [customCategory, setCustomCategory] = useState('');
   const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState<number | ''>('');
+  const [amount, setAmount] = useState('');
   const [voucherNo, setVoucherNo] = useState('');
   const [receiptImage, setReceiptImage] = useState<string>('');
+  
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  const isFinanceOrMD = userRole === 'finance' || userRole === 'md' || userRole === 'manager';
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setReceiptImage(reader.result as string);
-      };
+      reader.onloadend = () => setReceiptImage(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // 'other' ရွေးထားရင် ရိုက်ထည့်ထားတဲ့ ခေါင်းစဉ်ကို ယူမည်
-    const finalCategory = category === 'other' ? customCategory : category;
+    if (!description || !amount) return;
 
-    if (!finalCategory || !description || !amount) {
-      alert('လိုအပ်သော အချက်အလက်များကို ဖြည့်ပါ။'); return;
-    }
+    const finalCategory = category === 'အခြား' && customCategory ? customCategory : category;
 
     const newExpense: ExpenseItem = {
       id: Date.now(),
-      date: new Date().toLocaleDateString('en-GB'),
+      date: new Date(date).toLocaleDateString('en-GB'),
       category: finalCategory,
       description,
       amount: Number(amount),
-      voucherNo: voucherNo || '-',
-      receiptImage: receiptImage || undefined,
+      voucherNo,
+      receiptImage
     };
 
-    setExpenses([...expenses, newExpense]);
-    setCategory(''); setCustomCategory(''); setDescription(''); setAmount(''); setVoucherNo(''); setReceiptImage('');
-    alert('✅ အသုံးစရိတ် မှတ်တမ်းတင်ပြီးပါပြီ။');
+    setExpenses([newExpense, ...expenses]);
+    setDescription(''); setAmount(''); setVoucherNo(''); setReceiptImage(''); setCustomCategory('');
+    alert('✅ အသုံးစရိတ် အောင်မြင်စွာ မှတ်တမ်းတင်ပြီးပါပြီ။');
   };
 
   const handleDelete = (id: number) => {
-    if (window.confirm('ဤအသုံးစရိတ်ကို ဖျက်ရန် သေချာပါသလား?')) {
+    if (window.confirm('⚠️ ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?')) {
       setExpenses(expenses.filter(e => e.id !== id));
     }
   };
 
-  const totalExpense = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold text-red-700 border-b-2 border-red-200 pb-3 flex items-center gap-2">
-        <span>💸</span> စက်ရုံသုံးစရိတ် နှင့် ဘောက်ချာ မှတ်တမ်း
-      </h2>
-
-      <div className="bg-white shadow-lg p-6 rounded-2xl border-t-4 border-red-500">
-        <form onSubmit={handleSave} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-          
-          <div className="md:col-span-1">
-            <label className="block text-sm font-bold text-gray-700 mb-1">အသုံးစရိတ် ခေါင်းစဉ်</label>
-            <select value={category} onChange={e => setCategory(e.target.value)} className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0 font-semibold" required>
-              <option value="">-- ရွေးချယ်ပါ --</option>
-              <option value="ကုန်ကြမ်းဝယ်ယူမှု">ကုန်ကြမ်းဝယ်ယူမှု</option>
-              <option value="စက်ရုံသုံးပစ္စည်း">စက်ရုံသုံးပစ္စည်း (Gas, ဆီ)</option>
-              <option value="ဝန်ထမ်းစရိတ်">ဝန်ထမ်းစရိတ် / လစာ</option>
-              <option value="ပြုပြင်ထိန်းသိမ်းစရိတ်">ပြုပြင်ထိန်းသိမ်းစရိတ်</option>
-              <option value="အထွေထွေ">အထွေထွေ</option>
-              <option value="other">➕ အခြား (ခေါင်းစဉ်အသစ်ထည့်မည်)</option>
-            </select>
-            {/* 'အခြား' ကိုရွေးလျှင် စာရိုက်ထည့်ရန် အကွက်ပေါ်လာမည် */}
-            {category === 'other' && (
-              <input type="text" value={customCategory} onChange={e => setCustomCategory(e.target.value)} placeholder="ခေါင်းစဉ်အသစ် ရိုက်ထည့်ပါ" className="mt-3 border-2 border-red-300 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0" required autoFocus />
-            )}
-          </div>
-
-          <div className="md:col-span-2">
-            <label className="block text-sm font-bold text-gray-700 mb-1">အသေးစိတ် ဖော်ပြချက်</label>
-            <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0" required placeholder="ဥပမာ - ကြက်သွန် ၅၀ ပိဿာ ဝယ်ယူခြင်း" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">ဘောက်ချာနံပါတ် (မဖြစ်မနေမလို)</label>
-            <input type="text" value={voucherNo} onChange={e => setVoucherNo(e.target.value)} className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0" placeholder="ဥပမာ - V-00123" />
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">ကုန်ကျငွေ (Ks)</label>
-            <input type="number" value={amount} onChange={e => setAmount(Number(e.target.value))} className="border-2 border-gray-200 p-3 rounded-xl w-full focus:border-red-500 focus:ring-0 font-bold text-red-600" required placeholder="ဥပမာ - 50000" />
-          </div>
-
-          <div className="flex flex-col gap-1">
-            <label className="block text-sm font-bold text-gray-700">ဘောက်ချာ ဓာတ်ပုံ</label>
-            <div className="flex gap-2 items-center h-[52px]">
-              <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 border-2 border-dashed border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-bold transition-colors w-full h-full flex items-center justify-center gap-2">
-                <span>📸</span> ဓာတ်ပုံရိုက်မည် / ရွေးမည်
-                <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" />
-              </label>
-            </div>
-          </div>
-
-          {receiptImage && (
-            <div className="md:col-span-3 flex justify-start items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
-              <img src={receiptImage} alt="Voucher" className="h-16 w-16 object-cover rounded-lg border border-gray-300 shadow-sm" />
-              <div className="text-sm text-green-600 font-bold flex-1">ဓာတ်ပုံ ထည့်သွင်းပြီးပါပြီ 📸</div>
-              <button type="button" onClick={() => setReceiptImage('')} className="text-red-500 hover:text-red-700 font-bold px-3 py-1 bg-red-100 rounded-lg">ဖျက်မည်</button>
-            </div>
-          )}
-
-          <div className="md:col-span-3 flex justify-end mt-2">
-            <button type="submit" className="bg-red-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-red-700 transition-colors">
-              စာရင်းသွင်းမည်
-            </button>
-          </div>
-        </form>
+    <div className="p-2 md:p-6 max-w-6xl mx-auto space-y-6 md:space-y-8">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-red-200 pb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-3xl md:text-4xl">💰</span>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-gray-800">အသုံးစရိတ် စီမံခန့်ခွဲမှု</h2>
+        </div>
+        <div className="bg-red-50 px-4 py-2 md:px-6 md:py-3 rounded-xl border border-red-200 text-center md:text-right">
+          <div className="text-xs md:text-sm font-bold text-red-500 uppercase tracking-wider">စုစုပေါင်း အသုံးစရိတ်</div>
+          <div className="text-2xl md:text-3xl font-black text-red-700">{totalExpenses.toLocaleString()} <span className="text-base text-red-500">Ks</span></div>
+        </div>
       </div>
 
-      <div className="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-200">
-        <div className="p-4 bg-gray-800 text-white font-bold flex justify-between items-center">
-          <span>ယခုလ အသုံးစရိတ် မှတ်တမ်းများ</span>
-          <span className="text-yellow-400 text-lg">စုစုပေါင်း - {totalExpense.toLocaleString()} Ks</span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+        {/* Expense Form */}
+        <div className="lg:col-span-1">
+          <form onSubmit={handleSubmit} className="bg-white shadow-xl rounded-2xl p-5 md:p-6 border-t-4 border-red-500 sticky top-4">
+            <h3 className="text-lg font-bold text-gray-800 mb-5 border-b pb-2">စာရင်းအသစ်သွင်းရန်</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">ရက်စွဲ</label>
+                <input type="date" value={date} onChange={e => setDate(e.target.value)} required className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none font-medium" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">အမျိုးအစား (Category)</label>
+                <select value={category} onChange={e => setCategory(e.target.value)} className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none font-bold text-gray-700 bg-gray-50">
+                  {defaultCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                {category === 'အခြား' && (
+                  <input type="text" placeholder="အမျိုးအစား ရိုက်ထည့်ပါ..." value={customCategory} onChange={e => setCustomCategory(e.target.value)} required className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none mt-2 text-sm" />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">အကြောင်းအရာ / ဖော်ပြချက်</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} required className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none h-20 resize-none text-sm" placeholder="ဘာအတွက် သုံးသည်..." />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">ကုန်ကျငွေ (Ks)</label>
+                  <input type="number" value={amount} onChange={e => setAmount(e.target.value)} required className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none font-black text-red-600 text-lg" placeholder="0" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-gray-600 mb-1 uppercase tracking-wide">ဘောက်ချာ / ပြေစာ အမှတ် (ရှိလျှင်)</label>
+                  <input type="text" value={voucherNo} onChange={e => setVoucherNo(e.target.value)} className="w-full border-2 border-gray-200 p-2.5 rounded-xl focus:border-red-500 outline-none text-sm font-bold" placeholder="ဥပမာ - V-00123" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-2 uppercase tracking-wide">ဘောက်ချာ ဓာတ်ပုံ / ဖိုင်</label>
+                
+                {/* 🌟 ခလုတ် (၂) ခု ခွဲထုတ်လိုက်သော နေရာ (Android / iOS အဆင်ပြေစေရန်) 🌟 */}
+                <div className="flex gap-2">
+                  <label className="flex-1 cursor-pointer bg-blue-50 border-2 border-blue-200 p-3 rounded-xl text-center hover:bg-blue-100 transition flex flex-col items-center justify-center shadow-sm">
+                    <span className="text-2xl mb-1">📸</span>
+                    <span className="text-[10px] md:text-xs font-bold text-blue-800 leading-tight">ကင်မရာဖြင့်<br/>ရိုက်မည်</span>
+                    <input type="file" accept="image/*" capture="environment" onChange={handleImageUpload} className="sr-only" />
+                  </label>
+                  
+                  <label className="flex-1 cursor-pointer bg-gray-50 border-2 border-gray-200 p-3 rounded-xl text-center hover:bg-gray-100 transition flex flex-col items-center justify-center shadow-sm">
+                    <span className="text-2xl mb-1">📂</span>
+                    <span className="text-[10px] md:text-xs font-bold text-gray-700 leading-tight">ဖိုင် / ပုံ<br/>ရွေးမည်</span>
+                    <input type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={handleImageUpload} className="sr-only" />
+                  </label>
+                </div>
+
+                {receiptImage && (
+                  <div className="mt-3 relative inline-block">
+                    {receiptImage.startsWith('data:image') ? (
+                       <img src={receiptImage} alt="Receipt" className="h-20 object-contain rounded-lg border-2 border-green-400 shadow-sm" />
+                    ) : (
+                       <div className="h-16 px-4 bg-gray-100 border-2 border-green-400 rounded-lg flex items-center justify-center text-sm font-bold text-gray-600 shadow-sm">📄 ဖိုင်ရွေးချယ်ပြီးပါပြီ</div>
+                    )}
+                    <button type="button" onClick={() => setReceiptImage('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-md">✕</button>
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-xl shadow-lg transition-colors text-lg tracking-wider mt-4">
+                စာရင်းသွင်းမည်
+              </button>
+            </div>
+          </form>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left whitespace-nowrap">
-            <thead className="bg-gray-100 text-gray-700 border-b-2 border-gray-200">
-              <tr>
-                <th className="p-4 font-bold">ရက်စွဲ</th>
-                <th className="p-4 font-bold">ဘောက်ချာ No.</th>
-                <th className="p-4 font-bold">ခေါင်းစဉ်</th>
-                <th className="p-4 font-bold">အသေးစိတ်</th>
-                <th className="p-4 font-bold text-center">ဓာတ်ပုံ</th>
-                <th className="p-4 font-bold text-right">ငွေပမာဏ (Ks)</th>
-                <th className="p-4 font-bold text-center">လုပ်ဆောင်ချက်</th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.length === 0 ? (
-                <tr><td colSpan={7} className="p-6 text-center text-gray-500 font-medium">အသုံးစရိတ် မှတ်တမ်း မရှိသေးပါ။</td></tr>
-              ) : (
-                expenses.map((exp) => (
-                  <tr key={exp.id} className="border-b hover:bg-red-50 transition-colors">
-                    <td className="p-4 text-gray-600 font-medium">{exp.date}</td>
-                    <td className="p-4 font-bold text-gray-800">{exp.voucherNo}</td>
-                    <td className="p-4 font-semibold text-red-600">{exp.category}</td>
-                    <td className="p-4 text-gray-700">{exp.description}</td>
-                    <td className="p-4 text-center">
-                      {/* အပိတ် Quote လွတ်သွားသော နေရာကို သေချာ ပြင်ဆင်ထားပါသည် */}
-                      {exp.receiptImage ? (
-                        <a href={exp.receiptImage} target="_blank" rel="noreferrer" className="inline-block border border-gray-300 rounded hover:shadow-md transition-shadow">
-                          <img src={exp.receiptImage} alt="Voucher" className="h-10 w-10 object-cover rounded" title="ပုံအကြီးကြည့်ရန် နှိပ်ပါ" />
-                        </a>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
-                    </td>
-                    <td className="p-4 text-right font-bold text-red-600">{exp.amount.toLocaleString()}</td>
-                    <td className="p-4 text-center">
-                      <button onClick={() => handleDelete(exp.id)} className="text-red-500 hover:text-red-700 font-bold bg-red-100 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors">
-                        ဖျက်မည်
-                      </button>
-                    </td>
+
+        {/* Expense List */}
+        <div className="lg:col-span-2">
+          <div className="bg-white shadow-lg rounded-2xl overflow-hidden border border-gray-200">
+            <div className="bg-gray-800 p-4 md:p-5 border-b border-gray-700">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><span>📜</span> အသုံးစရိတ် မှတ်တမ်းများ</h3>
+            </div>
+            
+            {/* ဇယားကို Mobile တွင် ဘယ်ညာပွတ်ဆွဲနိုင်ရန် overflow-x-auto ခံထားပါသည် */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left min-w-[700px]">
+                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="p-4 font-bold text-gray-600 text-sm uppercase whitespace-nowrap">ရက်စွဲ</th>
+                    <th className="p-4 font-bold text-gray-600 text-sm uppercase whitespace-nowrap">အကြောင်းအရာ</th>
+                    <th className="p-4 font-bold text-gray-600 text-sm uppercase text-right whitespace-nowrap">ကုန်ကျငွေ (Ks)</th>
+                    <th className="p-4 font-bold text-gray-600 text-sm uppercase text-center whitespace-nowrap">ဘောက်ချာ</th>
+                    {isFinanceOrMD && <th className="p-4 font-bold text-gray-600 text-sm uppercase text-center whitespace-nowrap">Actions</th>}
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {expenses.length > 0 ? expenses.map(exp => (
+                    <tr key={exp.id} className="hover:bg-red-50/30 transition-colors">
+                      <td className="p-4 text-sm text-gray-500 font-medium whitespace-nowrap">{exp.date}</td>
+                      <td className="p-4">
+                        <div className="font-bold text-gray-800 text-sm md:text-base">{exp.description}</div>
+                        <div className="text-[11px] text-gray-400 font-bold bg-gray-100 inline-block px-2 py-0.5 rounded mt-1">{exp.category}</div>
+                      </td>
+                      <td className="p-4 text-right font-black text-red-600 text-base md:text-lg whitespace-nowrap">
+                        {exp.amount.toLocaleString()}
+                      </td>
+                      <td className="p-4 text-center whitespace-nowrap">
+                        <div className="flex flex-col items-center gap-1">
+                          {exp.voucherNo && <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded border"># {exp.voucherNo}</span>}
+                          {exp.receiptImage ? (
+                            exp.receiptImage.startsWith('data:image') ? (
+                              <button onClick={() => setPreviewImage(exp.receiptImage!)} className="w-10 h-10 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-red-400 transition shadow-sm mt-1">
+                                <img src={exp.receiptImage} alt="Receipt" className="w-full h-full object-cover" />
+                              </button>
+                            ) : (
+                              <a href={exp.receiptImage} download={`Voucher_${exp.date}`} className="w-10 h-10 flex items-center justify-center bg-gray-100 border-2 border-gray-200 rounded-lg hover:bg-gray-200 transition mt-1 text-sm shadow-sm" title="ဒေါင်းလုတ်ဆွဲရန်">📄</a>
+                            )
+                          ) : <span className="text-xs text-gray-300">-</span>}
+                        </div>
+                      </td>
+                      {isFinanceOrMD && (
+                        <td className="p-4 text-center whitespace-nowrap">
+                          <button onClick={() => handleDelete(exp.id)} className="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-red-100 shadow-sm">
+                            ဖျက်မည်
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-gray-400 font-bold">
+                        <span className="text-4xl block mb-2">📋</span>
+                        လက်ရှိတွင် အသုံးစရိတ် မှတ်တမ်း မရှိသေးပါ။
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* 🌟 ဓာတ်ပုံ အကြီးချဲ့ကြည့်သည့် Lightbox Modal 🌟 */}
+      {previewImage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4" onClick={() => setPreviewImage(null)}>
+          <div className="relative max-w-4xl w-full flex justify-center">
+             <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl" />
+             <button onClick={() => setPreviewImage(null)} className="absolute -top-4 -right-4 bg-red-600 hover:bg-red-700 text-white w-10 h-10 rounded-full font-bold text-xl flex items-center justify-center border-2 border-white shadow-lg transition-transform active:scale-95">✕</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
