@@ -129,7 +129,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
           <div className="text-2xl md:text-3xl font-black text-emerald-600">{totalIncome.toLocaleString()} <span className="text-sm font-bold text-emerald-500">Ks</span></div>
         </div>
         <div className="bg-rose-50 border-l-4 border-rose-500 p-6 rounded-r-xl shadow-sm">
-          <div className="text-rose-700 font-bold mb-1 text-sm md:text-base">💸 Сုစုပေါင်း အသုံးစရိတ် (Total Expense / ထွက်ငွေ)</div>
+          <div className="text-rose-700 font-bold mb-1 text-sm md:text-base">💸 စုစုပေါင်း အသုံးစရိတ် (Total Expense / ထွက်ငွေ)</div>
           <div className="text-2xl md:text-3xl font-black text-rose-600">{totalExpense.toLocaleString()} <span className="text-sm font-bold text-rose-500">Ks</span></div>
         </div>
       </div>
