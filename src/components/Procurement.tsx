@@ -33,6 +33,9 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   ]);
   
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  
+  // 🌟 မှတ်တမ်းများကို ၅၀ ခုစီသာ ဖြတ်ပြရန် State အသစ် 🌟
+  const [displayLimit, setDisplayLimit] = useState(50);
 
   const isPurchasing = userRole === 'purchasing' || userRole === 'md' || userRole === 'manager';
   const isQC = userRole === 'qc' || userRole === 'md' || userRole === 'manager';
@@ -104,6 +107,9 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     setRequestItems([{ itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
     setSuppliers([{ id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]);
     alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။');
+    
+    // စာရင်းအသစ်သွင်းလိုက်ပါက အပေါ်ဆုံးသို့ ပြန်ရောက်စေရန်
+    setDisplayLimit(50);
   };
 
   const updateStatus = (id: number, newStatus: PurchaseRequest['status'], selectedId?: string, reason?: string, roleData?: any) => {
@@ -155,6 +161,9 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     }
   };
 
+  // 🌟 မှတ်တမ်းများကို displayLimit အရ ဖြတ်ထုတ်ခြင်း 🌟
+  const visibleRequests = requests?.slice(0, displayLimit) || [];
+
   return (
     <div className="p-2 md:p-6 max-w-7xl mx-auto space-y-8 print:p-0 print:space-y-4">
       <div className="flex items-center gap-3 border-b-2 border-indigo-200 pb-4 print:hidden">
@@ -205,7 +214,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <div className="space-y-3 mt-4">
                     <div>
                         <div className="text-[11px] font-bold text-gray-700 mb-2">သက်သေခံ ဘောက်ချာ/ပုံများ</div>
-                        {/* 🌟 ဤနေရာတွင် ကင်မရာ (Take Photo) ခလုတ် ပြန်လည် ထည့်သွင်းထားပါသည် 🌟 */}
                         <div className="flex gap-2">
                            <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-blue-100 text-blue-700">📸 ကင်မရာ <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'productFiles', e)} className="sr-only" /></label>
                            <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-300 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-gray-100">📂 ဖိုင်အစုံရွေးရန် <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'productFiles', e)} className="sr-only" /></label>
@@ -230,9 +238,9 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
         </form>
       )}
 
-      {/* Approval Board */}
+      {/* 🌟 Approval Board (Limit အတိုင်းသာ ပြသမည်) 🌟 */}
       <div className="space-y-8 print:space-y-6">
-        {requests?.map(req => {
+        {visibleRequests.map(req => {
           const itemsToDisplay = req.items && req.items.length > 0 
             ? req.items 
             : [{ itemName: req.itemName, requestedQty: req.requestedQty, unit: req.unit, targetWarehouse: req.targetWarehouse || 'RM' }];
@@ -351,6 +359,18 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
           </div>
         );})}
       </div>
+
+      {/* 🌟 နောက်ထပ် ပြမည် ခလုတ် (Pagination) 🌟 */}
+      {displayLimit < requests.length && (
+        <div className="mt-10 flex justify-center pb-8 print:hidden">
+          <button 
+            onClick={() => setDisplayLimit(prev => prev + 50)} 
+            className="flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-indigo-200 rounded-2xl shadow-sm text-indigo-700 font-black hover:bg-indigo-50 hover:border-indigo-400 transition-all active:scale-95 text-lg"
+          >
+            နောက်ထပ် ပြမည် <span>({requests.length - displayLimit} ခု ကျန်သေးသည်)</span> ⬇️
+          </button>
+        </div>
+      )}
 
       {previewImage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 print:hidden" onClick={() => setPreviewImage(null)}>
