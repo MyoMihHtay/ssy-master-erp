@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
 import { Production } from './components/Production';
+import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
@@ -64,6 +65,10 @@ export default function App() {
     { id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4, ingredients: [{ itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 }] },
   ]);
 
+  const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', [
+    { id: 'PK-001', skuName: 'ငါးရေခွံကြော် ၃၅g (Normal)', category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, ingredients: [{ itemName: 'ငါးရေခွံကြော်', requiredQty: 0.035, unit: 'ပိဿာ', defaultCost: 650 }, { itemName: 'ပလက်စတစ်အိတ် (၇x၅)', requiredQty: 1, unit: 'ခု', defaultCost: 50 }, { itemName: 'ကုန်ပစ္စည်းတံဆိပ် စတစ်ကာ', requiredQty: 1, unit: 'ခု', defaultCost: 20 }] },
+  ]);
+
   const handleStockInAndExpense = (itemName: string, qty: number, totalCost: number) => { };
 
   const handleConfirmProduction = (recipe: Recipe, outputQty: number, bom: BOMResult[]) => {
@@ -81,6 +86,33 @@ export default function App() {
           }
           return updatedItems;
       });
+  };
+
+  // 🌟 Phase 2 Auto Logic: ထုပ်ပိုးမှု အတည်ပြုလျှင် (SFG + PKG) မှနှုတ်၍ ကုန်ချော (FG) သို့ ပေါင်းထည့်မည် 🌟
+  const handleConfirmPackaging = (recipe: PackageRecipe, outputQty: number, bom: BOMResult[]) => {
+    // 1. Inventory မှ ကုန်ပိုင်း(SFG) နှင့် ထုပ်ပိုးပစ္စည်း(PKG) တို့ကို နှုတ်မည်
+    setInventoryItems(prev => {
+        let updatedItems = [...prev];
+        bom.forEach(b => {
+            const idx = updatedItems.findIndex(i => i && i.name === b.itemName && (i.warehouse === 'SFG' || i.warehouse === 'PKG' || !i.warehouse));
+            if (idx !== -1) {
+                updatedItems[idx] = { ...updatedItems[idx], inStock: updatedItems[idx].inStock - b.amount };
+            }
+        });
+        return updatedItems;
+    });
+
+    // 2. Finished Goods သို့ ကုန်ချော (FG) ကို ပေါင်းထည့်မည်
+    setFinishedGoods(prev => {
+        const existingIdx = prev.findIndex(p => p.category === recipe.category && p.taste === recipe.taste && p.gram === recipe.gram);
+        if (existingIdx !== -1) {
+            const updated = [...prev];
+            updated[existingIdx] = { ...updated[existingIdx], stockQty: updated[existingIdx].stockQty + outputQty };
+            return updated;
+        } else {
+            return [...prev, { id: Date.now(), category: recipe.category, taste: recipe.taste, gram: recipe.gram, price: recipe.price, stockQty: outputQty }];
+        }
+    });
   };
 
   const handleProcurementComplete = (pr: PurchaseRequest) => {
@@ -109,8 +141,8 @@ export default function App() {
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
-        {/* 🌟 White Screen အား ဖြေရှင်းထားပြီး Phase 2 အတွက် အသင့်ပြင်ဆင်ထားသော နေရာ 🌟 */}
-        {activeTab === 'packaging' && <div className="p-6 md:p-10 bg-white rounded-2xl shadow-lg font-bold text-gray-500 flex flex-col items-center justify-center border-t-4 border-orange-500 h-64"><span className="text-6xl mb-4">📦</span><span className="text-2xl text-orange-600">ထုပ်ပိုးမှု Module</span><span className="text-sm font-medium mt-2">Phase 2 တွင် ဆက်လက်ချိတ်ဆက်ပါမည်</span></div>}
+        {/* 🌟 ထုပ်ပိုးမှုစနစ်အား handleConfirmPackaging ဖြင့် ချိတ်ဆက်ထားပါသည် */}
+        {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
