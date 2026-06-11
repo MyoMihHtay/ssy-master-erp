@@ -6,7 +6,7 @@ interface SalesProps {
   userName: string;
   finishedGoods: FinishedGoodItem[];
   sales: SaleRecord[];
-  customers: Customer[]; // 🌟 ဖောက်သည်စာရင်းကို လက်ခံရန်
+  customers: Customer[];
   onCheckout: (sale: SaleRecord) => void;
   onMarkAsPaid: (saleId: string) => void;
   onDeleteSale: (saleId: string) => void;
@@ -18,10 +18,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   const [searchTerm, setSearchTerm] = useState('');
   const [displayLimit, setDisplayLimit] = useState(50);
 
-  // --- Checkout Modal States ---
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
   const [customerName, setCustomerName] = useState(''); 
-  const [showSuggestions, setShowSuggestions] = useState(false); // 🌟 Auto-complete ပြရန်
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [phone, setPhone] = useState('');
   const [shopType, setShopType] = useState('Company (ကုမ္ပဏီ)'); 
   const [address, setAddress] = useState('');
@@ -33,8 +32,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   const [customCreditDays, setCustomCreditDays] = useState(''); 
 
   const isManager = userRole === 'manager' || userRole === 'md';
+  // 🌟 ဖျက်မည် (Delete) အား MD သာလျှင် နှိပ်ခွင့်ရှိပါမည် 🌟
+  const isMDOnly = userRole === 'md';
 
-  // --- POS Functions ---
   const handleAddToCart = (product: FinishedGoodItem) => {
     if (product.stockQty <= 0) return alert('❌ ဤကုန်ချော လက်ကျန် ပြတ်နေပါသည်။');
     setCart(prev => {
@@ -67,16 +67,10 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   const fetchLocation = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setGpsLocation(`${position.coords.latitude}, ${position.coords.longitude}`);
-        },
-        (error) => {
-          alert("GPS location ရယူ၍မရပါ။ Browser ၏ Location Access (Permission) ကို ဖွင့်ပေးပါ။");
-        }
+        (position) => { setGpsLocation(`${position.coords.latitude}, ${position.coords.longitude}`); },
+        (error) => { alert("GPS location ရယူ၍မရပါ။"); }
       );
-    } else {
-      alert("သင့်စက်တွင် GPS မပါဝင်ပါ။");
-    }
+    } else { alert("သင့်စက်တွင် GPS မပါဝင်ပါ။"); }
   };
 
   const totalAmount = cart.reduce((sum, item) => sum + item.subtotal, 0);
@@ -87,30 +81,19 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
   const handleCheckoutSubmit = () => {
     if (!customerName) return alert("ဝယ်သူအမည် ထည့်သွင်းပါ။");
-    if (paymentMethod === 'CREDIT' && creditTerms === 'Custom' && !customCreditDays) {
-      return alert("စိတ်ကြိုက်ရက် အရေအတွက်ကို ထည့်သွင်းပါ။");
-    }
+    if (paymentMethod === 'CREDIT' && creditTerms === 'Custom' && !customCreditDays) return alert("စိတ်ကြိုက်ရက် ထည့်ပါ။");
     
-    const finalCreditTerms = paymentMethod === 'CREDIT' 
-      ? (creditTerms === 'Custom' ? `${customCreditDays} Days (စိတ်ကြိုက်)` : creditTerms) 
-      : undefined;
+    const finalCreditTerms = paymentMethod === 'CREDIT' ? (creditTerms === 'Custom' ? `${customCreditDays} Days (စိတ်ကြိုက်)` : creditTerms) : undefined;
 
     const newSale: SaleRecord = {
-      id: `INV-${Date.now().toString().slice(-6)}`,
-      date: new Date().toLocaleDateString('en-GB'),
-      customerName, phone, salespersonName: userName,
-      shopType, address, gps: gpsLocation,
-      items: cart, totalAmount, finalAmount,
-      discountPercent: Number(discountPercent || 0), 
-      taxPercent: Number(taxPercent || 0),
-      paymentMethod,
-      creditTerms: finalCreditTerms,
-      isPaid: paymentMethod !== 'CREDIT'
+      id: `INV-${Date.now().toString().slice(-6)}`, date: new Date().toLocaleDateString('en-GB'),
+      customerName, phone, salespersonName: userName, shopType, address, gps: gpsLocation,
+      items: cart, totalAmount, finalAmount, discountPercent: Number(discountPercent || 0), taxPercent: Number(taxPercent || 0),
+      paymentMethod, creditTerms: finalCreditTerms, isPaid: paymentMethod !== 'CREDIT'
     };
 
-    onCheckout(newSale);
-    setCart([]); setIsCheckoutModalOpen(false);
-    setCustomerName(''); setPhone(''); setAddress(''); setGpsLocation(''); // ရှင်းမည်
+    onCheckout(newSale); setCart([]); setIsCheckoutModalOpen(false);
+    setCustomerName(''); setPhone(''); setAddress(''); setGpsLocation('');
     alert('✅ အရောင်းစာရင်း အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
     setActiveTab('records');
   };
@@ -184,7 +167,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* 🌟 Checkout Modal 🌟 */}
       {isCheckoutModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -195,35 +177,13 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             
             <div className="p-6 overflow-y-auto space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
-                {/* 🌟 Auto-complete Customer Name 🌟 */}
                 <div className="relative">
                   <label className="block text-xs font-bold text-slate-500 mb-1">ဝယ်သူအမည် *</label>
-                  <input 
-                    type="text" 
-                    value={customerName} 
-                    onChange={e => { setCustomerName(e.target.value); setShowSuggestions(true); }} 
-                    onFocus={() => setShowSuggestions(true)}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500 font-bold" 
-                    placeholder="အမည်ရိုက်ထည့်ပါ..." 
-                  />
+                  <input type="text" value={customerName} onChange={e => { setCustomerName(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500 font-bold" placeholder="အမည်ရိုက်ထည့်ပါ..." />
                   {showSuggestions && customerName && (
                     <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
                       {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).map(c => (
-                        <li 
-                          key={c.id} 
-                          onMouseDown={(e) => { // onBlur ကို ကျော်လွန်ရန် onMouseDown အသုံးပြုပါသည်
-                            e.preventDefault();
-                            setCustomerName(c.name);
-                            setPhone(c.phone);
-                            setShopType(c.shopType || 'Company (ကုမ္ပဏီ)');
-                            setAddress(c.address);
-                            setGpsLocation(c.gpsLocation);
-                            setShowSuggestions(false);
-                          }} 
-                          className="p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0"
-                        >
+                        <li key={c.id} onMouseDown={(e) => { e.preventDefault(); setCustomerName(c.name); setPhone(c.phone); setShopType(c.shopType || 'Company (ကုမ္ပဏီ)'); setAddress(c.address); setGpsLocation(c.gpsLocation); setShowSuggestions(false); }} className="p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0">
                           <div className="font-bold text-slate-800">{c.name}</div>
                           <div className="text-xs text-slate-500">{c.phone} | {c.shopType}</div>
                         </li>
@@ -231,49 +191,24 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     </ul>
                   )}
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">ဆိုင်အမျိုးအစား / Company</label>
-                  <input type="text" list="shop-types" value={shopType} onChange={e => setShopType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500 font-bold text-slate-700" placeholder="ရိုက်ထည့်ပါ သို့မဟုတ် ရွေးချယ်ပါ..." />
-                  <datalist id="shop-types">
-                    <option value="Company (ကုမ္ပဏီ)" />
-                    <option value="Distribution (ဖြန့်ချိရေး)" />
-                    <option value="ကျောင်းဈေးဆိုင်" />
-                    <option value="လက်လီဆိုင်" />
-                    <option value="လက်ကားဆိုင်" />
-                  </datalist>
+                <div><label className="block text-xs font-bold text-slate-500 mb-1">ဆိုင်အမျိုးအစား / Company</label><input type="text" list="shop-types" value={shopType} onChange={e => setShopType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500 font-bold text-slate-700" placeholder="ရွေးချယ်ပါ..." />
+                  <datalist id="shop-types"><option value="Company (ကုမ္ပဏီ)" /><option value="Distribution (ဖြန့်ချိရေး)" /><option value="ကျောင်းဈေးဆိုင်" /><option value="လက်လီဆိုင်" /><option value="လက်ကားဆိုင်" /></datalist>
                 </div>
-
                 <div><label className="block text-xs font-bold text-slate-500 mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="09..." className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500" /></div>
                 <div><label className="block text-xs font-bold text-slate-500 mb-1">လိပ်စာ</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500" /></div>
-                
-                <div className="md:col-span-2">
-                  <label className="block text-xs font-bold text-slate-500 mb-1">GPS LOCATION (Location ဆွဲယူရန် 📍 ကို နှိပ်ပါ)</label>
-                  <div className="relative">
-                    <input type="text" value={gpsLocation} onChange={e => setGpsLocation(e.target.value)} placeholder="Latitude, Longitude" className="w-full bg-slate-50 border border-slate-200 p-3 pr-10 rounded-lg outline-none focus:border-emerald-500" />
-                    <button type="button" onClick={fetchLocation} title="Get Current Location" className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-lg hover:scale-125 transition-transform active:scale-95">📍</button>
-                  </div>
-                </div>
+                <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-1">GPS LOCATION (Location ဆွဲယူရန် 📍 ကို နှိပ်ပါ)</label><div className="relative"><input type="text" value={gpsLocation} onChange={e => setGpsLocation(e.target.value)} placeholder="Latitude, Longitude" className="w-full bg-slate-50 border border-slate-200 p-3 pr-10 rounded-lg outline-none focus:border-emerald-500" /><button type="button" onClick={fetchLocation} title="Get Current Location" className="absolute right-3 top-1/2 -translate-y-1/2 text-rose-500 font-bold text-lg hover:scale-125 transition-transform active:scale-95">📍</button></div></div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
-                  <label className="block text-xs font-black text-emerald-600 mb-1">လျှော့ဈေး (%)</label>
-                  <input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-lg" placeholder="0.0" />
-                </div>
-                <div className="bg-rose-50 p-3 rounded-xl border border-rose-100">
-                  <label className="block text-xs font-black text-rose-600 mb-1">အခွန် (%)</label>
-                  <input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-lg" placeholder="0.0" />
-                </div>
+                <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100"><label className="block text-xs font-black text-emerald-600 mb-1">လျှော့ဈေး (%)</label><input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-lg" placeholder="0.0" /></div>
+                <div className="bg-rose-50 p-3 rounded-xl border border-rose-100"><label className="block text-xs font-black text-rose-600 mb-1">အခွန် (%)</label><input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-lg" placeholder="0.0" /></div>
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">Payment Method</label>
                 <div className="grid grid-cols-3 gap-2">
                   {['CASH', 'KPAY', 'WAVE PAY', 'UAB PAY', 'AYA PAY', 'CREDIT'].map(method => (
-                    <button key={method} onClick={() => setPaymentMethod(method)} className={`p-2 rounded-lg font-bold text-xs border-2 transition-all ${paymentMethod === method ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                      {method}
-                    </button>
+                    <button key={method} onClick={() => setPaymentMethod(method)} className={`p-2 rounded-lg font-bold text-xs border-2 transition-all ${paymentMethod === method ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{method}</button>
                   ))}
                 </div>
               </div>
@@ -282,27 +217,15 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
                   <label className="block text-xs font-black text-amber-700 mb-2">⏳ အကြွေးဆပ်ရမည့် သက်တမ်း:</label>
                   <select value={creditTerms} onChange={e => setCreditTerms(e.target.value)} className="w-full p-2.5 rounded-lg border border-amber-300 outline-none font-bold text-amber-900 mb-3 bg-white">
-                    <option value="1 Day (၁ ရက်)">1 Day (၁ ရက်)</option>
-                    <option value="3 Days (၃ ရက်)">3 Days (၃ ရက်)</option>
-                    <option value="7 Days (၇ ရက်)">7 Days (၇ ရက်)</option>
-                    <option value="15 Days (၁၅ ရက်)">15 Days (၁၅ ရက်)</option>
-                    <option value="1 Month (၁ လ)">1 Month (၁ လ)</option>
-                    <option value="Custom">Custom (စိတ်ကြိုက်ရက်)</option>
+                    <option value="1 Day (၁ ရက်)">1 Day (၁ ရက်)</option><option value="3 Days (၃ ရက်)">3 Days (၃ ရက်)</option><option value="7 Days (၇ ရက်)">7 Days (၇ ရက်)</option><option value="15 Days (၁၅ ရက်)">15 Days (၁၅ ရက်)</option><option value="1 Month (၁ လ)">1 Month (၁ လ)</option><option value="Custom">Custom (စိတ်ကြိုက်ရက်)</option>
                   </select>
-                  
                   {creditTerms === 'Custom' && (
-                     <div className="flex items-center gap-2">
-                        <input type="number" placeholder="ဥပမာ - 8" value={customCreditDays} onChange={e => setCustomCreditDays(e.target.value)} className="w-full p-2.5 rounded-lg border border-amber-300 outline-none font-black text-amber-900 bg-white" />
-                        <span className="font-bold text-amber-800">ရက် (Days)</span>
-                     </div>
+                     <div className="flex items-center gap-2"><input type="number" placeholder="ဥပမာ - 8" value={customCreditDays} onChange={e => setCustomCreditDays(e.target.value)} className="w-full p-2.5 rounded-lg border border-amber-300 outline-none font-black text-amber-900 bg-white" /><span className="font-bold text-amber-800">ရက် (Days)</span></div>
                   )}
                 </div>
               )}
 
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
-                <span className="font-bold text-slate-600">ကျသင့်ငွေ:</span>
-                <span className="text-3xl font-black text-slate-800">{finalAmount.toLocaleString()} ကျပ်</span>
-              </div>
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center"><span className="font-bold text-slate-600">ကျသင့်ငွေ:</span><span className="text-3xl font-black text-slate-800">{finalAmount.toLocaleString()} ကျပ်</span></div>
             </div>
 
             <div className="p-4 bg-white border-t flex gap-3 shrink-0">
@@ -327,14 +250,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   </div>
                   <h3 className="text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-sm font-medium text-slate-500">({sale.phone})</span></h3>
                   
-                  {/* 🌟 ဤနေရာတွင် လိပ်စာနှင့် GPS လင့်ခ်ကို ထည့်သွင်းထားပါသည် 🌟 */}
                   <div className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">
                     📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>
                     🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
                     {sale.gps && (
-                      <a href={`https://maps.google.com/?q=${sale.gps}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 hover:underline ml-2 inline-flex items-center gap-1">
-                        📍 မြေပုံကြည့်ရန်
-                      </a>
+                      <a href={`https://maps.google.com/?q=$${sale.gps}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 hover:underline ml-2 inline-flex items-center gap-1">📍 မြေပုံကြည့်ရန်</a>
                     )}
                   </div>
                 </div>
@@ -343,7 +263,8 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   <div className="flex gap-2 justify-end">
                      {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-3 py-1.5 bg-emerald-500 text-white font-bold rounded-lg text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
                      <button onClick={() => window.print()} className="px-3 py-1.5 bg-slate-100 text-slate-600 font-bold rounded-lg text-xs hover:bg-slate-200">🖨️ Print</button>
-                     {isManager && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-3 py-1.5 bg-red-50 text-red-600 font-bold rounded-lg text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
+                     {/* 🌟 ဖျက်မည်ကို MD သာ နှိပ်ခွင့်ရှိပါသည် 🌟 */}
+                     {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-3 py-1.5 bg-red-50 text-red-600 font-bold rounded-lg text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
                   </div>
                 </div>
               </div>
