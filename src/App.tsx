@@ -31,14 +31,23 @@ export interface PurchaseRequest {
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
 }
 
-// 🌟 Sales အတွက် အချက်အလက်များ အပြည့်အစုံ သိမ်းနိုင်ရန် အဆင့်မြှင့်ထားပါသည် 🌟
 export interface SaleItem { product: FinishedGoodItem; quantity: number; subtotal: number; }
 export interface SaleRecord { 
   id: string; date: string; customerName: string; phone?: string; salespersonName: string; 
-  shopType?: string; address?: string; gps?: string; // အသစ်
+  shopType?: string; address?: string; gps?: string;
   items: SaleItem[]; totalAmount: number; finalAmount: number; 
   discountPercent?: number; taxPercent?: number; 
   paymentMethod: string; creditTerms?: string; isPaid: boolean; 
+}
+
+// 🌟 Customer Database (CRM) အတွက် Interface အသစ် 🌟
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  shopType: string;
+  address: string;
+  gpsLocation: string;
 }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
@@ -79,6 +88,9 @@ export default function App() {
 
   const [recipes, setRecipes] = useLocalStorage<Recipe[]>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', []);
+  
+  // 🌟 ဖောက်သည်စာရင်း (Customers Database) 🌟
+  const [customers, setCustomers] = useLocalStorage<Customer[]>('ssy_customers', []);
 
   const handleStockInAndExpense = () => { };
   const handleConfirmProduction = () => { };
@@ -86,6 +98,7 @@ export default function App() {
   const handleProcurementComplete = () => { };
 
   const handleCheckoutSale = (newSale: SaleRecord) => {
+    // 1. FG မှ နှုတ်မည်
     setFinishedGoods(prev => {
        let updated = [...prev];
        newSale.items.forEach(saleItem => {
@@ -97,11 +110,32 @@ export default function App() {
        return updated;
     });
 
+    // 2. ဝင်ငွေ ပေါင်းထည့်မည်
     if (newSale.isPaid) {
       setExpenses(prev => [...prev, {
         id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ (Sales Revenue)', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income'
       }]);
     }
+
+    // 🌟 3. ဖောက်သည်အချက်အလက်များကို Database သို့ Auto-Save သို့မဟုတ် Update လုပ်မည် 🌟
+    setCustomers(prev => {
+      const existingIdx = prev.findIndex(c => c.name.toLowerCase() === newSale.customerName.toLowerCase());
+      const customerData: Customer = {
+        id: existingIdx !== -1 ? prev[existingIdx].id : `CUST-${Date.now()}`,
+        name: newSale.customerName,
+        phone: newSale.phone || '',
+        shopType: newSale.shopType || '',
+        address: newSale.address || '',
+        gpsLocation: newSale.gps || ''
+      };
+      if (existingIdx !== -1) {
+        const updated = [...prev];
+        updated[existingIdx] = customerData;
+        return updated;
+      } else {
+        return [...prev, customerData];
+      }
+    });
 
     setSalesRecords([newSale, ...salesRecords]);
   };
@@ -125,7 +159,8 @@ export default function App() {
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       </div>
       <main className="flex-1 h-full p-4 md:p-8 pt-6 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
-        {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
+        {/* 🌟 Sales ကို Customers Data ပါ ထည့်သွင်းပေးလိုက်ပါပြီ 🌟 */}
+        {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}

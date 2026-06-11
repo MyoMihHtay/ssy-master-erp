@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import type { FinishedGoodItem, SaleRecord, SaleItem } from '../App';
+import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
 
 interface SalesProps {
   userRole: string;
   userName: string;
   finishedGoods: FinishedGoodItem[];
   sales: SaleRecord[];
+  customers: Customer[]; // 🌟 ဖောက်သည်စာရင်းကို လက်ခံရန်
   onCheckout: (sale: SaleRecord) => void;
   onMarkAsPaid: (saleId: string) => void;
   onDeleteSale: (saleId: string) => void;
 }
 
-export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods, sales, onCheckout, onMarkAsPaid, onDeleteSale }) => {
+export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods, sales, customers, onCheckout, onMarkAsPaid, onDeleteSale }) => {
   const [activeTab, setActiveTab] = useState<'pos' | 'records'>('pos');
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,16 +20,17 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
   // --- Checkout Modal States ---
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false);
-  const [customerName, setCustomerName] = useState('U Myo Min Htay'); 
+  const [customerName, setCustomerName] = useState(''); 
+  const [showSuggestions, setShowSuggestions] = useState(false); // 🌟 Auto-complete ပြရန်
   const [phone, setPhone] = useState('');
-  const [shopType, setShopType] = useState('Company (ကုမ္ပဏီ)'); // 🌟 Default ကို Company ပြောင်းထားပါသည်
+  const [shopType, setShopType] = useState('Company (ကုမ္ပဏီ)'); 
   const [address, setAddress] = useState('');
   const [gpsLocation, setGpsLocation] = useState('');
   const [discountPercent, setDiscountPercent] = useState<number | ''>('');
   const [taxPercent, setTaxPercent] = useState<number | ''>('');
   const [paymentMethod, setPaymentMethod] = useState('CASH');
   const [creditTerms, setCreditTerms] = useState('1 Day (၁ ရက်)');
-  const [customCreditDays, setCustomCreditDays] = useState(''); // 🌟 Custom ရက်အတွက် State အသစ်
+  const [customCreditDays, setCustomCreditDays] = useState(''); 
 
   const isManager = userRole === 'manager' || userRole === 'md';
 
@@ -62,7 +64,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
   const removeFromCart = (productId: number) => setCart(cart.filter(item => item.product.id !== productId));
 
-  // 🌟 Auto GPS Fetch Logic 🌟
   const fetchLocation = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -78,7 +79,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     }
   };
 
-  // --- တွက်ချက်မှုများ ---
   const totalAmount = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const discountAmount = (totalAmount * Number(discountPercent || 0)) / 100;
   const taxableAmount = totalAmount - discountAmount;
@@ -91,7 +91,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
       return alert("စိတ်ကြိုက်ရက် အရေအတွက်ကို ထည့်သွင်းပါ။");
     }
     
-    // 🌟 Custom Credit Days ကို ပြင်ဆင်ခြင်း 🌟
     const finalCreditTerms = paymentMethod === 'CREDIT' 
       ? (creditTerms === 'Custom' ? `${customCreditDays} Days (စိတ်ကြိုက်)` : creditTerms) 
       : undefined;
@@ -111,6 +110,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
     onCheckout(newSale);
     setCart([]); setIsCheckoutModalOpen(false);
+    setCustomerName(''); setPhone(''); setAddress(''); setGpsLocation(''); // ရှင်းမည်
     alert('✅ အရောင်းစာရင်း အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
     setActiveTab('records');
   };
@@ -195,9 +195,43 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             
             <div className="p-6 overflow-y-auto space-y-5">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div><label className="block text-xs font-bold text-slate-500 mb-1">ဝယ်သူအမည် *</label><input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500 font-bold" /></div>
                 
-                {/* 🌟 Shop Type အား Free Text Input + Predefined Options (Datalist) ဖြင့် ပြင်ဆင်ထားပါသည် 🌟 */}
+                {/* 🌟 Auto-complete Customer Name 🌟 */}
+                <div className="relative">
+                  <label className="block text-xs font-bold text-slate-500 mb-1">ဝယ်သူအမည် *</label>
+                  <input 
+                    type="text" 
+                    value={customerName} 
+                    onChange={e => { setCustomerName(e.target.value); setShowSuggestions(true); }} 
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500 font-bold" 
+                    placeholder="အမည်ရိုက်ထည့်ပါ..." 
+                  />
+                  {showSuggestions && customerName && (
+                    <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
+                      {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).map(c => (
+                        <li 
+                          key={c.id} 
+                          onMouseDown={(e) => { // onBlur ကို ကျော်လွန်ရန် onMouseDown အသုံးပြုပါသည်
+                            e.preventDefault();
+                            setCustomerName(c.name);
+                            setPhone(c.phone);
+                            setShopType(c.shopType || 'Company (ကုမ္ပဏီ)');
+                            setAddress(c.address);
+                            setGpsLocation(c.gpsLocation);
+                            setShowSuggestions(false);
+                          }} 
+                          className="p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0"
+                        >
+                          <div className="font-bold text-slate-800">{c.name}</div>
+                          <div className="text-xs text-slate-500">{c.phone} | {c.shopType}</div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-500 mb-1">ဆိုင်အမျိုးအစား / Company</label>
                   <input type="text" list="shop-types" value={shopType} onChange={e => setShopType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500 font-bold text-slate-700" placeholder="ရိုက်ထည့်ပါ သို့မဟုတ် ရွေးချယ်ပါ..." />
@@ -213,7 +247,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <div><label className="block text-xs font-bold text-slate-500 mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="09..." className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500" /></div>
                 <div><label className="block text-xs font-bold text-slate-500 mb-1">လိပ်စာ</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-3 rounded-lg outline-none focus:border-emerald-500" /></div>
                 
-                {/* 🌟 GPS Location Fetch Icon Function 🌟 */}
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-slate-500 mb-1">GPS LOCATION (Location ဆွဲယူရန် 📍 ကို နှိပ်ပါ)</label>
                   <div className="relative">
@@ -224,7 +257,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* 🌟 Discount & Tax များကို ဒသမကိန်း (Decimals) လက်ခံနိုင်ရန် step="0.01" ထည့်ထားပါသည် 🌟 */}
                 <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-100">
                   <label className="block text-xs font-black text-emerald-600 mb-1">လျှော့ဈေး (%)</label>
                   <input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-lg" placeholder="0.0" />
@@ -258,7 +290,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     <option value="Custom">Custom (စိတ်ကြိုက်ရက်)</option>
                   </select>
                   
-                  {/* 🌟 Custom ရွေးချယ်ပါက ကိုယ်တိုင်ရိုက်ထည့်နိုင်သည့် အကွက် ပေါ်လာမည် 🌟 */}
                   {creditTerms === 'Custom' && (
                      <div className="flex items-center gap-2">
                         <input type="number" placeholder="ဥပမာ - 8" value={customCreditDays} onChange={e => setCustomCreditDays(e.target.value)} className="w-full p-2.5 rounded-lg border border-amber-300 outline-none font-black text-amber-900 bg-white" />
@@ -282,22 +313,32 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* မှတ်တမ်း UI (အတိုချုံးပြသခြင်း) */}
+      {/* မှတ်တမ်း UI */}
       {activeTab === 'records' && (
         <div className="space-y-6">
            <div className="relative w-full max-w-sm"><span className="absolute left-3 top-3 text-slate-400">🔍</span><input type="text" className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm outline-none focus:border-amber-500" placeholder="ဘောက်ချာ / ဝယ်သူအမည် ရှာရန်..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
            <div className="grid gap-4">
             {visibleSalesToRender.map(sale => (
-              <div key={sale.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4 hover:shadow-md transition-shadow">
+              <div key={sale.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-md transition-shadow">
                 <div>
                   <div className="flex gap-2 items-center mb-1">
                     <span className="text-xs font-black bg-slate-100 px-2 py-1 rounded text-slate-600">#{sale.id}</span>
                     <span className={`text-xs font-black px-2 py-1 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid ? `✅ ${sale.paymentMethod}` : `⏳ အကြွေး (${sale.creditTerms})`}</span>
                   </div>
-                  <h3 className="text-lg font-black text-slate-800">👤 {sale.customerName}</h3>
-                  <div className="text-xs text-slate-500 font-bold">📅 {sale.date} | 📍 {sale.shopType}</div>
+                  <h3 className="text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-sm font-medium text-slate-500">({sale.phone})</span></h3>
+                  
+                  {/* 🌟 ဤနေရာတွင် လိပ်စာနှင့် GPS လင့်ခ်ကို ထည့်သွင်းထားပါသည် 🌟 */}
+                  <div className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">
+                    📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>
+                    🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
+                    {sale.gps && (
+                      <a href={`https://maps.google.com/?q=${sale.gps}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 hover:underline ml-2 inline-flex items-center gap-1">
+                        📍 မြေပုံကြည့်ရန်
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right w-full md:w-auto">
+                <div className="text-right w-full md:w-auto border-t md:border-0 pt-3 md:pt-0">
                   <div className="text-2xl font-black text-amber-600 mb-2">{sale.finalAmount.toLocaleString()} Ks</div>
                   <div className="flex gap-2 justify-end">
                      {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-3 py-1.5 bg-emerald-500 text-white font-bold rounded-lg text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
