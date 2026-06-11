@@ -88,9 +88,7 @@ export default function App() {
       });
   };
 
-  // 🌟 Phase 2 Auto Logic: ထုပ်ပိုးမှု အတည်ပြုလျှင် (SFG + PKG) မှနှုတ်၍ ကုန်ချော (FG) သို့ ပေါင်းထည့်မည် 🌟
   const handleConfirmPackaging = (recipe: PackageRecipe, outputQty: number, bom: BOMResult[]) => {
-    // 1. Inventory မှ ကုန်ပိုင်း(SFG) နှင့် ထုပ်ပိုးပစ္စည်း(PKG) တို့ကို နှုတ်မည်
     setInventoryItems(prev => {
         let updatedItems = [...prev];
         bom.forEach(b => {
@@ -102,7 +100,6 @@ export default function App() {
         return updatedItems;
     });
 
-    // 2. Finished Goods သို့ ကုန်ချော (FG) ကို ပေါင်းထည့်မည်
     setFinishedGoods(prev => {
         const existingIdx = prev.findIndex(p => p.category === recipe.category && p.taste === recipe.taste && p.gram === recipe.gram);
         if (existingIdx !== -1) {
@@ -141,8 +138,10 @@ export default function App() {
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
-        {/* 🌟 ထုပ်ပိုးမှုစနစ်အား handleConfirmPackaging ဖြင့် ချိတ်ဆက်ထားပါသည် */}
+        
+        {/* 🌟 ဤနေရာရှိ Error အား handleConfirmPackaging ဟု အတိအကျ ပြင်ဆင်လိုက်ပါပြီ 🌟 */}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
+        
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
