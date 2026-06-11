@@ -139,7 +139,7 @@ export default function App() {
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         
-        {/* 🌟 ဤနေရာရှိ Error အား handleConfirmPackaging ဟု အတိအကျ ပြင်ဆင်လိုက်ပါပြီ 🌟 */}
+        {/* 🌟 ဤနေရာရှိ Error အား onPackagingConfirm ဟု အတိအကျ ပြင်ဆင်လိုက်ပါပြီ 🌟 */}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
         
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
