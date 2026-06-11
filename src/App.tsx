@@ -21,11 +21,16 @@ export interface PackageRecipe { id: string; skuName: string; category: string; 
 export interface AttachedFile { name: string; dataUrl: string; type: string; }
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; }
 
+// 🌟 Multi-item PR အတွက် PRItem Interface အသစ် ဖန်တီးထားပါသည်
+export interface PRItem { itemName: string; requestedQty: number; unit: string; targetWarehouse: 'RM' | 'SFG' | 'PKG'; }
+
 export interface PurchaseRequest { 
-  id: number; date: string; itemName: string; requestedQty: number; unit: string; suppliers: SupplierOption[]; selectedSupplierId?: string; 
+  id: number; date: string; 
+  items?: PRItem[]; // 🌟 ပစ္စည်းအများကြီး ဝယ်နိုင်ရန်
+  itemName?: string; requestedQty?: number; unit?: string; targetWarehouse?: 'RM' | 'SFG' | 'PKG'; // (Data အဟောင်းများအတွက် ချန်ထားခြင်း)
+  suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
-  targetWarehouse?: 'RM' | 'SFG' | 'PKG'; 
 }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
@@ -113,18 +118,25 @@ export default function App() {
   };
 
   const handleProcurementComplete = (pr: PurchaseRequest) => {
-    if (!pr || !pr.itemName) return;
-    const targetWH = pr.targetWarehouse || 'RM';
+    // 🌟 ပစ္စည်းအများကြီး သို့မဟုတ် Data အဟောင်း ၁ ခုတည်း နှစ်မျိုးလုံးအတွက် ကာကွယ်ရေး
+    const itemsToAdd: PRItem[] = pr.items && pr.items.length > 0 
+      ? pr.items 
+      : [{ itemName: pr.itemName || '', requestedQty: pr.requestedQty || 0, unit: pr.unit || '', targetWarehouse: pr.targetWarehouse || 'RM' }];
+
     setInventoryItems(prev => {
-      const existingItem = prev.find(item => item && item.name === pr.itemName && item.warehouse === targetWH);
-      if (existingItem) {
-        return prev.map(item => item.id === existingItem.id ? { ...item, inStock: item.inStock + pr.requestedQty } : item);
-      } else {
-        const newItem: InventoryItem = { id: Date.now(), code: `${targetWH}-${Date.now().toString().slice(-4)}`, name: pr.itemName, category: targetWH === 'PKG' ? 'Packaging' : 'Purchased Items', unit: pr.unit, inStock: pr.requestedQty, warehouse: targetWH };
-        return [...prev, newItem];
-      }
+      let updated = [...prev];
+      itemsToAdd.forEach(reqItem => {
+        if (!reqItem.itemName) return;
+        const existingIdx = updated.findIndex(item => item && item.name === reqItem.itemName && item.warehouse === reqItem.targetWarehouse);
+        if (existingIdx !== -1) {
+           updated[existingIdx] = { ...updated[existingIdx], inStock: updated[existingIdx].inStock + reqItem.requestedQty };
+        } else {
+           updated.push({ id: Date.now() + Math.random(), code: `${reqItem.targetWarehouse}-${Date.now().toString().slice(-4)}`, name: reqItem.itemName, category: reqItem.targetWarehouse === 'PKG' ? 'Packaging' : 'Purchased Items', unit: reqItem.unit, inStock: reqItem.requestedQty, warehouse: reqItem.targetWarehouse });
+        }
+      });
+      return updated;
     });
-    alert(`✅ ${pr.itemName} (${pr.requestedQty} ${pr.unit}) အား [${targetWH} ဂိုထောင်] သို့ ထည့်သွင်းပြီးပါပြီ။`);
+    alert(`✅ ဝယ်ယူထားသော ပစ္စည်းများအား သက်ဆိုင်ရာ ဂိုထောင်များသို့ အလိုအလျောက် ထည့်သွင်းပြီးပါပြီ။`);
   };
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
@@ -138,10 +150,7 @@ export default function App() {
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
-        
-        {/* 🌟 ဤနေရာရှိ Error အား onPackagingConfirm ဟု အတိအကျ ပြင်ဆင်လိုက်ပါပြီ 🌟 */}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
-        
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
