@@ -5,6 +5,7 @@ import { Inventory } from './components/Inventory';
 import { Production } from './components/Production';
 import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
+import { Sales } from './components/Sales'; // 🌟 Sales Module အသစ်
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
@@ -12,7 +13,7 @@ import { Procurement } from './components/Procurement';
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; }
 export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; }
-export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; }
+export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; type?: 'expense' | 'income'; } // 🌟 ဝင်ငွေအတွက် type တိုးထားပါသည်
 export interface UserSession { name: string; role: string; }
 export interface BOMResult { itemName: string; amount: number; }
 export interface RecipeIngredient { itemName: string; requiredQty: number; unit: string; defaultCost: number; }
@@ -21,17 +22,19 @@ export interface PackageRecipe { id: string; skuName: string; category: string; 
 export interface AttachedFile { name: string; dataUrl: string; type: string; }
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; }
 
-// 🌟 Multi-item PR အတွက် PRItem Interface အသစ် ဖန်တီးထားပါသည်
 export interface PRItem { itemName: string; requestedQty: number; unit: string; targetWarehouse: 'RM' | 'SFG' | 'PKG'; }
 
 export interface PurchaseRequest { 
   id: number; date: string; 
-  items?: PRItem[]; // 🌟 ပစ္စည်းအများကြီး ဝယ်နိုင်ရန်
-  itemName?: string; requestedQty?: number; unit?: string; targetWarehouse?: 'RM' | 'SFG' | 'PKG'; // (Data အဟောင်းများအတွက် ချန်ထားခြင်း)
+  items?: PRItem[]; itemName?: string; requestedQty?: number; unit?: string; targetWarehouse?: 'RM' | 'SFG' | 'PKG';
   suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
 }
+
+// 🌟 Sales (အရောင်း) အတွက် Data Types 🌟
+export interface SaleItem { product: FinishedGoodItem; quantity: number; subtotal: number; }
+export interface SaleRecord { id: string; date: string; customerName: string; phone?: string; salespersonName: string; items: SaleItem[]; totalAmount: number; finalAmount: number; discountPercent?: number; taxPercent?: number; paymentMethod: string; isPaid: boolean; }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -51,6 +54,7 @@ export default function App() {
     { id: 4, username: 'qc', password: '123', role: 'qc', displayName: 'QC / QA' },
     { id: 5, username: 'purchasing', password: '123', role: 'purchasing', displayName: 'Purchasing Officer' },
     { id: 6, username: 'store', password: '123', role: 'storekeeper', displayName: 'Store Keeper' },
+    { id: 7, username: 'sale', password: '123', role: 'sales', displayName: 'Sales Person' },
   ]);
 
   const [inventoryItems, setInventoryItems] = useLocalStorage<InventoryItem[]>('ssy_inventory', [
@@ -60,11 +64,16 @@ export default function App() {
     { id: 4, code: 'PK-002', name: 'ကုန်ပစ္စည်းတံဆိပ် စတစ်ကာ', category: 'Packaging', unit: 'ခု', inStock: 2500, warehouse: 'PKG' },
   ]);
 
-  const [finishedGoods, setFinishedGoods] = useLocalStorage<FinishedGoodItem[]>('ssy_finished_goods', []);
+  const [finishedGoods, setFinishedGoods] = useLocalStorage<FinishedGoodItem[]>('ssy_finished_goods', [
+    { id: 101, category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, stockQty: 50 },
+    { id: 102, category: 'အာလူးကြော်', taste: 'Spicy', gram: 50, price: 2000, stockQty: 30 },
+  ]);
+
+  const [salesRecords, setSalesRecords] = useLocalStorage<SaleRecord[]>('ssy_sales_records', []); // 🌟 အရောင်းမှတ်တမ်း
   const [expenses, setExpenses] = useLocalStorage<ExpenseItem[]>('ssy_expenses', []);
   const [purchaseRequests, setPurchaseRequests] = useLocalStorage<PurchaseRequest[]>('ssy_pr', []);
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
-  const [activeTab, setActiveTab] = useState<string>('procurement');
+  const [activeTab, setActiveTab] = useState<string>('sales');
 
   const [recipes, setRecipes] = useLocalStorage<Recipe[]>('ssy_recipes', [
     { id: 'F-001', name: 'ငါးရေခွံကြော်', outputCategory: 'ငါးရေခွံကြော်', outputUnit: 'ပိဿာ', outputQtyPerBatch: 1.4, ingredients: [{ itemName: 'ငါးရေခွံကုန်ကြမ်း', requiredQty: 1, unit: 'ပိဿာ', defaultCost: 35000 }] },
@@ -118,25 +127,54 @@ export default function App() {
   };
 
   const handleProcurementComplete = (pr: PurchaseRequest) => {
-    // 🌟 ပစ္စည်းအများကြီး သို့မဟုတ် Data အဟောင်း ၁ ခုတည်း နှစ်မျိုးလုံးအတွက် ကာကွယ်ရေး
-    const itemsToAdd: PRItem[] = pr.items && pr.items.length > 0 
-      ? pr.items 
-      : [{ itemName: pr.itemName || '', requestedQty: pr.requestedQty || 0, unit: pr.unit || '', targetWarehouse: pr.targetWarehouse || 'RM' }];
-
+    if (!pr || !pr.itemName) return;
+    const targetWH = pr.targetWarehouse || 'RM';
     setInventoryItems(prev => {
-      let updated = [...prev];
-      itemsToAdd.forEach(reqItem => {
-        if (!reqItem.itemName) return;
-        const existingIdx = updated.findIndex(item => item && item.name === reqItem.itemName && item.warehouse === reqItem.targetWarehouse);
-        if (existingIdx !== -1) {
-           updated[existingIdx] = { ...updated[existingIdx], inStock: updated[existingIdx].inStock + reqItem.requestedQty };
-        } else {
-           updated.push({ id: Date.now() + Math.random(), code: `${reqItem.targetWarehouse}-${Date.now().toString().slice(-4)}`, name: reqItem.itemName, category: reqItem.targetWarehouse === 'PKG' ? 'Packaging' : 'Purchased Items', unit: reqItem.unit, inStock: reqItem.requestedQty, warehouse: reqItem.targetWarehouse });
-        }
-      });
-      return updated;
+      const existingItem = prev.find(item => item && item.name === pr.itemName && item.warehouse === targetWH);
+      if (existingItem) {
+        return prev.map(item => item.id === existingItem.id ? { ...item, inStock: item.inStock + pr.requestedQty } : item);
+      } else {
+        const newItem: InventoryItem = { id: Date.now(), code: `${targetWH}-${Date.now().toString().slice(-4)}`, name: pr.itemName, category: targetWH === 'PKG' ? 'Packaging' : 'Purchased Items', unit: pr.unit, inStock: pr.requestedQty, warehouse: targetWH };
+        return [...prev, newItem];
+      }
     });
-    alert(`✅ ဝယ်ယူထားသော ပစ္စည်းများအား သက်ဆိုင်ရာ ဂိုထောင်များသို့ အလိုအလျောက် ထည့်သွင်းပြီးပါပြီ။`);
+    alert(`✅ ${pr.itemName} (${pr.requestedQty} ${pr.unit}) အား [${targetWH} ဂိုထောင်] သို့ ထည့်သွင်းပြီးပါပြီ။`);
+  };
+
+  // 🌟 အရောင်းစာရင်း သွင်းသည့်အခါ FG ဂိုထောင်မှ နှုတ်၍ ဝင်ငွေပေါင်းထည့်မည့် Engine 🌟
+  const handleCheckoutSale = (newSale: SaleRecord) => {
+    // 1. FG စာရင်းမှ ရောင်းလိုက်သည့် အရေအတွက်များကို နှုတ်မည်
+    setFinishedGoods(prev => {
+       let updated = [...prev];
+       newSale.items.forEach(saleItem => {
+          const idx = updated.findIndex(fg => fg.id === saleItem.product.id);
+          if (idx !== -1) {
+             updated[idx] = { ...updated[idx], stockQty: updated[idx].stockQty - saleItem.quantity };
+          }
+       });
+       return updated;
+    });
+
+    // 2. ရောင်းရငွေအား Finance သို့ Income အဖြစ် ပေါင်းထည့်မည် (Cash သို့မဟုတ် KPay ချက်ချင်းရှင်းလျှင်သာ)
+    if (newSale.isPaid) {
+      setExpenses(prev => [...prev, {
+        id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ (Sales Revenue)', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income'
+      }]);
+    }
+
+    setSalesRecords([newSale, ...salesRecords]);
+  };
+
+  const handleMarkAsPaid = (saleId: string) => {
+    const saleToUpdate = salesRecords.find(s => s.id === saleId);
+    if (saleToUpdate && !saleToUpdate.isPaid) {
+      setSalesRecords(salesRecords.map(s => s.id === saleId ? { ...s, isPaid: true } : s));
+      // ငွေရှင်းကြောင်း အတည်ပြုလျှင် Finance ထဲသို့ ဝင်ငွေ ပေါင်းမည်
+      setExpenses(prev => [...prev, {
+        id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ (Credit Collected)', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income'
+      }]);
+      alert("✅ ငွေလက်ခံရရှိကြောင်း အတည်ပြုပြီး Finance စာရင်းသို့ ဝင်ငွေပေါင်းထည့်ပြီးပါပြီ။");
+    }
   };
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
@@ -144,9 +182,14 @@ export default function App() {
   return (
     <div className="flex flex-col md:flex-row w-full bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible" style={{ height: '100dvh' }}>
       <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl">
+         {/* Sidebar တွင် sales tab အသစ် ထည့်သွင်းပေးရန် Sidebar.tsx ကို ပြင်ဆင်ရပါမည် */}
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
       </div>
       <main className="flex-1 h-full p-4 md:p-8 pt-6 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
+        
+        {/* 🌟 Sales Module 🌟 */}
+        {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
+        
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
