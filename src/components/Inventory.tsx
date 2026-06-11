@@ -10,12 +10,10 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
   // 🌟 MD (Managing Director) သာလျှင် ဖျက်ခွင့်/ပြင်ခွင့်ရှိမည့် Role Guard
   const isMDOnly = userRole?.toLowerCase() === 'md';
 
-  // 🌟 ဂိုထောင်အမျိုးအစား (Triple Warehouse) အတိအကျ ခွဲခြားသည့် Logic
   const filteredItems = useMemo(() => {
     return items.filter(item => {
       if (!item) return false;
       
-      // 1. Data အဟောင်းများတွင် warehouse မပါလျှင် code ဖြင့် Auto-Detect လုပ်ပေးခြင်း
       let actualWarehouse = item.warehouse;
       if (!actualWarehouse) {
         if (item.code?.startsWith('PK') || item.category === 'Packaging') actualWarehouse = 'PKG';
@@ -23,22 +21,34 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
         else actualWarehouse = 'RM';
       }
 
-      // 2. သက်ဆိုင်ရာ Tab အလိုက် တိကျစွာ စစ်ထုတ်ခြင်း
       const matchWarehouse = actualWarehouse === warehouseTab;
-      
-      // 3. Search ရှာဖွေမှု
       const matchSearch = item.name?.toLowerCase().includes(searchQuery.toLowerCase()) || item.code?.toLowerCase().includes(searchQuery.toLowerCase());
       
       return matchWarehouse && matchSearch;
     });
   }, [items, searchQuery, warehouseTab]);
 
+  // 🌟 MD အတွက် ဖျက်မည့် Function
   const handleDelete = (item: InventoryItem) => {
     if (!isMDOnly) return alert("❌ MD အကောင့်ဖြင့်သာ ဖျက်ခွင့်ရှိပါသည်။");
     if (item.inStock > 0) return alert(`❌ ဖျက်၍မရပါ။ လက်ကျန် (${item.inStock}) ရှိနေပါသည်။`);
     if (window.confirm(`⚠️ ${item.name} အား ဖျက်ရန် သေချာပါသလား?`)) {
       setItems(items.filter(i => i.id !== item.id));
     }
+  };
+
+  // 🌟 MD အတွက် ပြင်ဆင်မည့် Function (အသစ်)
+  const handleEdit = (item: InventoryItem) => {
+    if (!isMDOnly) return alert("❌ MD အကောင့်ဖြင့်သာ ပြင်ဆင်ခွင့်ရှိပါသည်။");
+    
+    const newName = window.prompt("📝 ပစ္စည်းအမည် အသစ်ရိုက်ထည့်ပါ:", item.name);
+    if (newName === null) return; // Cancel နှိပ်လျှင် ရပ်မည်
+    
+    const newStockStr = window.prompt("📦 လက်ကျန်အရေအတွက် အသစ်ရိုက်ထည့်ပါ:", item.inStock.toString());
+    if (newStockStr === null) return; // Cancel နှိပ်လျှင် ရပ်မည်
+
+    setItems(items.map(i => i.id === item.id ? { ...i, name: newName, inStock: Number(newStockStr) } : i));
+    alert("✅ အောင်မြင်စွာ ပြင်ဆင်ပြီးပါပြီ။");
   };
 
   return (
@@ -70,7 +80,7 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
         </div>
         
         <div className="overflow-x-auto w-full">
-          <table className="w-full text-left min-w-[600px]">
+          <table className="w-full text-left min-w-[700px]">
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-4 font-bold text-gray-700">Code</th>
@@ -87,9 +97,12 @@ export const Inventory: React.FC<InventoryProps> = ({ userRole, userName, items,
                   <td className="p-4 text-right font-black text-xl text-indigo-700">
                     {item.inStock?.toLocaleString()} <span className="text-sm font-bold text-gray-500">{item.unit}</span>
                   </td>
-                  {/* 🌟 MD သာလျှင် Delete ခလုတ်ကို မြင်ရ/နှိပ်ရပါမည် */}
+                  {/* 🌟 MD သာလျှင် ပြင်မည် / ဖျက်မည် ခလုတ်များကို မြင်ရပါမည် 🌟 */}
                   {isMDOnly && (
-                    <td className="p-4 text-center">
+                    <td className="p-4 text-center whitespace-nowrap">
+                      <button onClick={() => handleEdit(item)} className="bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-600 hover:text-white font-bold px-3 py-1.5 rounded-lg transition-colors text-sm mr-2">
+                        ပြင်မည်
+                      </button>
                       <button onClick={() => handleDelete(item)} className="bg-red-50 text-red-600 border border-red-200 hover:bg-red-600 hover:text-white font-bold px-3 py-1.5 rounded-lg transition-colors text-sm">
                         ဖျက်မည်
                       </button>
