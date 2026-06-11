@@ -24,7 +24,6 @@ const compressImage = (file: File): Promise<string> => {
 };
 
 export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, setRequests, onComplete }) => {
-  // 🌟 ပစ္စည်းအများကြီး တပြိုင်နက်ဝယ်ရန် State အသစ် 🌟
   const [requestItems, setRequestItems] = useState<PRItem[]>([
     { itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }
   ]);
@@ -41,7 +40,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const isStoreKeeper = userRole === 'storekeeper' || userRole === 'md' || userRole === 'manager';
   const isMDorManager = userRole === 'md' || userRole === 'manager';
 
-  // 🌟 ဝယ်မည့် ပစ္စည်းအမျိုးအစား အတိုး/အလျှော့ Functions 🌟
   const handleAddPRItem = () => {
     setRequestItems([...requestItems, { itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
   };
@@ -59,6 +57,18 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
   const handleSupplierChange = (index: number, field: keyof SupplierOption, value: any) => {
     const updated = [...suppliers]; updated[index] = { ...updated[index], [field]: value }; setSuppliers(updated);
+  };
+
+  const handleCameraCapture = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    try {
+      const compressedDataUrl = await compressImage(file);
+      const newFile: AttachedFile = { name: `Camera_${Date.now()}.jpg`, dataUrl: compressedDataUrl, type: 'image/jpeg' };
+      const updated = [...suppliers];
+      updated[index][field] = [...(updated[index][field] || []), newFile];
+      setSuppliers(updated);
+    } catch (error) { alert("ဓာတ်ပုံသိမ်းဆည်းမှု မအောင်မြင်ပါ။"); }
+    e.target.value = '';
   };
 
   const handleMultipleFilesSelect = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
@@ -82,13 +92,12 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
   const handleSubmitPR = (e: React.FormEvent) => {
     e.preventDefault();
-    // Check if any item is empty
     const hasEmptyItem = requestItems.some(item => !item.itemName || !item.requestedQty || !item.unit);
     if (hasEmptyItem || suppliers.length === 0) return alert('ပစ္စည်းအချက်အလက်များကို အပြည့်အစုံ ဖြည့်ပါ။');
 
     const newPR: PurchaseRequest = { 
       id: Date.now(), date: new Date().toLocaleDateString('en-GB'), 
-      items: requestItems, // 🌟 အများကြီးသိမ်းမည်
+      items: requestItems, 
       suppliers, status: 'Pending' 
     };
     setRequests([newPR, ...requests]);
@@ -159,7 +168,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
              <button type="button" onClick={handleAddSupplier} className="bg-indigo-50 text-indigo-700 px-5 py-2.5 rounded-xl font-bold border border-indigo-200 hover:bg-indigo-100 transition-colors">+ Supplier ထပ်ထည့်မည်</button>
           </div>
           
-          {/* 🌟 Multi-Item Inputs Section 🌟 */}
           <div className="mb-8">
             <h4 className="font-bold text-indigo-800 mb-4 border-l-4 border-indigo-600 pl-3">ဝယ်ယူမည့် ပစ္စည်းစာရင်း</h4>
             <div className="space-y-3">
@@ -197,7 +205,9 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <div className="space-y-3 mt-4">
                     <div>
                         <div className="text-[11px] font-bold text-gray-700 mb-2">သက်သေခံ ဘောက်ချာ/ပုံများ</div>
+                        {/* 🌟 ဤနေရာတွင် ကင်မရာ (Take Photo) ခလုတ် ပြန်လည် ထည့်သွင်းထားပါသည် 🌟 */}
                         <div className="flex gap-2">
+                           <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-blue-100 text-blue-700">📸 ကင်မရာ <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'productFiles', e)} className="sr-only" /></label>
                            <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-300 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-gray-100">📂 ဖိုင်အစုံရွေးရန် <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'productFiles', e)} className="sr-only" /></label>
                         </div>
                         <div className="flex flex-wrap gap-1 mt-3">
@@ -223,7 +233,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       {/* Approval Board */}
       <div className="space-y-8 print:space-y-6">
         {requests?.map(req => {
-          // 🌟 Data အဟောင်းရော အသစ်ပါ အလုပ်လုပ်စေမည့် Backward Compat Mapping 🌟
           const itemsToDisplay = req.items && req.items.length > 0 
             ? req.items 
             : [{ itemName: req.itemName, requestedQty: req.requestedQty, unit: req.unit, targetWarehouse: req.targetWarehouse || 'RM' }];
@@ -241,7 +250,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                     </div>
                   </div>
                   
-                  {/* 🌟 ဝယ်ယူမည့် ပစ္စည်းစာရင်းများကို List အနေဖြင့် လှပစွာ ပြသခြင်း 🌟 */}
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 print:bg-gray-50 print:border-gray-300">
                      <h4 className="text-sm font-bold text-gray-300 mb-3 print:text-gray-700">ဝယ်ယူမည့် ပစ္စည်းစာရင်း ({itemsToDisplay.length} မျိုး)</h4>
                      <ul className="space-y-2">
