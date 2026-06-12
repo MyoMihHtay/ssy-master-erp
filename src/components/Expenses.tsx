@@ -8,13 +8,24 @@ interface ExpensesProps {
   setExpenses: React.Dispatch<React.SetStateAction<ExpenseItem[]>>;
 }
 
+// 🌟 အရင်က ပုံအဟောင်းတွေနဲ့ ပုံအသစ်တွေကို ပြန်ဖတ်ပေးမည့် Function 🌟
+const tryParseImages = (imgStr: string | undefined): string[] => {
+  if (!imgStr) return [];
+  try {
+    const parsed = JSON.parse(imgStr);
+    return Array.isArray(parsed) ? parsed : [imgStr];
+  } catch {
+    return [imgStr]; // JSON မဟုတ်ရင် ပုံတစ်ပုံတည်းအဖြစ် သတ်မှတ်မည်
+  }
+};
+
 export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses, setExpenses }) => {
   const [date, setDate] = useState(new Date().toLocaleDateString('en-GB'));
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState<number | ''>('');
   const [voucherNo, setVoucherNo] = useState('');
-  const [receiptImage, setReceiptImage] = useState<string>('');
+  const [receiptImages, setReceiptImages] = useState<string[]>([]); // 🌟 ပုံအများကြီး သိမ်းရန် Array
   const [type, setType] = useState<'expense' | 'income'>('expense');
   const [isFormOpen, setIsFormOpen] = useState(false);
 
@@ -28,13 +39,20 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
     "အခြား"
   ];
 
+  // 🌟 ပုံအများကြီးကို တစ်ပြိုင်နက် ဖတ်ယူမည့် Function 🌟
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+    files.forEach(file => {
       const reader = new FileReader();
-      reader.onloadend = () => setReceiptImage(reader.result as string);
+      reader.onloadend = () => {
+        setReceiptImages(prev => [...prev, reader.result as string]);
+      };
       reader.readAsDataURL(file);
-    }
+    });
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setReceiptImages(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   const handleSaveExpense = () => {
@@ -47,7 +65,8 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
       description,
       amount: Number(amount),
       voucherNo,
-      receiptImage,
+      // 🌟 App.tsx ကို မထိခိုက်အောင် Array ကို String အဖြစ်ပြောင်း၍ သိမ်းမည် 🌟
+      receiptImage: receiptImages.length > 0 ? JSON.stringify(receiptImages) : undefined, 
       type
     };
 
@@ -58,7 +77,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
     setDescription('');
     setAmount('');
     setVoucherNo('');
-    setReceiptImage('');
+    setReceiptImages([]);
     setIsFormOpen(false);
     alert('✅ စာရင်းမှတ်တမ်း အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
   };
@@ -83,7 +102,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
         </button>
       </div>
 
-      {/* 🌟 P&L Dashboard (အရှုံးအမြတ် တွက်ချက်မှု) 🌟 */}
+      {/* P&L Dashboard */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <div className="bg-emerald-50 border border-emerald-200 p-6 rounded-2xl shadow-sm">
           <h3 className="text-emerald-800 font-bold mb-2">စုစုပေါင်း ဝင်ငွေ (Income)</h3>
@@ -101,7 +120,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
         </div>
       </div>
 
-      {/* 🌟 စာရင်းသွင်း Form Modal 🌟 */}
+      {/* စာရင်းသွင်း Form Modal */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -121,7 +140,6 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
                 <input type="text" value={date} onChange={e => setDate(e.target.value)} className="w-full border border-slate-300 p-3 rounded-xl outline-none focus:border-slate-500 font-bold" />
               </div>
 
-              {/* 🌟 Category ကို Custom ရိုက်ထည့်၍ရအောင် datalist ဖြင့် ပြောင်းထားသည် 🌟 */}
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">ခေါင်းစဉ် (Category) *</label>
                 <input 
@@ -147,16 +165,26 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
                 <input type="number" value={amount} onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))} className="w-full border border-slate-300 p-3 rounded-xl outline-none focus:border-slate-500 font-black text-lg text-slate-800" placeholder="0" />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">ဘောက်ချာနံပါတ် (ရှိလျှင်)</label>
-                  <input type="text" value={voucherNo} onChange={e => setVoucherNo(e.target.value)} className="w-full border border-slate-300 p-3 rounded-xl outline-none focus:border-slate-500 font-bold text-sm" placeholder="e.g., V-1024" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1">ဘောက်ချာဓာတ်ပုံ (ရှိလျှင်)</label>
-                  <label className="flex items-center justify-center w-full h-[46px] border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
-                    <span className="text-xs font-bold text-slate-500">{receiptImage ? '✅ ပုံတင်ပြီးပါပြီ' : '📷 ပုံရွေးမည်'}</span>
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1">ဘောက်ချာနံပါတ် (ရှိလျှင်)</label>
+                <input type="text" value={voucherNo} onChange={e => setVoucherNo(e.target.value)} className="w-full border border-slate-300 p-3 rounded-xl outline-none focus:border-slate-500 font-bold text-sm" placeholder="e.g., V-1024" />
+              </div>
+
+              {/* 🌟 ဓာတ်ပုံရိုက်ရန် / အများကြီး ထည့်ရန် UI 🌟 */}
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-2">ဘောက်ချာဓာတ်ပုံ (အများကြီးထည့်၍ရပါသည်)</label>
+                <div className="flex flex-wrap gap-3">
+                  {receiptImages.map((img, idx) => (
+                    <div key={idx} className="relative w-16 h-16 border-2 border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                      <img src={img} alt={`receipt-${idx}`} className="w-full h-full object-cover" />
+                      <button onClick={() => removeImage(idx)} className="absolute top-0 right-0 bg-rose-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs font-bold shadow-md hover:bg-rose-600 transition-colors">✕</button>
+                    </div>
+                  ))}
+                  
+                  {/* multiple နှင့် capture="environment" ထည့်ထားသဖြင့် ဖုန်းတွင် Camera တိုက်ရိုက်ပွင့်နိုင်သည် */}
+                  <label className="flex flex-col items-center justify-center w-16 h-16 border-2 border-dashed border-slate-400 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors bg-slate-50">
+                    <span className="text-xl">📸</span>
+                    <input type="file" multiple accept="image/*" capture="environment" onChange={handleImageUpload} className="hidden" />
                   </label>
                 </div>
               </div>
@@ -172,7 +200,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
         </div>
       )}
 
-      {/* 🌟 မှတ်တမ်းများ 🌟 */}
+      {/* မှတ်တမ်းများ */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
@@ -182,40 +210,52 @@ export const Expenses: React.FC<ExpensesProps> = ({ userRole, userName, expenses
                 <th className="p-4 font-bold">ခေါင်းစဉ် / အမျိုးအစား</th>
                 <th className="p-4 font-bold">အကြောင်းအရာ</th>
                 <th className="p-4 font-bold text-right">ငွေပမာဏ (Ks)</th>
-                <th className="p-4 font-bold text-center">မှတ်တမ်း</th>
+                <th className="p-4 font-bold text-center">မှတ်တမ်းပုံများ</th>
                 <th className="p-4 font-bold text-center">Action</th>
               </tr>
             </thead>
             <tbody>
-              {expenses.map((expense) => (
-                <tr key={expense.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                  <td className="p-4 text-xs font-bold text-slate-600 whitespace-nowrap">{expense.date}</td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${expense.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                      {expense.category}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <div className="font-bold text-slate-800 text-sm">{expense.description}</div>
-                    {expense.voucherNo && <div className="text-xs text-slate-400 mt-1">Voucher: {expense.voucherNo}</div>}
-                  </td>
-                  <td className={`p-4 text-right font-black text-lg whitespace-nowrap ${expense.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                    {expense.type === 'income' ? '+' : '-'} {expense.amount.toLocaleString()} Ks
-                  </td>
-                  <td className="p-4 text-center">
-                    {expense.receiptImage ? (
-                      <a href={expense.receiptImage} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline text-xs font-bold">🖼️ ကြည့်မည်</a>
-                    ) : <span className="text-slate-300">-</span>}
-                  </td>
-                  <td className="p-4 text-center">
-                    {userRole === 'md' && (
-                      <button onClick={() => handleDelete(expense.id)} className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors font-bold text-xs">
-                        ဖျက်မည်
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {expenses.map((expense) => {
+                const images = tryParseImages(expense.receiptImage);
+                return (
+                  <tr key={expense.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                    <td className="p-4 text-xs font-bold text-slate-600 whitespace-nowrap">{expense.date}</td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${expense.type === 'income' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                        {expense.category}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <div className="font-bold text-slate-800 text-sm">{expense.description}</div>
+                      {expense.voucherNo && <div className="text-xs text-slate-400 mt-1">Voucher: {expense.voucherNo}</div>}
+                    </td>
+                    <td className={`p-4 text-right font-black text-lg whitespace-nowrap ${expense.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {expense.type === 'income' ? '+' : '-'} {expense.amount.toLocaleString()} Ks
+                    </td>
+                    
+                    {/* 🌟 ဓာတ်ပုံများကို ပြသခြင်း 🌟 */}
+                    <td className="p-4 text-center">
+                      {images.length > 0 ? (
+                        <div className="flex justify-center gap-1 flex-wrap w-24 mx-auto">
+                          {images.map((img, idx) => (
+                            <a key={idx} href={img} target="_blank" rel="noreferrer" className="w-7 h-7 rounded border border-slate-200 overflow-hidden block hover:scale-150 transition-transform shadow-sm">
+                              <img src={img} className="w-full h-full object-cover" alt="receipt" />
+                            </a>
+                          ))}
+                        </div>
+                      ) : <span className="text-slate-300 font-bold">-</span>}
+                    </td>
+                    
+                    <td className="p-4 text-center">
+                      {userRole === 'md' && (
+                        <button onClick={() => handleDelete(expense.id)} className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-2 rounded-lg transition-colors font-bold text-xs">
+                          ဖျက်မည်
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
               {expenses.length === 0 && (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-400 font-bold">ဘဏ္ဍာရေး မှတ်တမ်း မရှိသေးပါ။</td>
