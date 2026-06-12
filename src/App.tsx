@@ -80,8 +80,6 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
 
 export default function App() {
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
-  // 🌟 ဖုန်း View အတွက် Menu ပွင့်/ပိတ် ထိန်းချုပ်ရန် 🌟
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [accounts, setAccounts] = useLocalStorage<AccountItem[]>('ssy_accounts', [
     { id: 1, username: 'md', password: '123', role: 'md', displayName: 'Managing Director (MD)' },
@@ -102,21 +100,23 @@ export default function App() {
     { id: 101, category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, stockQty: 50 },
   ]);
 
-  const [salesRecords, setSalesRecords] = useLocalStorage<SaleRecord[]>('ssy_sales_records', []); 
-  const [expenses, setExpenses] = useLocalStorage<ExpenseItem[]>('ssy_expenses', []);
+  // 🚀 အရောင်း၊ ဘဏ္ဍာရေး၊ ဖောက်သည် စာရင်းများကို CLOUD ပေါ်သို့ ပြောင်းလဲချိတ်ဆက်လိုက်ပါပြီ 🚀
+  const [salesRecords, setSalesRecords] = useSupabaseTable<SaleRecord>('ssy_sales_records', []); 
+  const [expenses, setExpenses] = useSupabaseTable<ExpenseItem>('ssy_expenses', []);
+  const [customers, setCustomers] = useSupabaseTable<Customer>('ssy_customers', []);
+
   const [purchaseRequests, setPurchaseRequests] = useLocalStorage<PurchaseRequest[]>('ssy_pr', []);
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
   const [activeTab, setActiveTab] = useState<string>('sales');
 
   const [recipes, setRecipes] = useLocalStorage<Recipe[]>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', []);
-  const [customers, setCustomers] = useLocalStorage<Customer[]>('ssy_customers', []);
 
   useEffect(() => {
     const testSupabaseConnection = async () => {
       try {
         const { error } = await supabase.from('ssy_inventory').select('id').limit(1);
-        if (!error) { setIsCloudConnected(true); }
+        if (!error) setIsCloudConnected(true); 
       } catch (err) { console.error("Connection failed", err); }
     };
     testSupabaseConnection();
@@ -132,13 +132,15 @@ export default function App() {
        let updated = [...prev];
        newSale.items.forEach(saleItem => {
           const idx = updated.findIndex(fg => fg.id === saleItem.product.id);
-          if (idx !== -1) { updated[idx] = { ...updated[idx], stockQty: updated[idx].stockQty - saleItem.quantity }; }
+          if (idx !== -1) updated[idx] = { ...updated[idx], stockQty: updated[idx].stockQty - saleItem.quantity };
        });
        return updated;
     });
 
     if (newSale.isPaid) {
-      setExpenses(prev => [...prev, { id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ (Sales Revenue)', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income' }]);
+      setExpenses(prev => [...prev, {
+        id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ (SALES REVENUE)', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income'
+      }]);
     }
 
     setCustomers(prev => {
@@ -148,8 +150,9 @@ export default function App() {
         name: newSale.customerName, phone: newSale.phone || '', shopType: newSale.shopType || '',
         address: newSale.address || '', gpsLocation: newSale.gps || ''
       };
-      if (existingIdx !== -1) { const updated = [...prev]; updated[existingIdx] = customerData; return updated; } 
-      else { return [...prev, customerData]; }
+      if (existingIdx !== -1) {
+        const updated = [...prev]; updated[existingIdx] = customerData; return updated;
+      } else return [...prev, customerData];
     });
 
     setSalesRecords([newSale, ...salesRecords]);
@@ -159,7 +162,9 @@ export default function App() {
     const saleToUpdate = salesRecords.find(s => s.id === saleId);
     if (saleToUpdate && !saleToUpdate.isPaid) {
       setSalesRecords(salesRecords.map(s => s.id === saleId ? { ...s, isPaid: true } : s));
-      setExpenses(prev => [...prev, { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ (Credit Collected)', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income' }]);
+      setExpenses(prev => [...prev, {
+        id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ (CREDIT COLLECTED)', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income'
+      }]);
       alert("✅ ငွေလက်ခံရရှိကြောင်း အတည်ပြုပြီး Finance စာရင်းသို့ ဝင်ငွေပေါင်းထည့်ပြီးပါပြီ။");
     }
   };
@@ -167,27 +172,10 @@ export default function App() {
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
   return (
-    <div className="flex h-screen w-full bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative">
-      
-      {/* 🌟 ဖုန်း View အတွက် အပေါ်ဘက် Header Bar (Menu ခလုတ်) 🌟 */}
-      <div className="md:hidden absolute top-0 left-0 w-full h-14 bg-gray-900 text-white flex items-center justify-between px-4 z-40 shadow-md print:hidden">
-         <h1 className="font-black text-blue-500 tracking-wider">SSY ERP</h1>
-         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-2xl p-2 focus:outline-none">
-            {isMobileMenuOpen ? '✕' : '☰'}
-         </button>
-      </div>
-
-      {/* 🌟 Sidebar Layout (Responsive) 🌟 */}
-      {/* ဖုန်းတွင် MobileMenuOpen မှန်မှ ပေါ်မည်။ ကွန်ပျူတာ (md:flex) တွင် အမြဲပေါ်မည်။ */}
-      <div className={`fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out w-64 h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-2xl flex flex-col pt-14 md:pt-0`}>
-         <div className="flex-1 overflow-y-auto">
-           <Sidebar 
-             activeTab={activeTab} 
-             setActiveTab={(tab) => { setActiveTab(tab); setIsMobileMenuOpen(false); }} // 🌟 Tab ရွေးပြီးပါက ဖုန်းတွင် Menu ပြန်ပိတ်မည်
-             userName={user.name} 
-             userRole={user.role} 
-             onLogout={() => setUser(null)} 
-           />
+    <div className="flex flex-col md:flex-row w-full bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible" style={{ height: '100dvh' }}>
+      <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative">
+         <div className="flex-1 overflow-hidden">
+           <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
          </div>
          <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
            {isCloudConnected ? (
@@ -203,24 +191,16 @@ export default function App() {
            )}
          </div>
       </div>
-
-      {/* ဖုန်း View တွင် Menu ပွင့်နေပါက နောက်ခံကို မှောင်ထားမည့် Overlay */}
-      {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
-      )}
-
-      {/* 🌟 Main Content Area 🌟 */}
-      <main className="flex-1 h-full pt-14 md:pt-0 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
-        <div className="p-4 md:p-8">
-           {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
-           {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
-           {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
-           {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
-           {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
-           {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
-           {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
-           {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
-        </div>
+      
+      <main className="flex-1 h-full p-4 md:p-8 pt-6 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
+        {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
+        {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
+        {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
+        {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
+        {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
+        {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
+        {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
+        {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
       </main>
     </div>
   );
