@@ -389,7 +389,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               <div className="flex flex-col items-center text-center border-b-2 border-black pb-6 mb-6">
                 <img src="/logo.png" alt="Logo" className="w-28 h-28 object-contain mb-3" />
                 <h1 className="text-3xl font-black mb-2 tracking-wider">"စက်စက်ယို" စားသောက်ကုန်</h1>
-                <p className="text-sm font-bold text-gray-700">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 ကြား၊ မန္တလေးမြို့။</p>
+                <p className="text-sm font-bold text-gray-700">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊ မန္တလေးမြို့။</p>
                 <p className="text-sm font-bold text-gray-700">Ph: 09-455557980</p>
                 
                 <div className="mt-4">
