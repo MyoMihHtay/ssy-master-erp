@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './supabase'; // 🌟 Supabase ကို ချိတ်ဆက်ခြင်း
+import { supabase } from './supabase'; // 🌟 Supabase ချိတ်ဆက်မှု
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
@@ -56,7 +56,6 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 }
 
 export default function App() {
-  // 🌟 Cloud ချိတ်ဆက်မှု အောင်မြင်ခြင်း ရှိ/မရှိ သိမ်းဆည်းမည့် State 🌟
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
 
   const [accounts, setAccounts] = useLocalStorage<AccountItem[]>('ssy_accounts', [
@@ -88,14 +87,12 @@ export default function App() {
   const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', []);
   const [customers, setCustomers] = useLocalStorage<Customer[]>('ssy_customers', []);
 
-  // 🌟 App စပွင့်သည်နှင့် Supabase သို့ ချိတ်ဆက်စမ်းသပ်မည့် လုပ်ဆောင်ချက် 🌟
   useEffect(() => {
     const testSupabaseConnection = async () => {
       try {
-        // ssy_inventory Table ကို လှမ်းခေါ်စမ်းသပ်ကြည့်မည်
         const { error } = await supabase.from('ssy_inventory').select('id').limit(1);
         if (!error) {
-          setIsCloudConnected(true); // ချိတ်ဆက်မှု အောင်မြင်ပါက အစိမ်းရောင် ပြောင်းမည်
+          setIsCloudConnected(true); 
         }
       } catch (err) {
         console.error("Connection failed", err);
@@ -159,11 +156,15 @@ export default function App() {
 
   return (
     <div className="flex flex-col md:flex-row w-full bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible" style={{ height: '100dvh' }}>
-      <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col">
-         <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
+      <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative">
          
-         {/* 🌟 Cloud Connection Status ပြသမည့်နေရာ 🌟 */}
-         <div className="p-4 mt-auto border-t border-gray-800 bg-gray-900">
+         {/* 🌟 Sidebar ကို အပေါ်ဘက်တွင် နေရာယူစေခြင်း 🌟 */}
+         <div className="flex-1 overflow-hidden">
+           <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
+         </div>
+         
+         {/* 🌟 Cloud Connection Status (အမြဲတမ်း အောက်ခြေတွင် ပေါ်နေအောင် ဖမ်းချုပ်ထားသည်) 🌟 */}
+         <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
            {isCloudConnected ? (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
