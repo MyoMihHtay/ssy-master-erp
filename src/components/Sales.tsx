@@ -359,9 +359,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               {/* Header Section */}
               <div className="flex flex-col items-center text-center border-b-2 border-black pb-6 mb-6">
                 <img src="/logo.png" alt="SSY Logo" className="w-24 h-24 object-contain mb-2 grayscale" />
-                <h1 className="text-3xl font-black mb-1 tracking-wider uppercase">SSY Master</h1>
+                <h1 className="text-3xl font-black mb-1 tracking-wider uppercase">စက်စက်ယို စားသောက်ကုန်</h1>
                 <p className="text-sm font-bold text-gray-600">No.(TaTa 43/32), 54 B, 124x125, PyigyiTagon, Mandalay.</p>
-                <p className="text-sm font-bold text-gray-600">Ph: 09-5164100</p>
+                <p className="text-sm font-bold text-gray-600">Ph: 09-455557980</p>
                 
                 {/* Barcode Generated via TEC-IT free API */}
                 <div className="mt-4">
@@ -452,9 +452,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             <div className="w-[80mm] mx-auto p-4 bg-white text-black font-sans text-xs">
               <div className="text-center mb-4 border-b-2 border-dashed border-black pb-4">
                 <img src="/logo.png" alt="SSY Logo" className="w-16 h-16 object-contain mx-auto mb-1 grayscale" />
-                <h2 className="text-lg font-black uppercase tracking-wider mb-1">SSY Master</h2>
+                <h2 className="text-lg font-black uppercase tracking-wider mb-1">စက်စက်ယို စားသောက်ကုန်</h2>
                 <p className="text-[10px] leading-tight">No. 54 B, 124x125, PyigyiTagon</p>
-                <p className="text-[10px] leading-tight mb-2">Ph: 09-5164100</p>
+                <p className="text-[10px] leading-tight mb-2">Ph: 09-455557980</p>
                 <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-8 mx-auto" />
               </div>
 
