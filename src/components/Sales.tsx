@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import html2canvas from 'html2canvas'; // 🌟 ပုံအဖြစ် သိမ်းရန် Library
 import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
 
 interface SalesProps {
@@ -12,7 +13,6 @@ interface SalesProps {
   onDeleteSale: (saleId: string) => void;
 }
 
-// 🌟 Due Date တွက်ချက်ပေးမည့် Function 🌟
 const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
   if (!terms) return '';
   const parts = saleDateStr.split('/');
@@ -53,9 +53,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   const [creditTerms, setCreditTerms] = useState('1 Day (၁ ရက်)');
   const [customCreditDays, setCustomCreditDays] = useState(''); 
 
-  // 🌟 Print Modal အတွက် State များ 🌟
   const [selectedSaleForPrint, setSelectedSaleForPrint] = useState<SaleRecord | null>(null);
-  const [printType, setPrintType] = useState<'A4' | 'THERMAL'>('A4');
+  const [printType, setPrintType] = useState<'A4' | 'THERMAL' | 'IMAGE'>('A4');
+  
+  // 🌟 Image အဖြစ် သိမ်းရန် Reference 🌟
+  const receiptRef = useRef<HTMLDivElement>(null);
 
   const isManager = userRole === 'manager' || userRole === 'md';
   const isMDOnly = userRole === 'md';
@@ -109,9 +111,13 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     if (paymentMethod === 'CREDIT' && creditTerms === 'Custom' && !customCreditDays) return alert("စိတ်ကြိုက်ရက် ထည့်ပါ။");
     
     const finalCreditTerms = paymentMethod === 'CREDIT' ? (creditTerms === 'Custom' ? `${customCreditDays} Days (စိတ်ကြိုက်)` : creditTerms) : undefined;
+    
+    // 🌟 Date + Time အပြည့်အစုံ သိမ်းမည် 🌟
+    const now = new Date();
+    const dateTimeStr = `${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
 
     const newSale: SaleRecord = {
-      id: `INV-${Date.now().toString().slice(-6)}`, date: new Date().toLocaleDateString('en-GB'),
+      id: `INV-${Date.now().toString().slice(-6)}`, date: dateTimeStr,
       customerName, phone, salespersonName: userName, shopType, address, gps: gpsLocation,
       items: cart, totalAmount, finalAmount, discountPercent: Number(discountPercent || 0), taxPercent: Number(taxPercent || 0),
       paymentMethod, creditTerms: finalCreditTerms, isPaid: paymentMethod !== 'CREDIT'
@@ -124,6 +130,10 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   };
 
   const openPrintModal = (sale: SaleRecord) => {
+    // အကယ်၍ အရင် version မှာ အချိန်မပါခဲ့ရင် (ဥပမာ "12/06/2026" သီးသန့်ဖြစ်နေရင်) အချိန်တုတစ်ခု ပေါင်းထည့်ပေးမည်
+    if (!sale.date.includes(':')) {
+       sale.date = `${sale.date} 12:00 PM`;
+    }
     setSelectedSaleForPrint(sale);
   };
 
@@ -132,14 +142,32 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     setTimeout(() => { window.print(); }, 300);
   };
 
+  // 🌟 Image အဖြစ် သိမ်းမည့် Function 🌟
+  const handleSaveAsImage = async () => {
+    setPrintType('IMAGE');
+    // DOM ပေါ်လာအောင် ခဏစောင့်မည်
+    setTimeout(async () => {
+      if (receiptRef.current) {
+        try {
+          const canvas = await html2canvas(receiptRef.current, { scale: 2 });
+          const image = canvas.toDataURL('image/png');
+          const link = document.createElement('a');
+          link.href = image;
+          link.download = `Receipt_${selectedSaleForPrint?.id}.png`;
+          link.click();
+        } catch (err) {
+          alert('ပုံသိမ်းရာတွင် အခက်အခဲရှိပါသည်။');
+        }
+      }
+    }, 500);
+  };
+
   const filteredSales = sales.filter(sale => String(sale?.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) || String(sale?.id || '').toLowerCase().includes(searchTerm.toLowerCase()));
   const visibleSalesToRender = filteredSales.slice(0, displayLimit);
 
   return (
     <div className="p-1 md:p-6 h-full overflow-y-auto print:p-0 print:overflow-visible">
-      {/* 🌟 ပုံမှန် UI များကို Print ထုတ်ချိန်တွင် ဖျောက်ထားမည် (print:hidden) 🌟 */}
       <div className="print:hidden">
-        {/* Header Area */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 md:mb-6 border-b-2 pb-2 md:pb-4 border-amber-200 gap-2 md:gap-4">
           <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> အရောင်းပိုင်း (POS)</h2>
           <div className="flex gap-1.5 md:gap-2 bg-white p-1 rounded-lg md:rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
@@ -252,7 +280,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   <div className="bg-amber-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-amber-200">
                     <label className="block text-[9px] md:text-xs font-black text-amber-700 mb-1">⏳ အကြွေးသက်တမ်း:</label>
                     <select value={creditTerms} onChange={e => setCreditTerms(e.target.value)} className="w-full p-1.5 md:p-2.5 rounded-md md:rounded-lg border border-amber-300 outline-none font-bold text-amber-900 mb-1.5 bg-white text-[10px] md:text-sm">
-                      <option value="1 Day (၁ ရက်)">1 Day (၁ ရက်)</option><option value="3 Days (၃ ရက်)">3 Days (၃ ရက်)</option><option value="7 Days (၇ ရက်)">7 Days (၇ ရက်)</option><option value="15 Days (၁5 ရက်)">15 Days (၁5 ရက်)</option><option value="1 Month (၁ လ)">1 Month (၁ လ)</option><option value="Custom">Custom (စိတ်ကြိုက်)</option>
+                      <option value="1 Day (၁ ရက်)">1 Day (၁ ရက်)</option><option value="3 Days (၃ ရက်)">3 Days (၃ ရက်)</option><option value="7 Days (၇ ရက်)">7 Days (၇ ရက်)</option><option value="15 Days (၁၅ ရက်)">15 Days (၁၅ ရက်)</option><option value="1 Month (၁ လ)">1 Month (၁ လ)</option><option value="Custom">Custom (စိတ်ကြိုက်)</option>
                     </select>
                     {creditTerms === 'Custom' && (
                        <div className="flex items-center gap-1.5 md:gap-2"><input type="number" placeholder="ဥပမာ - 8" value={customCreditDays} onChange={e => setCustomCreditDays(e.target.value)} className="w-full p-1.5 md:p-2.5 rounded-md md:rounded-lg border border-amber-300 outline-none font-black text-amber-900 bg-white text-[10px] md:text-sm" /><span className="font-bold text-amber-800 text-[10px] md:text-sm">ရက်</span></div>
@@ -271,7 +299,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
           </div>
         )}
 
-        {/* မှတ်တမ်း UI နှင့် Print ခလုတ်အသစ် */}
+        {/* မှတ်တမ်း UI */}
         {activeTab === 'records' && (
           <div className="space-y-2 md:space-y-6">
              <div className="relative w-full md:max-w-sm"><span className="absolute left-2.5 top-1.5 md:top-3 text-slate-400 text-xs md:text-base">🔍</span><input type="text" className="w-full pl-7 pr-3 py-1.5 md:py-3 bg-white border border-slate-200 rounded-lg md:rounded-xl shadow-sm outline-none focus:border-amber-500 text-[10px] md:text-base" placeholder="ဘောက်ချာ / အမည် ရှာရန်..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
@@ -299,8 +327,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     <div className="flex gap-1 md:gap-2 justify-end w-full md:w-auto">
                        {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
                        
-                       {/* 🌟 ဤနေရာတွင် Print Modal ကို ခေါ်မည့် ခလုတ် ပြောင်းထားသည် 🌟 */}
-                       <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors">🖨️ ဘောက်ချာထုတ်မည်</button>
+                       <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ ဘောက်ချာထုတ်မည်</button>
                        
                        {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
                     </div>
@@ -313,12 +340,12 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         )}
       </div>
 
-      {/* 🌟 🌟 🌟 PRINT MODAL (ရွေးချယ်ရန်) 🌟 🌟 🌟 */}
+      {/* 🌟 PRINT MODAL 🌟 */}
       {selectedSaleForPrint && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4 flex justify-between items-center">
-               <h3 className="text-white font-black text-lg flex items-center gap-2"><span>🖨️</span> ဘောက်ချာ အကြမ်းဖျင်း</h3>
+               <h3 className="text-white font-black text-lg flex items-center gap-2"><span>🖨️</span> ဘောက်ချာ ရွေးချယ်ရန်</h3>
                <button onClick={() => setSelectedSaleForPrint(null)} className="text-white/80 hover:text-white font-bold text-xl">✕</button>
             </div>
             <div className="p-6 bg-slate-50">
@@ -336,34 +363,35 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                </div>
 
                <div className="flex justify-between items-end border-t-2 border-dashed border-slate-300 pt-4">
-                 <span className="text-slate-600 font-bold text-lg">Total:</span>
+                 <span className="text-slate-600 font-bold text-lg">Total Amount:</span>
                  <span className="text-3xl font-black text-emerald-600">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
                </div>
             </div>
-            <div className="p-4 bg-white border-t flex flex-wrap gap-2">
-               <button onClick={() => setSelectedSaleForPrint(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 text-sm">ပိတ်မည်</button>
-               <button onClick={() => handlePrint('A4')} className="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md text-sm">📄 A4 ထုတ်မည် / PDF</button>
-               <button onClick={() => handlePrint('THERMAL')} className="flex-1 py-3 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 shadow-md text-sm">🖨️ BT Printer</button>
+            <div className="p-4 bg-white border-t grid grid-cols-2 gap-2">
+               {/* 🌟 ပုံအဖြစ် သိမ်းမည် ခလုတ် 🌟 */}
+               <button onClick={handleSaveAsImage} className="py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 shadow-md text-sm">🖼️ ပုံအဖြစ် သိမ်းမည်</button>
+               <button onClick={() => handlePrint('A4')} className="py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md text-sm">📄 A4 / PDF ထုတ်မည်</button>
+               <button onClick={() => handlePrint('THERMAL')} className="py-3 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 shadow-md text-sm col-span-2">🖨️ BT Thermal Printer (58/80mm)</button>
+               <button onClick={() => setSelectedSaleForPrint(null)} className="py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 text-sm col-span-2">ပိတ်မည်</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🌟 🌟 🌟 PRINT TEMPLATES (ဖျောက်ထားပြီး Print နှိပ်မှသာ ပေါ်မည်) 🌟 🌟 🌟 */}
+      {/* 🌟 PRINT TEMPLATES 🌟 */}
       {selectedSaleForPrint && (
-        <div className="hidden print:block bg-white text-black print:w-full print:m-0 print:p-0 absolute top-0 left-0 w-full h-full z-[9999]">
+        <div className={`print:block bg-white text-black print:w-full print:m-0 print:p-0 absolute top-0 left-0 w-full z-[9999] ${printType === 'IMAGE' ? 'block' : 'hidden'}`}>
           
-          {/* ----- A4 TEMPLATE ----- */}
-          {printType === 'A4' && (
-            <div className="max-w-[800px] mx-auto p-10 bg-white">
+          {/* ----- A4 & IMAGE TEMPLATE ----- */}
+          {(printType === 'A4' || printType === 'IMAGE') && (
+            <div ref={printType === 'IMAGE' ? receiptRef : null} className="max-w-[800px] mx-auto p-10 bg-white">
               {/* Header Section */}
               <div className="flex flex-col items-center text-center border-b-2 border-black pb-6 mb-6">
-                <img src="/logo.png" alt="SSY Logo" className="w-24 h-24 object-contain mb-2 grayscale" />
-                <h1 className="text-3xl font-black mb-1 tracking-wider uppercase">"စက်စက်ယို" စားသောက်ကုန်</h1>
-                <p className="text-sm font-bold text-gray-600">No.(TaTa 43/32), 54 B, 124x125, PyigyiTagon, Mandalay.</p>
-                <p className="text-sm font-bold text-gray-600">Ph: 09-455557980</p>
+                <img src="/logo.png" alt="Logo" className="w-28 h-28 object-contain mb-3" />
+                <h1 className="text-3xl font-black mb-2 tracking-wider">"စက်စက်ယို" စားသောက်ကုန်</h1>
+                <p className="text-sm font-bold text-gray-700">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 ကြား၊ မန္တလေးမြို့။</p>
+                <p className="text-sm font-bold text-gray-700">Ph: 09-455557980</p>
                 
-                {/* Barcode Generated via TEC-IT free API */}
                 <div className="mt-4">
                   <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-12" />
                 </div>
@@ -372,9 +400,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               {/* Info Section */}
               <div className="flex justify-between mb-8 text-sm font-bold">
                 <div className="space-y-2">
-                  <div><span className="w-32 inline-block text-gray-600">Invoice No:</span> <span className="font-black">#{selectedSaleForPrint.id}</span></div>
-                  <div><span className="w-32 inline-block text-gray-600">Date:</span> <span>{selectedSaleForPrint.date}</span></div>
-                  <div><span className="w-32 inline-block text-gray-600">Customer Name:</span> <span className="font-black text-base">{selectedSaleForPrint.customerName}</span></div>
+                  <div><span className="w-32 inline-block text-gray-600">Invoice No:</span> <span className="font-black text-base">#{selectedSaleForPrint.id}</span></div>
+                  <div><span className="w-32 inline-block text-gray-600">Date & Time:</span> <span className="font-black text-blue-800">{selectedSaleForPrint.date}</span></div>
+                  <div><span className="w-32 inline-block text-gray-600">Customer Name:</span> <span className="font-black text-lg">{selectedSaleForPrint.customerName}</span></div>
                   <div><span className="w-32 inline-block text-gray-600">Address:</span> <span>{selectedSaleForPrint.address || '-'}</span></div>
                   <div><span className="w-32 inline-block text-gray-600">Phone:</span> <span>{selectedSaleForPrint.phone || '-'}</span></div>
                 </div>
@@ -382,8 +410,8 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   <div><span className="text-gray-600 mr-2">Staff:</span> <span>{selectedSaleForPrint.salespersonName}</span></div>
                   <div><span className="text-gray-600 mr-2">Payment Method:</span> <span className="font-black uppercase">{selectedSaleForPrint.paymentMethod}</span></div>
                   {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
-                    <div className="text-red-600 border border-red-600 px-2 py-1 rounded inline-block mt-1">
-                      Due Date: <span className="font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</span>
+                    <div className="text-red-600 border-2 border-red-600 px-3 py-1.5 rounded-lg inline-block mt-2">
+                      Due Date: <span className="font-black text-lg">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</span>
                     </div>
                   )}
                 </div>
@@ -393,11 +421,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               <table className="w-full text-left mb-6 border-collapse">
                 <thead>
                   <tr className="border-b-2 border-black">
-                    <th className="py-2 font-bold w-12 text-center">No.</th>
-                    <th className="py-2 font-bold">Description</th>
-                    <th className="py-2 font-bold text-center w-24">Qty</th>
-                    <th className="py-2 font-bold text-right w-32">Price (Ks)</th>
-                    <th className="py-2 font-bold text-right w-32">Amount (Ks)</th>
+                    <th className="py-2 font-bold w-12 text-center">စဉ်</th>
+                    <th className="py-2 font-bold">အမျိုးအစားအမည်</th>
+                    <th className="py-2 font-bold text-center w-24">အရေအတွက်</th>
+                    <th className="py-2 font-bold text-right w-32">နှုန်း (Ks)</th>
+                    <th className="py-2 font-bold text-right w-32">သင့်ငွေ (Ks)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -414,27 +442,27 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               </table>
 
               {/* Totals Section */}
-              <div className="flex justify-end mb-16">
-                <div className="w-72 space-y-2 text-sm font-bold">
-                  <div className="flex justify-between border-b border-gray-200 pb-1">
-                    <span className="text-gray-600">Subtotal:</span>
+              <div className="flex justify-end mb-16 mt-6">
+                <div className="w-80 space-y-3 text-base font-bold bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <div className="flex justify-between border-b border-gray-200 pb-2">
+                    <span className="text-gray-600">Subtotal (စုစုပေါင်း):</span>
                     <span>{selectedSaleForPrint.totalAmount.toLocaleString()} Ks</span>
                   </div>
                   {Number(selectedSaleForPrint.discountPercent) > 0 && (
-                     <div className="flex justify-between border-b border-gray-200 pb-1 text-red-600">
-                       <span>Discount ({selectedSaleForPrint.discountPercent}%):</span>
-                       <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()} Ks</span>
+                     <div className="flex justify-between border-b border-gray-200 pb-2 text-red-600">
+                       <span>Discount (လျှော့ဈေး {selectedSaleForPrint.discountPercent}%):</span>
+                       <span className="font-black">- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()} Ks</span>
                      </div>
                   )}
                   {Number(selectedSaleForPrint.taxPercent) > 0 && (
-                     <div className="flex justify-between border-b border-gray-200 pb-1 text-blue-600">
-                       <span>Tax ({selectedSaleForPrint.taxPercent}%):</span>
-                       <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()} Ks</span>
+                     <div className="flex justify-between border-b border-gray-200 pb-2 text-blue-600">
+                       <span>Tax (အခွန် {selectedSaleForPrint.taxPercent}%):</span>
+                       <span className="font-black">+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()} Ks</span>
                      </div>
                   )}
                   <div className="flex justify-between pt-2">
-                    <span className="text-xl font-black">Total Amount:</span>
-                    <span className="text-xl font-black">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
+                    <span className="text-xl font-black text-green-700">Total (ကျသင့်ငွေ):</span>
+                    <span className="text-2xl font-black text-green-700">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
                   </div>
                 </div>
               </div>
@@ -447,37 +475,37 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             </div>
           )}
 
-          {/* ----- THERMAL 80mm TEMPLATE ----- */}
+          {/* ----- THERMAL 58mm/80mm TEMPLATE ----- */}
           {printType === 'THERMAL' && (
-            <div className="w-[80mm] mx-auto p-4 bg-white text-black font-sans text-xs">
-              <div className="text-center mb-4 border-b-2 border-dashed border-black pb-4">
-                <img src="/logo.png" alt="SSY Logo" className="w-16 h-16 object-contain mx-auto mb-1 grayscale" />
-                <h2 className="text-lg font-black uppercase tracking-wider mb-1">"စက်စက်ယို" စားသောက်ကုန်</h2>
-                <p className="text-[10px] leading-tight">No. 54 B, 124x125, PyigyiTagon</p>
+            <div className="w-full max-w-[80mm] mx-auto p-2 bg-white text-black font-sans text-xs">
+              <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
+                <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain mx-auto mb-1 grayscale" />
+                <h2 className="text-base font-black tracking-wider mb-1">"စက်စက်ယို"</h2>
+                <p className="text-[10px] leading-tight">မန္တလေးမြို့</p>
                 <p className="text-[10px] leading-tight mb-2">Ph: 09-455557980</p>
                 <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-8 mx-auto" />
               </div>
 
-              <div className="mb-3 text-[11px] font-bold space-y-1 border-b-2 border-dashed border-black pb-3">
+              <div className="mb-2 text-[11px] font-bold space-y-1 border-b-2 border-dashed border-black pb-2">
                 <div className="flex justify-between"><span>Inv:</span> <span>#{selectedSaleForPrint.id}</span></div>
                 <div className="flex justify-between"><span>Date:</span> <span>{selectedSaleForPrint.date}</span></div>
-                <div className="flex justify-between"><span>Cust:</span> <span className="uppercase">{selectedSaleForPrint.customerName}</span></div>
+                <div className="flex justify-between"><span>Cust:</span> <span className="uppercase truncate max-w-[120px] text-right">{selectedSaleForPrint.customerName}</span></div>
                 <div className="flex justify-between"><span>Pay:</span> <span className="uppercase">{selectedSaleForPrint.paymentMethod}</span></div>
                 {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
                   <div className="flex justify-between text-black border border-black p-1 mt-1 text-center font-black">
-                    DUE DATE: {calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}
+                    DUE: {calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}
                   </div>
                 )}
               </div>
 
-              <div className="mb-3 border-b-2 border-dashed border-black pb-3">
-                <div className="flex justify-between font-black border-b border-black pb-1 mb-2 text-[11px]">
-                  <span className="w-2/3">Description</span>
-                  <span className="w-1/3 text-right">Amount</span>
+              <div className="mb-2 border-b-2 border-dashed border-black pb-2">
+                <div className="flex justify-between font-black border-b border-black pb-1 mb-1 text-[11px]">
+                  <span className="w-2/3">Item</span>
+                  <span className="w-1/3 text-right">Amt</span>
                 </div>
                 {selectedSaleForPrint.items.map((item, idx) => (
-                  <div key={idx} className="mb-2 text-[11px]">
-                    <div className="font-bold">{item.product.category} ({item.product.gram}g)</div>
+                  <div key={idx} className="mb-1.5 text-[11px]">
+                    <div className="font-bold truncate">{item.product.category} ({item.product.gram}g)</div>
                     <div className="flex justify-between text-[10px]">
                       <span>{item.quantity} x {item.product.price}</span>
                       <span className="font-black">{item.subtotal.toLocaleString()}</span>
@@ -486,10 +514,10 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 ))}
               </div>
 
-              <div className="space-y-1 text-[11px] font-bold border-b-2 border-dashed border-black pb-3 mb-4">
+              <div className="space-y-1 text-[11px] font-bold border-b-2 border-dashed border-black pb-2 mb-3">
                 <div className="flex justify-between"><span>Subtotal:</span> <span>{selectedSaleForPrint.totalAmount.toLocaleString()}</span></div>
                 {Number(selectedSaleForPrint.discountPercent) > 0 && (
-                  <div className="flex justify-between"><span>Discount ({selectedSaleForPrint.discountPercent}%):</span> <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span>Disc ({selectedSaleForPrint.discountPercent}%):</span> <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()}</span></div>
                 )}
                 {Number(selectedSaleForPrint.taxPercent) > 0 && (
                   <div className="flex justify-between"><span>Tax ({selectedSaleForPrint.taxPercent}%):</span> <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()}</span></div>
@@ -500,8 +528,8 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               </div>
 
               <div className="text-center text-[10px] font-bold">
-                <p>Thank you for your business!</p>
-                <p>--- SSY ERP ---</p>
+                <p>Thank you!</p>
+                <p>--- စက်စက်ယို ---</p>
               </div>
             </div>
           )}
