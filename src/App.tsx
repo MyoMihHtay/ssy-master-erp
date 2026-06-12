@@ -41,10 +41,9 @@ export interface SaleRecord {
   paymentMethod: string; creditTerms?: string; isPaid: boolean; 
 }
 
-export interface Customer {
-  id: string; name: string; phone: string; shopType: string; address: string; gpsLocation: string;
-}
+export interface Customer { id: string; name: string; phone: string; shopType: string; address: string; gpsLocation: string; }
 
+// 🌟 Local Storage မှ သိမ်းဆည်းသည့် မူလစနစ် (အခြားစာရင်းများအတွက် ဆက်သုံးမည်) 🌟
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
     try { const item = window.localStorage.getItem(key); return item ? JSON.parse(item) : initialValue; } catch (error) { return initialValue; }
@@ -52,6 +51,45 @@ function useLocalStorage<T>(key: string, initialValue: T) {
   const setValue = (value: T | ((val: T) => T)) => {
     try { const valueToStore = value instanceof Function ? value(storedValue) : value; setStoredValue(valueToStore); window.localStorage.setItem(key, JSON.stringify(valueToStore)); } catch (error) { console.error(error); }
   };
+  return [storedValue, setValue] as const;
+}
+
+// 🌟 SUPABASE CLOUD နှင့် တိုက်ရိုက်ချိတ်ဆက်မည့် "ပေါင်းကူးတံတား" Hook အသစ် 🌟
+function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue: T[]) {
+  const [storedValue, setStoredValue] = useState<T[]>(initialValue);
+
+  useEffect(() => {
+    const loadData = async () => {
+      // ၁။ Cloud ပေါ်မှ Data များကို ဆွဲယူမည်
+      const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: true });
+      if (error) {
+         console.error(`Error loading ${tableName}:`, error);
+         return;
+      }
+      if (data && data.length > 0) {
+        setStoredValue(data as T[]);
+      } else if (initialValue.length > 0) {
+        // ၂။ Table အလွတ်ဖြစ်နေပါက နမူနာ Data များကို Cloud ပေါ်သို့ ထည့်သွင်းမည်
+        await supabase.from(tableName).insert(initialValue);
+        setStoredValue(initialValue);
+      }
+    };
+    loadData();
+  }, [tableName]);
+
+  const setValue = async (value: T[] | ((val: T[]) => T[])) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore); // မျက်နှာပြင်တွင် ချက်ချင်းပြောင်းလဲမည်
+      
+      // ၃။ ပြောင်းလဲသွားသော Data အားလုံးကို Cloud ပေါ်သို့ တိုက်ရိုက် (Upsert) သိမ်းဆည်းမည်
+      const { error } = await supabase.from(tableName).upsert(valueToStore);
+      if (error) console.error("Supabase Sync Error:", error);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+  
   return [storedValue, setValue] as const;
 }
 
@@ -68,12 +106,13 @@ export default function App() {
     { id: 7, username: 'sale', password: '123', role: 'sales', displayName: 'Sales Person' },
   ]);
 
-  const [inventoryItems, setInventoryItems] = useLocalStorage<InventoryItem[]>('ssy_inventory', [
+  // 🚀 ကုန်လှောင်ရုံ နှင့် ကုန်ချော စာရင်းများကို CLOUD DATABASE စနစ်သို့ ပြောင်းလဲချိတ်ဆက်လိုက်ပါပြီ 🚀
+  const [inventoryItems, setInventoryItems] = useSupabaseTable<InventoryItem>('ssy_inventory', [
     { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM' },
     { id: 3, code: 'PK-001', name: 'ပလက်စတစ်အိတ် (၇x၅)', category: 'Packaging', unit: 'ခု', inStock: 5000, warehouse: 'PKG' },
   ]);
 
-  const [finishedGoods, setFinishedGoods] = useLocalStorage<FinishedGoodItem[]>('ssy_finished_goods', [
+  const [finishedGoods, setFinishedGoods] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', [
     { id: 101, category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, stockQty: 50 },
   ]);
 
@@ -157,13 +196,9 @@ export default function App() {
   return (
     <div className="flex flex-col md:flex-row w-full bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible" style={{ height: '100dvh' }}>
       <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative">
-         
-         {/* 🌟 Sidebar ကို အပေါ်ဘက်တွင် နေရာယူစေခြင်း 🌟 */}
          <div className="flex-1 overflow-hidden">
            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
          </div>
-         
-         {/* 🌟 Cloud Connection Status (အမြဲတမ်း အောက်ခြေတွင် ပေါ်နေအောင် ဖမ်းချုပ်ထားသည်) 🌟 */}
          <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
            {isCloudConnected ? (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
