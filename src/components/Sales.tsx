@@ -13,10 +13,14 @@ interface SalesProps {
   onDeleteSale: (saleId: string) => void;
 }
 
+// 🌟 Due Date တွက်ချက်ပေးမည့် Function အသစ် (အချိန်ပါလာလည်း Error မတက်အောင် ပြင်ထားသည်) 🌟
 const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
   if (!terms) return '';
-  const parts = saleDateStr.split('/');
+  // အချိန်ကို ဖယ်ထုတ်ပြီး ရက်စွဲကိုပဲ ယူမည် ("12/06/2026 10:09 PM" -> "12/06/2026")
+  const dateOnly = saleDateStr.split(' ')[0];
+  const parts = dateOnly.split('/');
   if (parts.length !== 3) return terms;
+  
   const date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
   
   let addDays = 0;
@@ -131,10 +135,8 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
   const openPrintModal = (sale: SaleRecord) => {
     // အကယ်၍ အရင် version မှာ အချိန်မပါခဲ့ရင် (ဥပမာ "12/06/2026" သီးသန့်ဖြစ်နေရင်) အချိန်တုတစ်ခု ပေါင်းထည့်ပေးမည်
-    if (!sale.date.includes(':')) {
-       sale.date = `${sale.date} 12:00 PM`;
-    }
-    setSelectedSaleForPrint(sale);
+    const printSale = { ...sale, date: sale.date.includes(':') ? sale.date : `${sale.date} 12:00 PM` };
+    setSelectedSaleForPrint(printSale);
   };
 
   const handlePrint = (type: 'A4' | 'THERMAL') => {
