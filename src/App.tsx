@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './supabase'; // 🌟 Supabase ကို ချိတ်ဆက်ခြင်း
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
@@ -40,14 +41,8 @@ export interface SaleRecord {
   paymentMethod: string; creditTerms?: string; isPaid: boolean; 
 }
 
-// 🌟 Customer Database (CRM) အတွက် Interface အသစ် 🌟
 export interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  shopType: string;
-  address: string;
-  gpsLocation: string;
+  id: string; name: string; phone: string; shopType: string; address: string; gpsLocation: string;
 }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
@@ -61,6 +56,9 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 }
 
 export default function App() {
+  // 🌟 Cloud ချိတ်ဆက်မှု အောင်မြင်ခြင်း ရှိ/မရှိ သိမ်းဆည်းမည့် State 🌟
+  const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
+
   const [accounts, setAccounts] = useLocalStorage<AccountItem[]>('ssy_accounts', [
     { id: 1, username: 'md', password: '123', role: 'md', displayName: 'Managing Director (MD)' },
     { id: 2, username: 'manager', password: '123', role: 'manager', displayName: 'စက်ရုံမှူး (Manager)' },
@@ -88,9 +86,23 @@ export default function App() {
 
   const [recipes, setRecipes] = useLocalStorage<Recipe[]>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', []);
-  
-  // 🌟 ဖောက်သည်စာရင်း (Customers Database) 🌟
   const [customers, setCustomers] = useLocalStorage<Customer[]>('ssy_customers', []);
+
+  // 🌟 App စပွင့်သည်နှင့် Supabase သို့ ချိတ်ဆက်စမ်းသပ်မည့် လုပ်ဆောင်ချက် 🌟
+  useEffect(() => {
+    const testSupabaseConnection = async () => {
+      try {
+        // ssy_inventory Table ကို လှမ်းခေါ်စမ်းသပ်ကြည့်မည်
+        const { error } = await supabase.from('ssy_inventory').select('id').limit(1);
+        if (!error) {
+          setIsCloudConnected(true); // ချိတ်ဆက်မှု အောင်မြင်ပါက အစိမ်းရောင် ပြောင်းမည်
+        }
+      } catch (err) {
+        console.error("Connection failed", err);
+      }
+    };
+    testSupabaseConnection();
+  }, []);
 
   const handleStockInAndExpense = () => { };
   const handleConfirmProduction = () => { };
@@ -98,7 +110,6 @@ export default function App() {
   const handleProcurementComplete = () => { };
 
   const handleCheckoutSale = (newSale: SaleRecord) => {
-    // 1. FG မှ နှုတ်မည်
     setFinishedGoods(prev => {
        let updated = [...prev];
        newSale.items.forEach(saleItem => {
@@ -110,28 +121,21 @@ export default function App() {
        return updated;
     });
 
-    // 2. ဝင်ငွေ ပေါင်းထည့်မည်
     if (newSale.isPaid) {
       setExpenses(prev => [...prev, {
         id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ (Sales Revenue)', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income'
       }]);
     }
 
-    // 🌟 3. ဖောက်သည်အချက်အလက်များကို Database သို့ Auto-Save သို့မဟုတ် Update လုပ်မည် 🌟
     setCustomers(prev => {
       const existingIdx = prev.findIndex(c => c.name.toLowerCase() === newSale.customerName.toLowerCase());
       const customerData: Customer = {
         id: existingIdx !== -1 ? prev[existingIdx].id : `CUST-${Date.now()}`,
-        name: newSale.customerName,
-        phone: newSale.phone || '',
-        shopType: newSale.shopType || '',
-        address: newSale.address || '',
-        gpsLocation: newSale.gps || ''
+        name: newSale.customerName, phone: newSale.phone || '', shopType: newSale.shopType || '',
+        address: newSale.address || '', gpsLocation: newSale.gps || ''
       };
       if (existingIdx !== -1) {
-        const updated = [...prev];
-        updated[existingIdx] = customerData;
-        return updated;
+        const updated = [...prev]; updated[existingIdx] = customerData; return updated;
       } else {
         return [...prev, customerData];
       }
@@ -155,11 +159,26 @@ export default function App() {
 
   return (
     <div className="flex flex-col md:flex-row w-full bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible" style={{ height: '100dvh' }}>
-      <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl">
+      <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col">
          <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
+         
+         {/* 🌟 Cloud Connection Status ပြသမည့်နေရာ 🌟 */}
+         <div className="p-4 mt-auto border-t border-gray-800 bg-gray-900">
+           {isCloudConnected ? (
+             <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
+               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+               ☁️ Cloud ချိတ်ဆက်ထားသည်
+             </div>
+           ) : (
+             <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-500 bg-amber-500/10 py-2 rounded-lg border border-amber-500/20">
+               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+               ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
+             </div>
+           )}
+         </div>
       </div>
+      
       <main className="flex-1 h-full p-4 md:p-8 pt-6 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
-        {/* 🌟 Sales ကို Customers Data ပါ ထည့်သွင်းပေးလိုက်ပါပြီ 🌟 */}
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
