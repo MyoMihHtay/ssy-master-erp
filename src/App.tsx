@@ -55,7 +55,6 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 
 function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue: T[]) {
   const [storedValue, setStoredValue] = useState<T[]>(initialValue);
-  // 🌟 Data ဆွဲယူနေကြောင်း သိရှိရန် Loading State အသစ် 🌟
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -69,7 +68,7 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
       } catch (err) {
         console.error("Supabase load error:", err);
       } finally {
-        setIsLoading(false); // Data ရယူပြီးပါက Loading ပိတ်မည်
+        setIsLoading(false); 
       }
     };
     loadData();
@@ -179,7 +178,6 @@ export default function App() {
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
-  // 🌟 Data များ အကုန်ဆွဲယူပြီးသည်အထိ Loading Screen ပြသမည် 🌟
   const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading;
   if (isAnyLoading) {
     return (
@@ -191,28 +189,34 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
-      {/* Sidebar - Mobile တွင် အပေါ်သို့တက်မည်၊ PC တွင် ဘယ်ဘက်ကပ်မည် */}
-      <div className="w-full md:w-64 h-auto md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative">
-         <div className="flex-1 overflow-y-auto md:overflow-hidden">
+    /* 🌟 Mobile မှာဆိုရင် အလိုအလျောက် အောက်ဘက်ကို Scroll ဆွဲချလို့ရအောင် min-h-screen သုံးထားပါတယ်။
+       ကွန်ပျူတာ (md:) မှာဆိုရင်တော့ Mac အတိုင်း မျက်နှာပြင်တစ်ခုလုံး အပြည့်အစုံပေါ်အောင် md:h-screen သုံးပေးထားပါတယ်။ 🌟 */
+    <div className="flex flex-col md:flex-row w-full bg-gray-50 min-h-screen md:h-screen md:overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
+      
+      {/* 🌟 Sidebar Area 🌟 */}
+      <div className="w-full md:w-64 bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative md:h-full">
+         <div className="flex-1 overflow-auto md:overflow-y-auto">
            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
          </div>
-         {/* Cloud Status */}
-         <div className="p-3 md:p-4 border-t border-gray-800 bg-gray-900 shrink-0 hidden md:block">
+         
+         {/* 🌟 Cloud Status ကို ဖုန်းမှာကော ကွန်ပျူတာမှာကော ပေါ်အောင် ပြန်ပြင်ထားသည် 🌟 */}
+         <div className="p-3 md:p-4 border-t border-gray-800 bg-gray-900 shrink-0">
            {isCloudConnected ? (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
-               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>☁️ Cloud ချိတ်ဆက်ထားသည်
+               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+               ☁️ Cloud ချိတ်ဆက်ထားသည်
              </div>
            ) : (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-500 bg-amber-500/10 py-2 rounded-lg border border-amber-500/20">
-               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
+               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+               ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
              </div>
            )}
          </div>
       </div>
       
-      {/* Main Content - Scrollable Area */}
-      <main className="flex-1 h-full p-2 md:p-8 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto relative z-0">
+      {/* 🌟 Main Content Area 🌟 */}
+      <main className="flex-1 w-full p-2 md:p-8 pt-6 md:overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
