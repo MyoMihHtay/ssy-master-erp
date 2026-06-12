@@ -55,13 +55,22 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 
 function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue: T[]) {
   const [storedValue, setStoredValue] = useState<T[]>(initialValue);
+  // 🌟 Data ဆွဲယူနေကြောင်း သိရှိရန် Loading State အသစ် 🌟
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const loadData = async () => {
-      const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: true });
-      if (error) { console.error(`Error loading ${tableName}:`, error); return; }
-      if (data && data.length > 0) { setStoredValue(data as T[]); } 
-      else if (initialValue.length > 0) { await supabase.from(tableName).insert(initialValue); setStoredValue(initialValue); }
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: true });
+        if (error) { console.error(`Error loading ${tableName}:`, error); }
+        else if (data && data.length > 0) { setStoredValue(data as T[]); } 
+        else if (initialValue.length > 0) { await supabase.from(tableName).insert(initialValue); setStoredValue(initialValue); }
+      } catch (err) {
+        console.error("Supabase load error:", err);
+      } finally {
+        setIsLoading(false); // Data ရယူပြီးပါက Loading ပိတ်မည်
+      }
     };
     loadData();
   }, [tableName]);
@@ -75,7 +84,7 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
     } catch (error) { console.error(error); }
   };
   
-  return [storedValue, setValue] as const;
+  return [storedValue, setValue, isLoading] as const;
 }
 
 export default function App() {
@@ -91,19 +100,18 @@ export default function App() {
     { id: 7, username: 'sale', password: '123', role: 'sales', displayName: 'Sales Person' },
   ]);
 
-  const [inventoryItems, setInventoryItems] = useSupabaseTable<InventoryItem>('ssy_inventory', [
+  const [inventoryItems, setInventoryItems, invLoading] = useSupabaseTable<InventoryItem>('ssy_inventory', [
     { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM' },
     { id: 3, code: 'PK-001', name: 'ပလက်စတစ်အိတ် (၇x၅)', category: 'Packaging', unit: 'ခု', inStock: 5000, warehouse: 'PKG' },
   ]);
 
-  const [finishedGoods, setFinishedGoods] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', [
+  const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', [
     { id: 101, category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, stockQty: 50 },
   ]);
 
-  // 🚀 အရောင်း၊ ဘဏ္ဍာရေး၊ ဖောက်သည် စာရင်းများကို CLOUD ပေါ်သို့ ပြောင်းလဲချိတ်ဆက်လိုက်ပါပြီ 🚀
-  const [salesRecords, setSalesRecords] = useSupabaseTable<SaleRecord>('ssy_sales_records', []); 
-  const [expenses, setExpenses] = useSupabaseTable<ExpenseItem>('ssy_expenses', []);
-  const [customers, setCustomers] = useSupabaseTable<Customer>('ssy_customers', []);
+  const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', []); 
+  const [expenses, setExpenses, expLoading] = useSupabaseTable<ExpenseItem>('ssy_expenses', []);
+  const [customers, setCustomers, custLoading] = useSupabaseTable<Customer>('ssy_customers', []);
 
   const [purchaseRequests, setPurchaseRequests] = useLocalStorage<PurchaseRequest[]>('ssy_pr', []);
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
@@ -139,7 +147,7 @@ export default function App() {
 
     if (newSale.isPaid) {
       setExpenses(prev => [...prev, {
-        id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ (SALES REVENUE)', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income'
+        id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income'
       }]);
     }
 
@@ -163,7 +171,7 @@ export default function App() {
     if (saleToUpdate && !saleToUpdate.isPaid) {
       setSalesRecords(salesRecords.map(s => s.id === saleId ? { ...s, isPaid: true } : s));
       setExpenses(prev => [...prev, {
-        id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ (CREDIT COLLECTED)', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income'
+        id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income'
       }]);
       alert("✅ ငွေလက်ခံရရှိကြောင်း အတည်ပြုပြီး Finance စာရင်းသို့ ဝင်ငွေပေါင်းထည့်ပြီးပါပြီ။");
     }
@@ -171,28 +179,40 @@ export default function App() {
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
+  // 🌟 Data များ အကုန်ဆွဲယူပြီးသည်အထိ Loading Screen ပြသမည် 🌟
+  const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading;
+  if (isAnyLoading) {
+    return (
+      <div className="flex w-full h-screen items-center justify-center bg-gray-50 flex-col gap-4">
+         <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+         <p className="font-bold text-slate-500">Cloud Data ချိတ်ဆက်နေပါသည်...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col md:flex-row w-full bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible" style={{ height: '100dvh' }}>
-      <div className="w-full md:w-64 md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative">
-         <div className="flex-1 overflow-hidden">
+    <div className="flex flex-col md:flex-row w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
+      {/* Sidebar - Mobile တွင် အပေါ်သို့တက်မည်၊ PC တွင် ဘယ်ဘက်ကပ်မည် */}
+      <div className="w-full md:w-64 h-auto md:h-full bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative">
+         <div className="flex-1 overflow-y-auto md:overflow-hidden">
            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
          </div>
-         <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
+         {/* Cloud Status */}
+         <div className="p-3 md:p-4 border-t border-gray-800 bg-gray-900 shrink-0 hidden md:block">
            {isCloudConnected ? (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
-               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-               ☁️ Cloud ချိတ်ဆက်ထားသည်
+               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>☁️ Cloud ချိတ်ဆက်ထားသည်
              </div>
            ) : (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-500 bg-amber-500/10 py-2 rounded-lg border border-amber-500/20">
-               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-               ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
+               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
              </div>
            )}
          </div>
       </div>
       
-      <main className="flex-1 h-full p-4 md:p-8 pt-6 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
+      {/* Main Content - Scrollable Area */}
+      <main className="flex-1 h-full p-2 md:p-8 overflow-y-auto overflow-x-hidden print:overflow-visible print:p-0 print:w-full print:h-auto relative z-0">
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
