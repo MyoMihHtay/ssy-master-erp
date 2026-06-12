@@ -88,6 +88,7 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
 
 export default function App() {
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false); // 🌟 Mobile Menu ဖွင့်/ပိတ် State 🌟
 
   const [accounts, setAccounts] = useLocalStorage<AccountItem[]>('ssy_accounts', [
     { id: 1, username: 'md', password: '123', role: 'md', displayName: 'Managing Director (MD)' },
@@ -189,34 +190,55 @@ export default function App() {
   }
 
   return (
-    /* 🌟 Mobile မှာဆိုရင် အလိုအလျောက် အောက်ဘက်ကို Scroll ဆွဲချလို့ရအောင် min-h-screen သုံးထားပါတယ်။
-       ကွန်ပျူတာ (md:) မှာဆိုရင်တော့ Mac အတိုင်း မျက်နှာပြင်တစ်ခုလုံး အပြည့်အစုံပေါ်အောင် md:h-screen သုံးပေးထားပါတယ်။ 🌟 */
-    <div className="flex flex-col md:flex-row w-full bg-gray-50 min-h-screen md:h-screen md:overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible">
+    <div className="flex w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative">
       
-      {/* 🌟 Sidebar Area 🌟 */}
-      <div className="w-full md:w-64 bg-gray-900 print:hidden flex-shrink-0 z-50 shadow-xl flex flex-col relative md:h-full">
-         <div className="flex-1 overflow-auto md:overflow-y-auto">
-           <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
+      {/* 🌟 Mobile Top App Bar (ဖုန်းမှာပဲ ပေါ်မည်) 🌟 */}
+      <div className="md:hidden fixed top-0 left-0 w-full bg-gray-900 text-white z-50 p-4 flex justify-between items-center shadow-md">
+        <h1 className="font-black text-xl tracking-wider">SSY <span className="text-emerald-400">ERP</span></h1>
+        <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">
+          ☰
+        </button>
+      </div>
+
+      {/* 🌟 Sidebar 🌟 
+          PC တွင်: ဘယ်ဘက်ခြမ်းမှာ အမြဲပေါ်နေမည် (w-64)
+          Mobile တွင်: Menu ခလုတ်နှိပ်မှသာ ဘေးမှ ထွက်လာမည် (Off-canvas)
+      */}
+      <div className={`fixed md:relative top-0 left-0 h-full bg-gray-900 print:hidden flex-shrink-0 z-[100] shadow-2xl flex flex-col transition-transform duration-300 transform md:translate-x-0 w-64 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+         
+         {/* Mobile တွင် Menu ကို ပိတ်ရန် (X) ခလုတ် */}
+         <div className="md:hidden p-4 text-right">
+           <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white text-2xl font-black">✕</button>
+         </div>
+
+         <div className="flex-1 overflow-y-auto">
+           {/* Mobile မှာ Menu ရွေးပြီးရင် အလိုအလျောက် ပိတ်သွားအောင် onClick ကို တွဲထည့်ထားသည် */}
+           <div onClick={() => setIsMobileMenuOpen(false)}>
+             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
+           </div>
          </div>
          
-         {/* 🌟 Cloud Status ကို ဖုန်းမှာကော ကွန်ပျူတာမှာကော ပေါ်အောင် ပြန်ပြင်ထားသည် 🌟 */}
-         <div className="p-3 md:p-4 border-t border-gray-800 bg-gray-900 shrink-0">
+         <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
            {isCloudConnected ? (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
-               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-               ☁️ Cloud ချိတ်ဆက်ထားသည်
+               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>☁️ Cloud ချိတ်ဆက်ထားသည်
              </div>
            ) : (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-500 bg-amber-500/10 py-2 rounded-lg border border-amber-500/20">
-               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-               ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
+               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
              </div>
            )}
          </div>
       </div>
+
+      {/* Mobile တွင် Menu ပွင့်နေစဉ် အပြင်ဘက်ကို နှိပ်ပါက ပိတ်သွားစေရန် အမည်းရောင် Overlay */}
+      {isMobileMenuOpen && (
+        <div onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-black/60 z-[90] md:hidden backdrop-blur-sm"></div>
+      )}
       
       {/* 🌟 Main Content Area 🌟 */}
-      <main className="flex-1 w-full p-2 md:p-8 pt-6 md:overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
+      {/* Mobile တွင် အပေါ် Top Bar နေရာချန်ထားရန် pt-20 ထည့်ထားသည် */}
+      <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
@@ -226,6 +248,7 @@ export default function App() {
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
       </main>
+
     </div>
   );
 }
