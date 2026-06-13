@@ -134,44 +134,49 @@ export default function App() {
   const handleStockInAndExpense = () => { };
 
   // 🌟 🌟 🌟 PRODUCTION (RM to SFG) AUTO-SYNC 🌟 🌟 🌟
-  const handleConfirmProduction = (recipe: Recipe, batchQty: number, totalCost: number, consumedItems: BOMResult[]) => {
-    const unitSfgCost = totalCost / recipe.outputQtyPerBatch;
+  const handleConfirmProduction = (recipe: Recipe, producedQty: number, totalCost: number, consumedItems: BOMResult[]) => {
+    const unitSfgCost = totalCost / producedQty;
     
     // ၁။ RM ဂိုထောင်မှ ပစ္စည်းနုတ်ခြင်း
     setInventoryItems(prev => {
       let updated = [...prev];
       consumedItems.forEach(consumed => {
-         const idx = updated.findIndex(i => i.name === consumed.itemName && i.warehouse === 'RM');
+         // တိကျစွာရှာဖွေရန် Fallback logic အသုံးပြုသည်
+         const idx = updated.findIndex(i => {
+           let actualWarehouse = i.warehouse;
+           if (!actualWarehouse) {
+             if (i.code?.startsWith('PK') || i.category === 'Packaging') actualWarehouse = 'PKG';
+             else if (i.code?.startsWith('SFG')) actualWarehouse = 'SFG';
+             else actualWarehouse = 'RM';
+           }
+           return i.name === consumed.itemName && actualWarehouse === 'RM';
+         });
+         
          if (idx !== -1) {
            updated[idx] = { ...updated[idx], inStock: updated[idx].inStock - consumed.amount };
          }
       });
 
       // ၂။ SFG ဂိုထောင်သို့ SFG ငါးရေခွံကြော် ပေါင်းထည့်ခြင်း နှင့် LPP (အရင်း) သတ်မှတ်ခြင်း
-      const sfgIdx = updated.findIndex(i => i.name === recipe.name && i.warehouse === 'SFG');
+      const sfgIdx = updated.findIndex(i => i.name === recipe.name && (i.warehouse === 'SFG' || i.code?.startsWith('SFG')));
       if (sfgIdx !== -1) {
          updated[sfgIdx] = { 
            ...updated[sfgIdx], 
-           inStock: updated[sfgIdx].inStock + recipe.outputQtyPerBatch,
-           lastPurchasePrice: unitSfgCost // ထုတ်လုပ်မှု အရင်းဈေးကို LPP အဖြစ် သတ်မှတ်သည်
+           inStock: updated[sfgIdx].inStock + producedQty,
+           lastPurchasePrice: unitSfgCost 
          };
       } else {
          updated.push({
            id: Date.now(), code: `SFG-${Date.now().toString().slice(-4)}`,
            name: recipe.name, category: recipe.outputCategory, unit: recipe.outputUnit,
-           inStock: recipe.outputQtyPerBatch, warehouse: 'SFG',
+           inStock: producedQty, warehouse: 'SFG',
            lastPurchasePrice: unitSfgCost
          });
       }
       return updated;
     });
 
-    // ၃။ ထုတ်လုပ်မှု ကုန်ကျစရိတ် မှတ်တမ်း သိမ်းဆည်းခြင်း (optional - Supabase table needs to exist)
-    supabase.from('ssy_production_cost_logs').insert([{
-       recipe_name: recipe.name, batch_qty: recipe.outputQtyPerBatch, total_rm_cost: totalCost, unit_sfg_cost: unitSfgCost, date: new Date().toLocaleDateString('en-GB')
-    }]).then(({error}) => { if(error) console.error("Error logging production cost:", error); });
-
-    alert(`✅ ${recipe.name} (${recipe.outputQtyPerBatch} ${recipe.outputUnit}) ထုတ်လုပ်မှု အောင်မြင်ပြီး SFG ဂိုထောင်သို့ အရင်းဈေး ${unitSfgCost.toLocaleString()} Ks ဖြင့် ပေါင်းထည့်ပြီးပါပြီ။`);
+    alert(`✅ ${recipe.name} (${producedQty} ${recipe.outputUnit}) ထုတ်လုပ်မှု အောင်မြင်ပြီး SFG ဂိုထောင်သို့ အရင်းဈေး ${unitSfgCost.toLocaleString()} Ks ဖြင့် ပေါင်းထည့်ပြီးပါပြီ။`);
   };
 
   // 🌟 🌟 🌟 PACKAGING (SFG to FG) AUTO-SYNC & COGS 🌟 🌟 🌟
