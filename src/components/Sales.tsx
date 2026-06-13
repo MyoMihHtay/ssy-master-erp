@@ -184,6 +184,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     </div>
                   </div>
                 ))}
+                {cart.length === 0 && <div className="text-center text-slate-400 font-bold mt-4 md:mt-10 text-[10px] md:text-base">ပစ္စည်းများ ရွေးချယ်ပါ</div>}
               </div>
               <div className="border-t border-dashed border-slate-200 pt-2 md:pt-4 space-y-2 md:space-y-4">
                 <div className="flex justify-between items-center">
@@ -323,10 +324,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* 🌟 🌟 🌟 iOS အတွက် ပုံအဖြစ် ပြသပြီး Save Image ခိုင်းမည့် မျက်နှာပြင် (Fixed Top Position) 🌟 🌟 🌟 */}
+      {/* 🌟 iOS Image Save Overlay with Back Button 🌟 */}
       {generatedImageURL && (
         <div className="fixed top-[68px] md:top-0 left-0 right-0 bottom-0 z-[9999] bg-slate-900 flex flex-col print:hidden">
-          {/* Top Navigation Bar with HUGE Back Button */}
           <div className="bg-slate-800 p-4 flex items-center shadow-lg w-full shrink-0">
             <button 
               onClick={() => setGeneratedImageURL(null)} 
@@ -336,24 +336,22 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             </button>
             <span className="text-sm font-bold text-slate-300 ml-auto flex items-center gap-2">👇 ဖိနှိပ်ပြီး Save Image ရွေးပါ</span>
           </div>
-          {/* Scrollable Image Area */}
           <div className="flex-1 overflow-auto p-4 flex justify-center items-start">
             <img src={generatedImageURL} alt="Saved Receipt" className="max-w-full md:max-w-md shadow-2xl rounded-xl border border-slate-700" />
           </div>
         </div>
       )}
 
-      {/* 🌟 🌟 🌟 PRINT TEMPLATES (Redesigned & Aligned) 🌟 🌟 🌟 */}
+      {/* 🌟 PRINT TEMPLATES 🌟 */}
       {selectedSaleForPrint && (
         <div className={`bg-white text-black ${printType === 'IMAGE' ? 'fixed top-0 left-[9999px] w-[800px] -z-50' : 'hidden print:block print:w-full print:absolute print:top-0 print:left-0 z-[9000]'}`}>
           
-          {/* ----- A4 & IMAGE TEMPLATE (Modern Redesign to fit 1 page, English Headers, Balanced Sides) ----- */}
+          {/* ----- A4 & IMAGE TEMPLATE ----- */}
           {(printType === 'A4' || printType === 'IMAGE') && (
             <div ref={printType === 'IMAGE' ? receiptRef : null} className={`p-10 mx-auto bg-white ${printType === 'IMAGE' ? 'w-[800px]' : 'max-w-[800px]'}`} style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               
               {/* Header Section */}
               <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-6">
-                {/* Left Side: Logo & Address */}
                 <div className="flex items-center gap-5 w-[60%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
                   <div>
@@ -364,7 +362,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   </div>
                 </div>
                 
-                {/* Right Side: Invoice Info (Moved Left slightly to balance) */}
                 <div className="w-[40%] flex justify-end">
                   <div className="w-[260px]">
                     <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest mb-4 text-right">Invoice</h2>
@@ -389,16 +386,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 </div>
               </div>
 
-              {/* Customer & Barcode Section */}
-              <div className="flex justify-between items-end mb-8">
+              {/* Customer & Barcode Section (🌟 Barcode ကို အပေါ်တင်ပြီး Table နဲ့ ကွာဟချက်ကို ပြင်ဆင်ထားသည် 🌟) */}
+              <div className="flex justify-between items-start mb-6">
                 <div className="w-1/2">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 pb-1 inline-block">Billed To</h3>
                   <h4 className="text-lg font-black text-slate-800">{selectedSaleForPrint.customerName}</h4>
                   <p className="text-sm font-bold text-slate-600 mt-1.5">{selectedSaleForPrint.address || '-'}</p>
                   <p className="text-sm font-bold text-slate-600 mt-0.5">Ph: {selectedSaleForPrint.phone || '-'}</p>
                 </div>
-                <div className="w-1/2 flex flex-col items-end">
-                   <div className="text-right mb-4">
+                <div className="w-1/2 flex flex-col items-end justify-start">
+                   <div className="text-right mb-2">
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issued By</h3>
                       <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
                    </div>
@@ -406,29 +403,29 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 </div>
               </div>
 
-              {/* Items Table */}
+              {/* Items Table (🌟 Table ခေါင်းစဉ်ကို အလယ်ဗဟိုကျအောင် (align-middle) ပြင်ဆင်ထားသည် 🌟) */}
               <div className="min-h-[200px]">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-800 text-white">
-                      <th className="py-2 px-3 font-bold text-sm w-12 text-center rounded-tl-lg">No.</th>
-                      <th className="py-2 px-3 font-bold text-sm">Description</th>
-                      <th className="py-2 px-3 font-bold text-sm text-center w-24">Qty</th>
-                      <th className="py-2 px-3 font-bold text-sm text-right w-32">Price (Ks)</th>
-                      <th className="py-2 px-3 font-bold text-sm text-right w-32 rounded-tr-lg">Amount (Ks)</th>
+                      <th className="py-3 px-3 font-bold text-sm w-12 text-center align-middle rounded-tl-lg">No.</th>
+                      <th className="py-3 px-3 font-bold text-sm align-middle">Description</th>
+                      <th className="py-3 px-3 font-bold text-sm text-center w-24 align-middle">Qty</th>
+                      <th className="py-3 px-3 font-bold text-sm text-right w-32 align-middle">Price (Ks)</th>
+                      <th className="py-3 px-3 font-bold text-sm text-right w-32 align-middle rounded-tr-lg">Amount (Ks)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedSaleForPrint.items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-200">
-                        <td className="py-3 px-3 text-center font-bold text-slate-600 text-sm">{idx + 1}</td>
-                        <td className="py-3 px-3">
+                        <td className="py-3 px-3 text-center font-bold text-slate-600 text-sm align-middle">{idx + 1}</td>
+                        <td className="py-3 px-3 align-middle">
                            <span className="font-bold text-slate-800 text-sm block leading-tight">{item.product.category}</span> 
                            <span className="text-xs font-bold text-slate-500 block leading-tight mt-0.5">({item.product.taste}, {item.product.gram}g)</span>
                         </td>
-                        <td className="py-3 px-3 text-center font-black text-slate-700 text-sm">{item.quantity}</td>
-                        <td className="py-3 px-3 text-right font-bold text-slate-600 text-sm">{item.product.price.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-right font-black text-slate-800 text-sm">{item.subtotal.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-center font-black text-slate-700 text-sm align-middle">{item.quantity}</td>
+                        <td className="py-3 px-3 text-right font-bold text-slate-600 text-sm align-middle">{item.product.price.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-right font-black text-slate-800 text-sm align-middle">{item.subtotal.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
