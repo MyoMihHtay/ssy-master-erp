@@ -43,7 +43,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     updatedItems[index] = { ...updatedItems[index], [field]: value }; 
     setRequestItems(updatedItems); 
 
-    // အရေအတွက် (Qty) ပြောင်းလဲပါက Supplier စုစုပေါင်းဈေးနှုန်းများကို အော်တို တွက်ချက်ပေးမည်
     if (field === 'requestedQty') {
         const updatedSups = suppliers.map(sup => {
            let total = 0;
@@ -61,7 +60,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const handleAddSupplier = () => { if (suppliers.length < 3) setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [], itemUnitPrices: {} }]); else alert('အများဆုံး ၃ ခုသာ ရွေးချယ်ခွင့်ရှိသည်။'); };
   const handleSupplierChange = (index: number, field: keyof SupplierOption, value: any) => { const updated = [...suppliers]; updated[index] = { ...updated[index], [field]: value }; setSuppliers(updated); };
 
-  // 🌟 ပစ္စည်းတစ်ခုချင်းစီ၏ Unit Price ပြောင်းလဲသောအခါ စုစုပေါင်းကို အော်တိုတွက်ချက်မည့် Logic 🌟
   const handleItemPriceChange = (supIndex: number, itemId: string, price: number) => {
       const updated = [...suppliers];
       const sup = updated[supIndex];
@@ -205,7 +203,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                 <div className="space-y-4">
                   <input type="text" value={sup.name} onChange={e => handleSupplierChange(idx, 'name', e.target.value)} required className="w-full border-b-2 border-gray-200 p-2 font-bold outline-none focus:border-indigo-500 mb-2" placeholder="ဆိုင်အမည်" />
                   
-                  {/* 🌟 🌟 🌟 ပစ္စည်းတစ်ခုချင်းစီ၏ ဈေးနှုန်းခွဲထည့်ရန် နေရာ 🌟 🌟 🌟 */}
                   <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
                     <h5 className="text-xs font-bold text-indigo-800 mb-3 border-b border-indigo-100 pb-1">ပစ္စည်းတစ်ခုချင်းစီ၏ ဈေးနှုန်း (Unit Price)</h5>
                     {requestItems.map((reqItem) => (
@@ -236,7 +233,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   
                   <div className="space-y-3 mt-4">
                     <div>
-                        {/* 🌟 🌟 🌟 ဓာတ်ပုံရိုက်ရန်နှင့် ဖိုင်အစုံရွေးရန် ခလုတ်များ 🌟 🌟 🌟 */}
                         <div className="text-[11px] font-bold text-gray-700 mb-2">သက်သေခံ ဘောက်ချာ/ပုံများ</div>
                         <div className="flex gap-2">
                            <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-blue-100 text-blue-700 transition-colors shadow-sm">
@@ -308,7 +304,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <h5 className="font-black text-lg text-gray-800 mb-1">{sup.name}</h5>
                   <div className="text-red-600 font-black text-2xl mb-3 print:text-black">{sup.price?.toLocaleString()} Ks</div>
                   
-                  {/* 🌟 🌟 🌟 Approved ဖြစ်ပြီးနောက် Item အလိုက် ဈေးနှုန်းကို ပြသပေးခြင်း 🌟 🌟 🌟 */}
                   <div className="bg-gray-100 p-3 rounded-lg mb-4 space-y-2 border border-gray-200">
                      <h6 className="text-[10px] font-bold text-gray-500 uppercase">ပစ္စည်းအလိုက် ဈေးနှုန်းများ</h6>
                      {itemsToDisplay.map(item => (
@@ -320,6 +315,22 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   </div>
 
                   <div className="text-xs font-medium text-gray-700 bg-gray-50 p-3 rounded-xl border mb-4 print:bg-white">{sup.qualityDesc}</div>
+                  
+                  {/* 🌟 🌟 🌟 QC & Finance ၏ သဘောထားမှတ်ချက်များ ပြန်လည်ထည့်သွင်းခြင်း 🌟 🌟 🌟 */}
+                  <div className="space-y-2 my-4">
+                     {req.qcSelectedSupplierId === sup.id && (
+                        <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl print:border-none shadow-sm">
+                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1 mb-1"><span>🔬</span> QC ရွေးချယ်ထောက်ခံထားသောဆိုင်</span>
+                          <span className="text-sm text-blue-900 font-bold">"{req.qcRemark}"</span>
+                        </div>
+                     )}
+                     {req.financeSelectedSupplierId === sup.id && (
+                        <div className="bg-purple-50 border border-purple-200 p-3 rounded-xl print:border-none shadow-sm">
+                          <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1 mb-1"><span>💰</span> Finance ရွေးချယ်ထောက်ခံထားသောဆိုင်</span>
+                          <span className="text-sm text-purple-900 font-bold">"{req.financeRemark}"</span>
+                        </div>
+                     )}
+                  </div>
                   
                   <div className="mt-4 print:hidden space-y-2">
                     {req.status === 'Pending' && isQC && <button onClick={() => handleQCRecommend(req.id, sup.id)} className="w-full bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-300 font-bold py-2.5 rounded-xl transition-colors">🔬 QC ထောက်ခံမည်</button>}
