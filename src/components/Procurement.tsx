@@ -24,18 +24,13 @@ const compressImage = (file: File): Promise<string> => {
 };
 
 export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, setRequests, onComplete }) => {
-  const [requestItems, setRequestItems] = useState<PRItem[]>([
-    { itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }
-  ]);
-
-  const [suppliers, setSuppliers] = useState<SupplierOption[]>([
-    { id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }
-  ]);
-  
+  const [requestItems, setRequestItems] = useState<PRItem[]>([{ itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([{ id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
-  
-  // 🌟 မှတ်တမ်းများကို ၅၀ ခုစီသာ ဖြတ်ပြရန် State အသစ် 🌟
   const [displayLimit, setDisplayLimit] = useState(50);
+  
+  // 🌟 Finance Auto-sync အတွက် ငွေချေစနစ် ရွေးချယ်မည့် State 🌟
+  const [syncPaymentMethod, setSyncPaymentMethod] = useState('CASH (လက်ငင်း)');
 
   const isPurchasing = userRole === 'purchasing' || userRole === 'md' || userRole === 'manager';
   const isQC = userRole === 'qc' || userRole === 'md' || userRole === 'manager';
@@ -43,35 +38,20 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const isStoreKeeper = userRole === 'storekeeper' || userRole === 'md' || userRole === 'manager';
   const isMDorManager = userRole === 'md' || userRole === 'manager';
 
-  const handleAddPRItem = () => {
-    setRequestItems([...requestItems, { itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
-  };
-  const handlePRItemChange = (index: number, field: keyof PRItem, value: any) => {
-    const updated = [...requestItems]; updated[index] = { ...updated[index], [field]: value }; setRequestItems(updated);
-  };
-  const handleRemovePRItem = (index: number) => {
-    if (requestItems.length > 1) { setRequestItems(requestItems.filter((_, i) => i !== index)); }
-  };
+  const handleAddPRItem = () => setRequestItems([...requestItems, { itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
+  const handlePRItemChange = (index: number, field: keyof PRItem, value: any) => { const updated = [...requestItems]; updated[index] = { ...updated[index], [field]: value }; setRequestItems(updated); };
+  const handleRemovePRItem = (index: number) => { if (requestItems.length > 1) setRequestItems(requestItems.filter((_, i) => i !== index)); };
 
-  const handleAddSupplier = () => {
-    if (suppliers.length < 3) { setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]); } 
-    else { alert('အများဆုံး ၃ ခုသာ ရွေးချယ်ခွင့်ရှိသည်။'); }
-  };
-
-  const handleSupplierChange = (index: number, field: keyof SupplierOption, value: any) => {
-    const updated = [...suppliers]; updated[index] = { ...updated[index], [field]: value }; setSuppliers(updated);
-  };
+  const handleAddSupplier = () => { if (suppliers.length < 3) setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]); else alert('အများဆုံး ၃ ခုသာ ရွေးချယ်ခွင့်ရှိသည်။'); };
+  const handleSupplierChange = (index: number, field: keyof SupplierOption, value: any) => { const updated = [...suppliers]; updated[index] = { ...updated[index], [field]: value }; setSuppliers(updated); };
 
   const handleCameraCapture = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
     try {
       const compressedDataUrl = await compressImage(file);
       const newFile: AttachedFile = { name: `Camera_${Date.now()}.jpg`, dataUrl: compressedDataUrl, type: 'image/jpeg' };
-      const updated = [...suppliers];
-      updated[index][field] = [...(updated[index][field] || []), newFile];
-      setSuppliers(updated);
-    } catch (error) { alert("ဓာတ်ပုံသိမ်းဆည်းမှု မအောင်မြင်ပါ။"); }
-    e.target.value = '';
+      const updated = [...suppliers]; updated[index][field] = [...(updated[index][field] || []), newFile]; setSuppliers(updated);
+    } catch (error) { alert("ဓာတ်ပုံသိမ်းဆည်းမှု မအောင်မြင်ပါ။"); } e.target.value = '';
   };
 
   const handleMultipleFilesSelect = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,17 +60,13 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       if (file.type.startsWith('image/')) {
         try { const compressedDataUrl = await compressImage(file); return { name: file.name, dataUrl: compressedDataUrl, type: 'image/jpeg' }; } 
         catch { return new Promise<AttachedFile>((res) => { const r = new FileReader(); r.onloadend = () => res({ name: file.name, dataUrl: r.result as string, type: file.type }); r.readAsDataURL(file); }); }
-      } else {
-        return new Promise<AttachedFile>((res) => { const r = new FileReader(); r.onloadend = () => res({ name: file.name, dataUrl: r.result as string, type: file.type }); r.readAsDataURL(file); });
-      }
+      } else { return new Promise<AttachedFile>((res) => { const r = new FileReader(); r.onloadend = () => res({ name: file.name, dataUrl: r.result as string, type: file.type }); r.readAsDataURL(file); }); }
     }));
-    const updated = [...suppliers]; updated[index][field] = [...(updated[index][field] || []), ...newAttachments]; setSuppliers(updated);
-    e.target.value = '';
+    const updated = [...suppliers]; updated[index][field] = [...(updated[index][field] || []), ...newAttachments]; setSuppliers(updated); e.target.value = '';
   };
 
   const removeFile = (supIndex: number, field: 'productFiles' | 'quotationFiles', fileIndex: number) => {
-    const updated = [...suppliers]; const files = [...(updated[supIndex][field] || [])];
-    files.splice(fileIndex, 1); updated[supIndex][field] = files; setSuppliers(updated);
+    const updated = [...suppliers]; const files = [...(updated[supIndex][field] || [])]; files.splice(fileIndex, 1); updated[supIndex][field] = files; setSuppliers(updated);
   };
 
   const handleSubmitPR = (e: React.FormEvent) => {
@@ -98,18 +74,11 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     const hasEmptyItem = requestItems.some(item => !item.itemName || !item.requestedQty || !item.unit);
     if (hasEmptyItem || suppliers.length === 0) return alert('ပစ္စည်းအချက်အလက်များကို အပြည့်အစုံ ဖြည့်ပါ။');
 
-    const newPR: PurchaseRequest = { 
-      id: Date.now(), date: new Date().toLocaleDateString('en-GB'), 
-      items: requestItems, 
-      suppliers, status: 'Pending' 
-    };
+    const newPR: PurchaseRequest = { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), items: requestItems, suppliers, status: 'Pending' };
     setRequests([newPR, ...requests]);
     setRequestItems([{ itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
     setSuppliers([{ id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]);
-    alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။');
-    
-    // စာရင်းအသစ်သွင်းလိုက်ပါက အပေါ်ဆုံးသို့ ပြန်ရောက်စေရန်
-    setDisplayLimit(50);
+    alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။'); setDisplayLimit(50);
   };
 
   const updateStatus = (id: number, newStatus: PurchaseRequest['status'], selectedId?: string, reason?: string, roleData?: any) => {
@@ -127,12 +96,12 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   };
 
   const handleQCRecommend = (reqId: number, supId: string) => {
-    const remark = window.prompt("QC ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ (ဥပမာ - အရည်အသွေးအကောင်းဆုံးဖြစ်သည်) :");
+    const remark = window.prompt("QC ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ :");
     if (remark) updateStatus(reqId, 'QC_Approved', undefined, undefined, { qcSelectedSupplierId: supId, qcRemark: remark });
   };
 
   const handleFinanceRecommend = (reqId: number, supId: string) => {
-    const remark = window.prompt("Finance ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ (ဥပမာ - ဈေးအသက်သာဆုံးဖြစ်သည်) :");
+    const remark = window.prompt("Finance ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ :");
     if (remark) updateStatus(reqId, 'Finance_Approved', undefined, undefined, { financeSelectedSupplierId: supId, financeRemark: remark });
   };
 
@@ -148,20 +117,19 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
   const getStatusBadge = (status: string) => {
     switch(status) {
-      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-orange-200">⏳ Pending (QC သို့)</span>;
-      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-blue-200">🔬 QC Pass (Finance သို့)</span>;
-      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-purple-200">💰 Finance Pass (MD သို့)</span>;
-      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-green-200">✅ MD ခွင့်ပြုပြီး</span>;
-      case 'Purchased': return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-yellow-300">🛒 ဝယ်ယူပြီး</span>;
-      case 'QC_Received': return <span className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-cyan-200">🔍 ပစ္စည်းရောက် (QC)</span>;
-      case 'Store_Received': return <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-indigo-200">📦 ဂိုထောင်ရောက်</span>;
-      case 'Completed': return <span className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">🎯 ပြီးစီး (Inventory ဝင်ပါပြီ)</span>;
-      case 'Rejected': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-red-200">❌ ပယ်ချထားသည်</span>;
+      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-orange-200">⏳ Pending (QC)</span>;
+      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-blue-200">🔬 QC Pass (Finance)</span>;
+      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-purple-200">💰 Finance Pass (MD)</span>;
+      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-green-200">✅ MD Approved</span>;
+      case 'Purchased': return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-yellow-300">🛒 Purchased</span>;
+      case 'QC_Received': return <span className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-cyan-200">🔍 QC Received</span>;
+      case 'Store_Received': return <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-indigo-200">📦 Store Received</span>;
+      case 'Completed': return <span className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">🎯 Completed (Auto-Synced)</span>;
+      case 'Rejected': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-red-200">❌ Rejected</span>;
       default: return null;
     }
   };
 
-  // 🌟 မှတ်တမ်းများကို displayLimit အရ ဖြတ်ထုတ်ခြင်း 🌟
   const visibleRequests = requests?.slice(0, displayLimit) || [];
 
   return (
@@ -172,13 +140,11 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       
       {isPurchasing && (
         <form onSubmit={handleSubmitPR} className="bg-white shadow-lg p-6 md:p-8 rounded-2xl border-t-4 border-indigo-600 print:hidden">
-          <div className="flex justify-between items-center mb-6 border-b border-indigo-100 pb-4">
+           <div className="flex justify-between items-center mb-6 border-b border-indigo-100 pb-4">
              <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2"><span>📝</span> ဝယ်ယူခွင့် တောင်းခံလွှာ</h3>
              <button type="button" onClick={handleAddSupplier} className="bg-indigo-50 text-indigo-700 px-5 py-2.5 rounded-xl font-bold border border-indigo-200 hover:bg-indigo-100 transition-colors">+ Supplier ထပ်ထည့်မည်</button>
           </div>
-          
           <div className="mb-8">
-            <h4 className="font-bold text-indigo-800 mb-4 border-l-4 border-indigo-600 pl-3">ဝယ်ယူမည့် ပစ္စည်းစာရင်း</h4>
             <div className="space-y-3">
               {requestItems.map((item, idx) => (
                 <div key={idx} className="flex flex-wrap md:flex-nowrap gap-3 items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
@@ -192,16 +158,13 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                     </select>
                   </div>
                   {requestItems.length > 1 && (
-                    <button type="button" onClick={() => handleRemovePRItem(idx)} className="mt-5 bg-red-100 text-red-600 hover:bg-red-500 hover:text-white px-3 py-2.5 rounded-lg font-bold transition-colors">✕</button>
+                    <button type="button" onClick={() => handleRemovePRItem(idx)} className="mt-5 bg-red-100 text-red-600 px-3 py-2.5 rounded-lg font-bold">✕</button>
                   )}
                 </div>
               ))}
             </div>
-            <button type="button" onClick={handleAddPRItem} className="mt-4 bg-white border-2 border-dashed border-indigo-300 text-indigo-600 w-full py-3 rounded-xl font-bold hover:bg-indigo-50 transition-colors">
-              + ပစ္စည်းအမျိုးအစား ထပ်ထည့်မည်
-            </button>
+            <button type="button" onClick={handleAddPRItem} className="mt-4 bg-white border-2 border-dashed border-indigo-300 text-indigo-600 w-full py-3 rounded-xl font-bold hover:bg-indigo-50">+ ပစ္စည်းအမျိုးအစား ထပ်ထည့်မည်</button>
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             {suppliers.map((sup, idx) => (
               <div key={sup.id} className="border-2 border-dashed border-gray-300 p-5 rounded-2xl bg-white shadow-sm">
@@ -210,7 +173,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <input type="text" value={sup.name} onChange={e => handleSupplierChange(idx, 'name', e.target.value)} required className="w-full border-b-2 border-gray-200 p-2 font-bold outline-none focus:border-indigo-500" placeholder="ဆိုင်အမည်" />
                   <input type="number" value={sup.price || ''} onChange={e => handleSupplierChange(idx, 'price', Number(e.target.value))} required className="w-full border-b-2 border-gray-200 p-2 font-black text-red-600 outline-none focus:border-indigo-500" placeholder="စုစုပေါင်း ဈေးနှုန်း Ks" />
                   <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none focus:border-indigo-500" placeholder="အရည်အသွေး သုံးသပ်ချက်" />
-                  
                   <div className="space-y-3 mt-4">
                     <div>
                         <div className="text-[11px] font-bold text-gray-700 mb-2">သက်သေခံ ဘောက်ချာ/ပုံများ</div>
@@ -232,18 +194,15 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               </div>
             ))}
           </div>
-          <button type="submit" className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition-transform active:scale-95 text-lg tracking-wide">
-            ဝယ်ယူခွင့် တင်ပြမည် (Submit PR)
-          </button>
+          <button type="submit" className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition-transform active:scale-95 text-lg tracking-wide">ဝယ်ယူခွင့် တင်ပြမည် (Submit PR)</button>
         </form>
       )}
 
-      {/* 🌟 Approval Board (Limit အတိုင်းသာ ပြသမည်) 🌟 */}
+      {/* Approval Board */}
       <div className="space-y-8 print:space-y-6">
         {visibleRequests.map(req => {
           const itemsToDisplay = req.items && req.items.length > 0 
-            ? req.items 
-            : [{ itemName: req.itemName, requestedQty: req.requestedQty, unit: req.unit, targetWarehouse: req.targetWarehouse || 'RM' }];
+            ? req.items : [{ itemName: req.itemName, requestedQty: req.requestedQty, unit: req.unit, targetWarehouse: req.targetWarehouse || 'RM' }];
 
           return (
           <div key={req.id} className="bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-200 break-inside-avoid print:border-gray-400 print:shadow-none">
@@ -254,10 +213,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                     <span className="text-xs font-bold text-gray-400 print:text-black">PR Date: {req.date}</span>
                     <div className="flex gap-2 items-center">
                        {getStatusBadge(req.status)}
-                       <button onClick={() => window.print()} className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-3 py-1.5 rounded-lg font-bold text-xs print:hidden transition-colors">🖨️ Print</button>
                     </div>
                   </div>
-                  
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 print:bg-gray-50 print:border-gray-300">
                      <h4 className="text-sm font-bold text-gray-300 mb-3 print:text-gray-700">ဝယ်ယူမည့် ပစ္စည်းစာရင်း ({itemsToDisplay.length} မျိုး)</h4>
                      <ul className="space-y-2">
@@ -276,56 +233,14 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               </div>
             </div>
 
-            {req.status === 'Rejected' && req.rejectReason && (
-              <div className="bg-red-50 p-4 border-b border-red-100 flex items-start gap-3 print:border-b-2 print:border-black">
-                 <span className="text-2xl print:hidden">⚠️</span>
-                 <div><h5 className="font-bold text-red-800 text-sm uppercase">ပယ်ချရသည့် အကြောင်းရင်း</h5><p className="text-red-600 font-medium print:text-black">{req.rejectReason}</p></div>
-              </div>
-            )}
-
-            <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 bg-gray-50 print:bg-white print:grid-cols-3 print:gap-2 print:p-2">
+            <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 bg-gray-50">
               {req.suppliers?.map((sup) => (
-                <div key={sup.id} className={`border-2 p-5 rounded-2xl relative bg-white ${req.selectedSupplierId === sup.id ? 'border-green-500 shadow-lg ring-4 ring-green-50 print:border-green-700' : 'border-gray-200'}`}>
+                <div key={sup.id} className={`border-2 p-5 rounded-2xl relative bg-white ${req.selectedSupplierId === sup.id ? 'border-green-500 shadow-lg ring-4 ring-green-50' : 'border-gray-200'}`}>
                   {req.selectedSupplierId === sup.id && <div className="absolute -top-3 -right-3 bg-green-500 text-white w-8 h-8 flex justify-center items-center rounded-full font-black shadow print:hidden">✓</div>}
                   <h5 className="font-black text-lg text-gray-800 mb-1">{sup.name}</h5>
                   <div className="text-red-600 font-black text-2xl mb-4 print:text-black">{sup.price?.toLocaleString()} Ks</div>
                   <div className="text-xs font-medium text-gray-700 bg-gray-50 p-3 rounded-xl border mb-4 print:bg-white">{sup.qualityDesc}</div>
-
-                  <div className="space-y-2 mb-4">
-                     {req.qcSelectedSupplierId === sup.id && (
-                        <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl print:border-none">
-                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block mb-1">🔬 QC ထောက်ခံချက်</span>
-                          <span className="text-sm text-blue-900 font-bold">{req.qcRemark}</span>
-                        </div>
-                     )}
-                     {req.financeSelectedSupplierId === sup.id && (
-                        <div className="bg-purple-50 border border-purple-200 p-3 rounded-xl print:border-none">
-                          <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider block mb-1">💰 Finance ထောက်ခံချက်</span>
-                          <span className="text-sm text-purple-900 font-bold">{req.financeRemark}</span>
-                        </div>
-                     )}
-                  </div>
-
-                  {sup.productFiles && sup.productFiles.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-dashed">
-                      <div className="text-[10px] font-bold text-gray-400 uppercase mb-2 print:text-black">သက်သေခံ ဖိုင်/ပုံများ:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {sup.productFiles.map((file, i) => (
-                          file?.dataUrl ? (
-                            file.type?.startsWith('image/') ? (
-                               <img key={i} onClick={() => setPreviewImage(file.dataUrl)} src={file.dataUrl} className="w-14 h-14 object-cover rounded-lg border shadow-sm cursor-pointer hover:opacity-80 print:w-16 print:h-16 print:object-contain" />
-                            ) : (
-                               <a key={i} href={file.dataUrl} download={file.name} className="w-14 h-14 flex flex-col items-center justify-center border rounded-lg bg-gray-50 text-[9px] p-1 truncate text-indigo-700 font-bold shadow-sm print:border-black">
-                                 <span className="text-lg">📄</span>
-                                 <span className="truncate w-full text-center mt-1">{file.name?.slice(0,6)}</span>
-                               </a>
-                            )
-                          ) : null
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
+                  
                   <div className="mt-4 print:hidden space-y-2">
                     {req.status === 'Pending' && isQC && <button onClick={() => handleQCRecommend(req.id, sup.id)} className="w-full bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-300 font-bold py-2.5 rounded-xl transition-colors">🔬 QC ထောက်ခံမည်</button>}
                     {req.status === 'QC_Approved' && isFinance && <button onClick={() => handleFinanceRecommend(req.id, sup.id)} className="w-full bg-purple-100 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 font-bold py-2.5 rounded-xl transition-colors">💰 Finance ထောက်ခံမည်</button>}
@@ -337,20 +252,28 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               ))}
             </div>
 
-            {req.storeRemark && (
-              <div className="mx-6 md:mx-8 mb-6 bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-xl shadow-sm">
-                 <h5 className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-1 flex items-center gap-2">📦 ဂိုထောင်မှူး၏ လက်ခံရရှိမှု မှတ်ချက်</h5>
-                 <p className="text-sm font-bold text-orange-900">{req.storeRemark}</p>
-              </div>
-            )}
-
+            {/* 🌟 Finance Auto Sync Action (ငွေချေစနစ်ရွေးချယ်ရန်) 🌟 */}
             {req.status !== 'Completed' && req.status !== 'Rejected' && (
               <div className="bg-indigo-50/50 p-5 flex flex-wrap justify-end gap-3 items-center print:hidden border-t">
                 <span className="text-xs font-black text-indigo-800/50 mr-auto uppercase tracking-widest">Next Action</span>
                 {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-yellow-600">🛒 ဝယ်ယူလိုက်ပါပြီ</button>}
                 {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-cyan-700">🔬 ပစ္စည်းရောက်/စစ်ပြီး</button>}
                 {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => handleStoreReceive(req.id)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-indigo-700">📦 ဂိုထောင်လက်ခံမည်</button>}
-                {req.status === 'Store_Received' && isFinance && <button onClick={() => updateStatus(req.id, 'Completed')} className="bg-teal-600 text-white px-8 py-3 rounded-xl font-black shadow-lg hover:bg-teal-700 animate-bounce">✅ စာရင်းသွင်းမည် (Auto +)</button>}
+                
+                {req.status === 'Store_Received' && isFinance && (
+                   <div className="flex gap-2 items-center bg-white p-2 rounded-xl border border-teal-200 shadow-sm flex-wrap">
+                      <select value={syncPaymentMethod} onChange={(e) => setSyncPaymentMethod(e.target.value)} className="bg-teal-50 text-teal-800 font-bold p-2.5 rounded-lg outline-none border border-teal-100 text-sm">
+                        <option value="CASH (လက်ငင်း)">CASH (လက်ငင်း)</option>
+                        <option value="BANK TRANSFER">BANK TRANSFER</option>
+                        <option value="CREDIT (အကြွေး)">CREDIT (အကြွေးဝယ်)</option>
+                      </select>
+                      {/* 🌟 ဤနေရာတွင် စာရင်းသွင်းမည် နှိပ်ပါက App.tsx သို့ paymentMethod ပါ ပေးပို့ပါမည် 🌟 */}
+                      <button onClick={() => updateStatus(req.id, 'Completed', undefined, undefined, { paymentMethod: syncPaymentMethod })} className="bg-teal-600 text-white px-6 py-2.5 rounded-lg font-black shadow hover:bg-teal-700 animate-pulse whitespace-nowrap">
+                        ✅ စာရင်းသွင်းမည် (Auto +)
+                      </button>
+                   </div>
+                )}
+                
                 {(isQC || isFinance || isMDorManager) && req.status !== 'Purchased' && req.status !== 'QC_Received' && req.status !== 'Store_Received' && (
                    <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-2.5 rounded-xl font-bold ml-4 hover:bg-red-50">❌ ပယ်ချမည်</button>
                 )}
@@ -359,18 +282,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
           </div>
         );})}
       </div>
-
-      {/* 🌟 နောက်ထပ် ပြမည် ခလုတ် (Pagination) 🌟 */}
-      {displayLimit < requests.length && (
-        <div className="mt-10 flex justify-center pb-8 print:hidden">
-          <button 
-            onClick={() => setDisplayLimit(prev => prev + 50)} 
-            className="flex items-center justify-center gap-2 px-8 py-4 bg-white border-2 border-indigo-200 rounded-2xl shadow-sm text-indigo-700 font-black hover:bg-indigo-50 hover:border-indigo-400 transition-all active:scale-95 text-lg"
-          >
-            နောက်ထပ် ပြမည် <span>({requests.length - displayLimit} ခု ကျန်သေးသည်)</span> ⬇️
-          </button>
-        </div>
-      )}
 
       {previewImage && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 print:hidden" onClick={() => setPreviewImage(null)}>

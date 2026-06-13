@@ -12,7 +12,7 @@ import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
-export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; }
+export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; } // 🌟 LPP အသစ် 🌟
 export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; }
 export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; type?: 'expense' | 'income'; }
 export interface UserSession { name: string; role: string; }
@@ -30,6 +30,7 @@ export interface PurchaseRequest {
   suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
+  paymentMethod?: string; // 🌟 Auto-Sync အတွက် 🌟
 }
 
 export interface SaleItem { product: FinishedGoodItem; quantity: number; subtotal: number; }
@@ -101,8 +102,8 @@ export default function App() {
   ]);
 
   const [inventoryItems, setInventoryItems, invLoading] = useSupabaseTable<InventoryItem>('ssy_inventory', [
-    { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM' },
-    { id: 3, code: 'PK-001', name: 'ပလက်စတစ်အိတ် (၇x၅)', category: 'Packaging', unit: 'ခု', inStock: 5000, warehouse: 'PKG' },
+    { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM', lastPurchasePrice: 15000 },
+    { id: 3, code: 'PK-001', name: 'ပလက်စတစ်အိတ် (၇x၅)', category: 'Packaging', unit: 'ခု', inStock: 5000, warehouse: 'PKG', lastPurchasePrice: 50 },
   ]);
 
   const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', [
@@ -133,7 +134,64 @@ export default function App() {
   const handleStockInAndExpense = () => { };
   const handleConfirmProduction = () => { };
   const handleConfirmPackaging = () => { };
-  const handleProcurementComplete = () => { };
+
+  // 🌟 🌟 🌟 PROCUREMENT AUTO-SYNC 🌟 🌟 🌟
+  const handleProcurementComplete = (pr: PurchaseRequest) => {
+    const selectedSupplier = pr.suppliers.find(s => s.id === pr.selectedSupplierId);
+    if (!selectedSupplier) return;
+    
+    const totalCost = selectedSupplier.price || 0;
+    
+    // ၁။ Inventory ထဲသို့ အသစ်ပေါင်းထည့်ခြင်းနှင့် LPP ဈေးတွက်ချက်ခြင်း
+    setInventoryItems(prevItems => {
+      let newItems = [...prevItems];
+      const itemsToProcess = pr.items || [{ itemName: pr.itemName, requestedQty: pr.requestedQty, unit: pr.unit, targetWarehouse: pr.targetWarehouse }];
+
+      itemsToProcess.forEach(prItem => {
+        if (!prItem.itemName) return;
+        const existingIdx = newItems.findIndex(i => i.name.toLowerCase() === prItem.itemName.toLowerCase() && i.warehouse === prItem.targetWarehouse);
+        
+        // ပစ္စည်းအမျိုးအစားအရေအတွက်နဲ့ စုစုပေါင်းဈေးကိုစားပြီး တစ်ခုချင်းစီ၏ ပျမ်းမျှ LPP ရှာသည်
+        const estimatedUnitPrice = totalCost / (itemsToProcess.length * (prItem.requestedQty || 1));
+
+        if (existingIdx >= 0) {
+          newItems[existingIdx] = {
+            ...newItems[existingIdx],
+            inStock: newItems[existingIdx].inStock + (prItem.requestedQty || 0),
+            lastPurchasePrice: estimatedUnitPrice
+          };
+        } else {
+          newItems.push({
+            id: Date.now() + Math.random(),
+            code: `NEW-${Date.now().toString().slice(-4)}`,
+            name: prItem.itemName,
+            category: prItem.targetWarehouse === 'RM' ? 'Raw Materials' : 'Packaging',
+            unit: prItem.unit || 'ခု',
+            inStock: prItem.requestedQty || 0,
+            warehouse: prItem.targetWarehouse as 'RM' | 'SFG' | 'PKG',
+            lastPurchasePrice: estimatedUnitPrice
+          });
+        }
+      });
+      return newItems;
+    });
+
+    // ၂။ "အကြွေး" မဟုတ်ပါက Expenses သို့ အလိုအလျောက် သွင်းပေးခြင်း
+    if (pr.paymentMethod !== 'CREDIT (အကြွေး)') {
+      setExpenses(prev => [{
+        id: Date.now(),
+        date: new Date().toLocaleDateString('en-GB'),
+        category: 'ကုန်ကြမ်းဝယ်ယူမှု',
+        description: `Auto-Sync: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name}) - ${pr.paymentMethod || 'CASH'}`,
+        amount: totalCost,
+        voucherNo: `PR-${pr.id}`,
+        type: 'expense'
+      }, ...prev]);
+      alert(`✅ ဂိုထောင်စာရင်းထဲသို့ ပစ္စည်းများရောက်ရှိသွားပြီး၊ ငွေကျပ် ${totalCost.toLocaleString()} အား ဘဏ္ဍာရေးစာရင်းသို့ (အော်တို) သွင်းပေးလိုက်ပါပြီ။`);
+    } else {
+      alert(`📌 အကြွေးဝယ်ယူမှုဖြစ်သဖြင့် Finance စာရင်းထဲသို့ ထွက်ငွေ (Auto-Sync) မဝင်ပါ။ \nဂိုထောင်ထဲသို့သာ ပစ္စည်းများ ဝင်သွားပါမည်။`);
+    }
+  };
 
   const handleCheckoutSale = (newSale: SaleRecord) => {
     setFinishedGoods(prev => {
@@ -192,7 +250,7 @@ export default function App() {
   return (
     <div className="flex w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative">
       
-      {/* 🌟 Mobile Top App Bar (print:hidden ထည့်ထားသဖြင့် Print ထုတ်ချိန် ပျောက်သွားပါမည်) 🌟 */}
+      {/* 🌟 Mobile Top App Bar (print:hidden) 🌟 */}
       <div className="md:hidden fixed top-0 left-0 w-full bg-gray-900 text-white z-50 p-4 flex justify-between items-center shadow-md print:hidden">
         <h1 className="font-black text-xl tracking-wider">SSY <span className="text-emerald-400">ERP</span></h1>
         <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">
