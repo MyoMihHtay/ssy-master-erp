@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas'; 
+import Barcode from 'react-barcode'; // 🌟 Barcode Library အသစ်
 import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
 
 interface SalesProps {
@@ -139,6 +140,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   return (
     <div className="p-1 md:p-6 h-full overflow-y-auto print:p-0 print:overflow-visible relative">
       <div className="print:hidden">
+        {/* Sales Header & Main POS section... */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 md:mb-6 border-b-2 pb-2 md:pb-4 border-amber-200 gap-2 md:gap-4">
           <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> အရောင်းပိုင်း (POS)</h2>
           <div className="flex gap-1.5 md:gap-2 bg-white p-1 rounded-lg md:rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
@@ -184,7 +186,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     </div>
                   </div>
                 ))}
-                {cart.length === 0 && <div className="text-center text-slate-400 font-bold mt-4 md:mt-10 text-[10px] md:text-base">ပစ္စည်းများ ရွေးချယ်ပါ</div>}
               </div>
               <div className="border-t border-dashed border-slate-200 pt-2 md:pt-4 space-y-2 md:space-y-4">
                 <div className="flex justify-between items-center">
@@ -324,7 +325,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* 🌟 iOS Image Save Overlay with Back Button 🌟 */}
+      {/* iOS Image Save Overlay */}
       {generatedImageURL && (
         <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col print:hidden overflow-hidden">
           <div className="bg-slate-800 p-4 flex items-center justify-between shadow-lg w-full shrink-0">
@@ -350,7 +351,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
           {(printType === 'A4' || printType === 'IMAGE') && (
             <div ref={printType === 'IMAGE' ? receiptRef : null} className={`p-10 mx-auto bg-white ${printType === 'IMAGE' ? 'w-[800px]' : 'max-w-[800px]'}`} style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               
-              {/* Header Section */}
               <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-6">
                 <div className="flex items-center gap-5 w-[60%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
@@ -386,7 +386,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 </div>
               </div>
 
-              {/* Customer & Barcode Section */}
               <div className="flex justify-between items-start mb-6">
                 <div className="w-1/2">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 pb-1 inline-block">Billed To</h3>
@@ -399,12 +398,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issued By</h3>
                       <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
                    </div>
-                   {/* 🌟 🌟 Barcode Image Fix 🌟 🌟 */}
-                   <img crossOrigin="anonymous" src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-10 opacity-90" />
+                   {/* 🌟 🌟 React Barcode အသုံးပြုထားသည် (CORS Error နှင့် လုံခြုံရေးပြဿနာ လုံးဝမရှိပါ) 🌟 🌟 */}
+                   <Barcode value={selectedSaleForPrint.id} format="CODE128" height={40} displayValue={false} margin={0} background="transparent" />
                 </div>
               </div>
 
-              {/* Items Table (🌟 Box အမည်းကို အတိအကျ ချိန်ညှိထားပြီး Print ထုတ်လျှင်ပါရန် ပြင်ဆင်ထားသည် 🌟) */}
               <div className="min-h-[200px]">
                 <table className="w-full text-left border-collapse">
                   <thead style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
@@ -433,7 +431,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 </table>
               </div>
 
-              {/* Totals Section */}
               <div className="flex justify-end mt-4 mb-8">
                 <div className="w-80">
                   <div className="flex justify-between py-1.5 text-sm font-bold text-slate-600">
@@ -459,7 +456,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 </div>
               </div>
 
-              {/* Signatures */}
               <div className="flex justify-between px-10 pt-10 mt-auto">
                  <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Customer Signature</div>
                  <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Authorized Signature</div>
@@ -467,47 +463,49 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             </div>
           )}
 
-          {/* ----- THERMAL 58mm/80mm TEMPLATE (🌟 Logo Fixed 🌟) ----- */}
+          {/* ----- THERMAL 58mm/80mm TEMPLATE (🌟 Font ကြီးထားပြီး Barcode ကို ရှင်းလင်းထားသည် 🌟) ----- */}
           {printType === 'THERMAL' && (
-            <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-xs" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
+            <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-[14px]" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
-                {/* 🌟 Grayscale ဖြုတ်ပြီး crossOrigin ထည့်ထားသည် 🌟 */}
-                <img crossOrigin="anonymous" src="/logo.png" alt="Logo" className="w-16 h-16 object-contain mx-auto mb-1" />
-                <h2 className="text-base font-black mb-1">"စက်စက်ယို"</h2>
-                <p className="text-[10px] leading-tight">မန္တလေးမြို့</p>
-                <p className="text-[10px] leading-tight mb-2">Ph: 09-455557980</p>
-                <img crossOrigin="anonymous" src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-8 mx-auto" />
+                <img crossOrigin="anonymous" src="/logo.png" alt="Logo" className="w-20 h-20 object-contain mx-auto mb-2" />
+                <h2 className="text-xl font-black mb-1">"စက်စက်ယို"</h2>
+                <p className="text-xs leading-tight mb-1">မန္တလေးမြို့</p>
+                <p className="text-xs font-bold leading-tight mb-3">Ph: 09-455557980</p>
+                {/* 🌟 Barcode အစစ် 🌟 */}
+                <div className="flex justify-center">
+                   <Barcode value={selectedSaleForPrint.id} format="CODE128" height={35} displayValue={false} margin={0} background="transparent" />
+                </div>
               </div>
 
-              <div className="mb-2 text-[11px] font-bold space-y-1 border-b-2 border-dashed border-black pb-2">
+              <div className="mb-3 text-xs font-bold space-y-1 border-b-2 border-dashed border-black pb-3">
                 <div className="flex justify-between"><span>Inv:</span> <span>#{selectedSaleForPrint.id}</span></div>
                 <div className="flex justify-between"><span>Date:</span> <span>{selectedSaleForPrint.date}</span></div>
-                <div className="flex justify-between"><span>Cust:</span> <span className="uppercase truncate max-w-[120px] text-right">{selectedSaleForPrint.customerName}</span></div>
+                <div className="flex justify-between"><span>Cust:</span> <span className="uppercase truncate max-w-[140px] text-right">{selectedSaleForPrint.customerName}</span></div>
                 <div className="flex justify-between"><span>Pay:</span> <span className="uppercase">{selectedSaleForPrint.paymentMethod}</span></div>
                 {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
-                  <div className="flex justify-between text-black border border-black p-1 mt-1 text-center font-black">
+                  <div className="flex justify-between text-black border border-black p-1.5 mt-1.5 text-center font-black">
                     DUE: {calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}
                   </div>
                 )}
               </div>
 
-              <div className="mb-2 border-b-2 border-dashed border-black pb-2">
-                <div className="flex justify-between font-black border-b border-black pb-1 mb-1 text-[11px]">
+              <div className="mb-3 border-b-2 border-dashed border-black pb-3">
+                <div className="flex justify-between font-black border-b border-black pb-1 mb-2 text-xs">
                   <span className="w-2/3">Item</span>
                   <span className="w-1/3 text-right">Amt</span>
                 </div>
                 {selectedSaleForPrint.items.map((item, idx) => (
-                  <div key={idx} className="mb-1.5 text-[11px]">
-                    <div className="font-bold truncate leading-tight mb-0.5">{item.product.category} ({item.product.gram}g)</div>
-                    <div className="flex justify-between text-[10px]">
+                  <div key={idx} className="mb-2 text-xs">
+                    <div className="font-bold truncate leading-tight mb-1">{item.product.category} ({item.product.gram}g)</div>
+                    <div className="flex justify-between text-[11px]">
                       <span>{item.quantity} x {item.product.price}</span>
-                      <span className="font-black">{item.subtotal.toLocaleString()}</span>
+                      <span className="font-black text-sm">{item.subtotal.toLocaleString()}</span>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="space-y-1 text-[11px] font-bold border-b-2 border-dashed border-black pb-2 mb-3">
+              <div className="space-y-1 text-xs font-bold border-b-2 border-dashed border-black pb-3 mb-3">
                 <div className="flex justify-between"><span>Subtotal:</span> <span>{selectedSaleForPrint.totalAmount.toLocaleString()}</span></div>
                 {Number(selectedSaleForPrint.discountPercent) > 0 && (
                   <div className="flex justify-between"><span>Disc ({selectedSaleForPrint.discountPercent}%):</span> <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()}</span></div>
@@ -515,14 +513,14 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 {Number(selectedSaleForPrint.taxPercent) > 0 && (
                   <div className="flex justify-between"><span>Tax ({selectedSaleForPrint.taxPercent}%):</span> <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()}</span></div>
                 )}
-                <div className="flex justify-between text-sm font-black pt-1 mt-1 border-t border-black">
+                <div className="flex justify-between text-base font-black pt-1 mt-1 border-t border-black">
                   <span>TOTAL:</span> <span>{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
                 </div>
               </div>
 
-              <div className="text-center text-[10px] font-bold">
+              <div className="text-center text-xs font-bold mt-4 mb-2">
                 <p>Thank you!</p>
-                <p>--- စက်စက်ယို ---</p>
+                <p className="mt-1">--- စက်စက်ယို ---</p>
               </div>
             </div>
           )}
