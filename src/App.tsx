@@ -31,7 +31,7 @@ export interface PurchaseRequest {
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
   paymentMethod?: string;
-  isCreditPaid?: boolean; // 🌟 အကြွေးဆပ်ပြီးကြောင်း သိမ်းဆည်းရန် State အသစ် 🌟
+  isCreditPaid?: boolean;
 }
 
 export interface SaleItem { product: FinishedGoodItem; quantity: number; subtotal: number; }
@@ -110,11 +110,14 @@ export default function App() {
   const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', []); 
   const [expenses, setExpenses, expLoading] = useSupabaseTable<ExpenseItem>('ssy_expenses', []);
   const [customers, setCustomers, custLoading] = useSupabaseTable<Customer>('ssy_customers', []);
-  const [purchaseRequests, setPurchaseRequests] = useLocalStorage<PurchaseRequest[]>('ssy_pr', []);
+  
+  // 🌟 Procurement နှင့် Recipes များကို LocalStorage မှ Supabase သို့ ပြောင်းလဲချိတ်ဆက်ထားပါသည် 🌟
+  const [purchaseRequests, setPurchaseRequests, prLoading] = useSupabaseTable<PurchaseRequest>('ssy_purchase_requests', []);
+  const [recipes, setRecipes, recLoading] = useSupabaseTable<Recipe>('ssy_recipes', []);
+  const [packageRecipes, setPackageRecipes, pkgRecLoading] = useSupabaseTable<PackageRecipe>('ssy_pkg_recipes', []);
+
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
   const [activeTab, setActiveTab] = useState<string>('sales');
-  const [recipes, setRecipes] = useLocalStorage<Recipe[]>('ssy_recipes', []);
-  const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', []);
 
   useEffect(() => {
     const testSupabaseConnection = async () => {
@@ -130,6 +133,7 @@ export default function App() {
 
   const handleConfirmProduction = (recipe: Recipe, producedQty: number, totalCost: number, consumedItems: BOMResult[]) => {
     const unitSfgCost = totalCost / producedQty;
+    
     setInventoryItems(prev => {
       let updated = [...prev];
       consumedItems.forEach(consumed => {
@@ -256,7 +260,6 @@ export default function App() {
     }
   };
 
-  // 🌟 🌟 🌟 အကြွေးဆပ်ပြီး Finance သို့ ထွက်ငွေ အော်တိုသွင်းမည့် Function သစ် 🌟 🌟 🌟
   const handleCreditPayment = (pr: PurchaseRequest) => {
     const selectedSupplier = pr.suppliers.find(s => s.id === pr.selectedSupplierId);
     if (!selectedSupplier) return;
@@ -318,7 +321,9 @@ export default function App() {
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
-  const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading;
+  // 🌟 Loading တွင် အသစ်ထည့်ထားသော Cloud Table များပါ ထည့်သွင်းစစ်ဆေးသည် 🌟
+  const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading || prLoading || recLoading || pkgRecLoading;
+  
   if (isAnyLoading) {
     return (
       <div className="flex w-full h-screen items-center justify-center bg-gray-50 flex-col gap-4">
@@ -364,10 +369,7 @@ export default function App() {
       
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
-        
-        {/* 🌟 onCreditPayment Props အား Procurement သို့ ပေးပို့ထားပါသည် 🌟 */}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} onCreditPayment={handleCreditPayment} />}
-        
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
