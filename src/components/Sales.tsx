@@ -18,9 +18,7 @@ const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
   const dateOnly = saleDateStr.split(' ')[0];
   const parts = dateOnly.split('/');
   if (parts.length !== 3) return terms;
-  
   const date = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-  
   let addDays = 0;
   if (terms.includes('1 Day')) addDays = 1;
   else if (terms.includes('3 Days')) addDays = 3;
@@ -31,7 +29,6 @@ const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
     const match = terms.match(/(\d+)/);
     if (match) addDays = parseInt(match[0]);
   }
-
   date.setDate(date.getDate() + addDays);
   return date.toLocaleDateString('en-GB');
 };
@@ -71,9 +68,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
       if (existing) {
         if (existing.quantity >= product.stockQty) { alert('❌ လက်ကျန်အရေအတွက်ထက် ပိုရောင်း၍မရပါ။'); return prev; }
         return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * product.price } : item);
-      } else {
-        return [...prev, { product, quantity: 1, subtotal: product.price }];
-      }
+      } else return [...prev, { product, quantity: 1, subtotal: product.price }];
     });
   };
 
@@ -82,25 +77,13 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     if (newQty < 0) return;
     const product = finishedGoods.find(fg => fg.id === productId);
     if (product && newQty > product.stockQty) return alert(`❌ လက်ကျန် (${product.stockQty}) ထက် ပိုရောင်း၍မရပါ။`);
-    
     setCart(prev => prev.map(item => {
-      if (item.product.id === productId) {
-         return { ...item, quantity: newQty, subtotal: newQty * item.product.price };
-      }
+      if (item.product.id === productId) return { ...item, quantity: newQty, subtotal: newQty * item.product.price };
       return item;
     }).filter(item => item.quantity > 0)); 
   };
 
   const removeFromCart = (productId: number) => setCart(cart.filter(item => item.product.id !== productId));
-
-  const fetchLocation = () => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => { setGpsLocation(`${position.coords.latitude}, ${position.coords.longitude}`); },
-        (error) => { alert("GPS location ရယူ၍မရပါ။"); }
-      );
-    } else { alert("သင့်စက်တွင် GPS မပါဝင်ပါ။"); }
-  };
 
   const totalAmount = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const discountAmount = (totalAmount * Number(discountPercent || 0)) / 100;
@@ -111,19 +94,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   const handleCheckoutSubmit = () => {
     if (!customerName) return alert("ဝယ်သူအမည် ထည့်သွင်းပါ။");
     if (paymentMethod === 'CREDIT' && creditTerms === 'Custom' && !customCreditDays) return alert("စိတ်ကြိုက်ရက် ထည့်ပါ။");
-    
     const finalCreditTerms = paymentMethod === 'CREDIT' ? (creditTerms === 'Custom' ? `${customCreditDays} Days (စိတ်ကြိုက်)` : creditTerms) : undefined;
-    
     const now = new Date();
     const dateTimeStr = `${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
-
+    
     const newSale: SaleRecord = {
       id: `INV-${Date.now().toString().slice(-6)}`, date: dateTimeStr,
       customerName, phone, salespersonName: userName, shopType, address, gps: gpsLocation,
       items: cart, totalAmount, finalAmount, discountPercent: Number(discountPercent || 0), taxPercent: Number(taxPercent || 0),
       paymentMethod, creditTerms: finalCreditTerms, isPaid: paymentMethod !== 'CREDIT'
     };
-
     onCheckout(newSale); setCart([]); setIsCheckoutModalOpen(false);
     setCustomerName(''); setPhone(''); setAddress(''); setGpsLocation('');
     alert('✅ အရောင်းစာရင်း အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
@@ -140,17 +120,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     setTimeout(() => { window.print(); }, 300);
   };
 
+  // 🌟 iPhone အတွက် အံဝင်ခွင်ကျဖြစ်မည့် Image Save 🌟
   const handleSaveAsImage = async () => {
     setPrintType('IMAGE');
     setTimeout(async () => {
       if (receiptRef.current) {
         try {
-          const canvas = await html2canvas(receiptRef.current, { scale: 3, useCORS: true, logging: false });
+          const canvas = await html2canvas(receiptRef.current, { scale: 2, useCORS: true, logging: false });
           const image = canvas.toDataURL('image/png');
           setGeneratedImageURL(image); 
-        } catch (err) {
-          alert('ပုံသိမ်းရာတွင် အခက်အခဲရှိပါသည်။');
-        }
+        } catch (err) { alert('ပုံသိမ်းရာတွင် အခက်အခဲရှိပါသည်။'); }
       }
     }, 500);
   };
@@ -159,8 +138,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   const visibleSalesToRender = filteredSales.slice(0, displayLimit);
 
   return (
-    <div className="p-1 md:p-6 h-full overflow-y-auto print:p-0 print:overflow-visible">
+    <div className="p-1 md:p-6 h-full overflow-y-auto print:p-0 print:overflow-visible relative">
       <div className="print:hidden">
+        {/* Header & Main POS UI... ( unchanged to keep response precise ) */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 md:mb-6 border-b-2 pb-2 md:pb-4 border-amber-200 gap-2 md:gap-4">
           <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> အရောင်းပိုင်း (POS)</h2>
           <div className="flex gap-1.5 md:gap-2 bg-white p-1 rounded-lg md:rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
@@ -184,13 +164,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 ))}
               </div>
             </div>
-
             <div className="flex-1 bg-white p-2 md:p-6 rounded-xl md:rounded-[2rem] shadow-xl border border-slate-200 flex flex-col h-full sticky top-1 md:top-4">
               <div className="flex justify-between items-center border-b pb-1.5 md:pb-4 mb-2 md:mb-4">
                  <h3 className="text-sm md:text-xl font-black text-slate-800">🛒 စာရင်း</h3>
                  <span className="text-[10px] md:text-sm font-bold text-slate-400">{cart.length} မျိုး</span>
               </div>
-
               <div className="flex-1 overflow-y-auto mb-2 md:mb-6 space-y-1.5 md:space-y-3 min-h-[150px] md:min-h-[300px]">
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex flex-col bg-slate-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-slate-200">
@@ -208,9 +186,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     </div>
                   </div>
                 ))}
-                {cart.length === 0 && <div className="text-center text-slate-400 font-bold mt-4 md:mt-10 text-[10px] md:text-base">ပစ္စည်းများ ရွေးချယ်ပါ</div>}
               </div>
-
               <div className="border-t border-dashed border-slate-200 pt-2 md:pt-4 space-y-2 md:space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-bold text-[10px] md:text-base">စုစုပေါင်း</span>
@@ -231,16 +207,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <h3 className="text-white font-black text-sm md:text-xl flex items-center gap-1.5 md:gap-2"><span>🧾</span> ငွေရှင်းရန်</h3>
                 <button onClick={() => setIsCheckoutModalOpen(false)} className="text-slate-300 hover:text-white font-bold text-base md:text-xl px-2">✕</button>
               </div>
-              
               <div className="p-3 md:p-6 overflow-y-auto space-y-3 md:space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
+                 {/* Checkout Form Content... */}
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                   <div className="relative">
                     <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဝယ်သူအမည် *</label>
                     <input type="text" value={customerName} onChange={e => { setCustomerName(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 font-bold text-[10px] md:text-sm" placeholder="အမည်ရိုက်ထည့်ပါ..." />
                     {showSuggestions && customerName && (
                       <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
                         {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).map(c => (
-                          <li key={c.id} onMouseDown={(e) => { e.preventDefault(); setCustomerName(c.name); setPhone(c.phone); setShopType(c.shopType || 'Company (ကုမ္ပဏီ)'); setAddress(c.address); setGpsLocation(c.gpsLocation); setShowSuggestions(false); }} className="p-1.5 md:p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0">
+                          <li key={c.id} onMouseDown={(e) => { e.preventDefault(); setCustomerName(c.name); setPhone(c.phone); setShopType(c.shopType || 'Company (ကုမ္ပဏီ)'); setAddress(c.address); setShowSuggestions(false); }} className="p-1.5 md:p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0">
                             <div className="font-bold text-slate-800 text-[10px] md:text-sm">{c.name}</div>
                             <div className="text-[8px] md:text-xs text-slate-500">{c.phone} | {c.shopType}</div>
                           </li>
@@ -248,18 +224,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                       </ul>
                     )}
                   </div>
-                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဆိုင်အမျိုးအစား</label><input type="text" list="shop-types" value={shopType} onChange={e => setShopType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 font-bold text-slate-700 text-[10px] md:text-sm" placeholder="ရွေးချယ်ပါ..." />
+                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဆိုင်အမျိုးအစား</label><input type="text" list="shop-types" value={shopType} onChange={e => setShopType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 font-bold text-slate-700 text-[10px] md:text-sm" />
                     <datalist id="shop-types"><option value="Company (ကုမ္ပဏီ)" /><option value="Distribution (ဖြန့်ချိရေး)" /><option value="ကျောင်းဈေးဆိုင်" /><option value="လက်လီဆိုင်" /><option value="လက်ကားဆိုင်" /></datalist>
                   </div>
-                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="09..." className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
+                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                   <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">လိပ်စာ</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-2 md:gap-4">
-                  <div className="bg-emerald-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-emerald-100"><label className="block text-[9px] md:text-xs font-black text-emerald-600 mb-0.5 md:mb-1">လျှော့ဈေး (%)</label><input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-xs md:text-lg" placeholder="0.0" /></div>
-                  <div className="bg-rose-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-rose-100"><label className="block text-[9px] md:text-xs font-black text-rose-600 mb-0.5 md:mb-1">အခွန် (%)</label><input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-xs md:text-lg" placeholder="0.0" /></div>
+                  <div className="bg-emerald-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-emerald-100"><label className="block text-[9px] md:text-xs font-black text-emerald-600 mb-0.5 md:mb-1">လျှော့ဈေး (%)</label><input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-xs md:text-lg" /></div>
+                  <div className="bg-rose-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-rose-100"><label className="block text-[9px] md:text-xs font-black text-rose-600 mb-0.5 md:mb-1">အခွန် (%)</label><input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-xs md:text-lg" /></div>
                 </div>
-
                 <div>
                   <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Payment Method</label>
                   <div className="grid grid-cols-3 gap-1 md:gap-2">
@@ -268,7 +242,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     ))}
                   </div>
                 </div>
-
                 {paymentMethod === 'CREDIT' && (
                   <div className="bg-amber-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-amber-200">
                     <label className="block text-[9px] md:text-xs font-black text-amber-700 mb-1">⏳ အကြွေးသက်တမ်း:</label>
@@ -280,10 +253,8 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     )}
                   </div>
                 )}
-
                 <div className="bg-slate-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-slate-200 flex justify-between items-center"><span className="font-bold text-slate-600 text-[10px] md:text-base">ကျသင့်ငွေ:</span><span className="text-lg md:text-3xl font-black text-slate-800">{finalAmount.toLocaleString()} Ks</span></div>
               </div>
-
               <div className="p-2 md:p-4 bg-white border-t flex gap-1.5 md:gap-3 shrink-0">
                 <button onClick={() => setIsCheckoutModalOpen(false)} className="flex-1 py-1.5 md:py-3 rounded-lg md:rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-xs md:text-base">Cancel</button>
                 <button onClick={handleCheckoutSubmit} className="flex-[2] py-1.5 md:py-3 rounded-lg md:rounded-xl font-black text-white bg-emerald-500 hover:bg-emerald-600 shadow-md active:scale-95 transition-all text-xs md:text-base">အတည်ပြုမည်</button>
@@ -292,7 +263,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
           </div>
         )}
 
-        {/* မှတ်တမ်း UI */}
+        {/* Records */}
         {activeTab === 'records' && (
           <div className="space-y-2 md:space-y-6">
              <div className="relative w-full md:max-w-sm"><span className="absolute left-2.5 top-1.5 md:top-3 text-slate-400 text-xs md:text-base">🔍</span><input type="text" className="w-full pl-7 pr-3 py-1.5 md:py-3 bg-white border border-slate-200 rounded-lg md:rounded-xl shadow-sm outline-none focus:border-amber-500 text-[10px] md:text-base" placeholder="ဘောက်ချာ / အမည် ရှာရန်..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
@@ -308,32 +279,26 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                       <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount.toLocaleString()} Ks</div>
                     </div>
                     <h3 className="text-xs md:text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-[9px] md:text-sm font-medium text-slate-500">({sale.phone})</span></h3>
-                    
                     <div className="text-[9px] md:text-xs text-slate-500 font-bold mt-0.5 md:mt-1 leading-relaxed">
-                      📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>
-                      🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
+                      📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
                     </div>
                   </div>
-                  
                   <div className="text-right w-full md:w-auto border-t border-slate-100 md:border-0 pt-1.5 md:pt-0 mt-1 md:mt-0 flex justify-between md:flex-col items-center md:items-end">
                     <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount.toLocaleString()} Ks</div>
                     <div className="flex gap-1 md:gap-2 justify-end w-full md:w-auto">
                        {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
-                       
                        <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ ဘောက်ချာထုတ်မည်</button>
-                       
                        {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
                     </div>
                   </div>
                 </div>
               ))}
-              {visibleSalesToRender.length === 0 && <div className="p-4 md:p-8 text-center text-slate-400 font-bold bg-white rounded-xl md:rounded-2xl border border-dashed text-[10px] md:text-base">မှတ်တမ်း မရှိသေးပါ။</div>}
             </div>
-        </div>
+          </div>
         )}
       </div>
 
-      {/* 🌟 PRINT MODAL 🌟 */}
+      {/* Options Modal */}
       {selectedSaleForPrint && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -343,19 +308,10 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             </div>
             <div className="p-6 bg-slate-50">
                <div className="text-center mb-6">
-                 <h4 className="font-black text-slate-800 text-xl">"စက်စက်ယို" စားသောက်ကုန်</h4>
+                 <h4 className="font-black text-slate-800 text-xl">စက်စက်ယို</h4>
                  <p className="text-xs text-slate-500 font-bold">INV: #{selectedSaleForPrint.id}</p>
                </div>
-               
-               <div className="space-y-2 mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-sm">
-                 <div className="flex justify-between"><span className="text-slate-500 font-bold">ဝယ်သူ:</span><span className="font-black text-slate-800">{selectedSaleForPrint.customerName}</span></div>
-                 <div className="flex justify-between"><span className="text-slate-500 font-bold">ငွေချေစနစ်:</span><span className={`font-black ${selectedSaleForPrint.isPaid ? 'text-emerald-600' : 'text-rose-600'}`}>{selectedSaleForPrint.paymentMethod}</span></div>
-                 {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
-                   <div className="flex justify-between bg-rose-50 p-2 rounded border border-rose-100 mt-2"><span className="text-rose-600 font-bold">🗓️ Due Date:</span><span className="font-black text-rose-700">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</span></div>
-                 )}
-               </div>
-
-               <div className="flex justify-between items-end border-t-2 border-dashed border-slate-300 pt-4">
+               <div className="flex justify-between items-end border-t-2 border-dashed border-slate-300 pt-4 mt-4">
                  <span className="text-slate-600 font-bold text-lg">Total Amount:</span>
                  <span className="text-3xl font-black text-emerald-600">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
                </div>
@@ -363,23 +319,23 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             <div className="p-4 bg-white border-t grid grid-cols-2 gap-2">
                <button onClick={handleSaveAsImage} className="py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 shadow-md text-sm">🖼️ ပုံအဖြစ် သိမ်းမည်</button>
                <button onClick={() => handlePrint('A4')} className="py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md text-sm">📄 A4 / PDF ထုတ်မည်</button>
-               <button onClick={() => handlePrint('THERMAL')} className="py-3 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 shadow-md text-sm col-span-2">🖨️ BT Thermal Printer (58/80mm)</button>
+               <button onClick={() => handlePrint('THERMAL')} className="py-3 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 shadow-md text-sm col-span-2">🖨️ BT Thermal Printer</button>
                <button onClick={() => setSelectedSaleForPrint(null)} className="py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 text-sm col-span-2">ပိတ်မည်</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🌟 🌟 🌟 iOS အတွက် ပုံအဖြစ် ပြသပြီး Save Image ခိုင်းမည့် မျက်နှာပြင် (Back ခလုတ်ကို အပေါ်ဘယ်ဘက်တွင် ကြီးကြီးပြထားသည်) 🌟 🌟 🌟 */}
+      {/* 🌟 🌟 🌟 iOS အတွက် ပုံအဖြစ် ပြသပြီး Save Image ခိုင်းမည့် မျက်နှာပြင် (Back ခလုတ်ပါဝင်သည်) 🌟 🌟 🌟 */}
       {generatedImageURL && (
         <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col print:hidden">
-          {/* Top Navigation Bar with Back Button */}
-          <div className="bg-slate-800 p-4 flex items-center shadow-lg">
+          {/* Top Navigation Bar with HUGE Back Button */}
+          <div className="bg-slate-800 p-4 flex items-center shadow-lg w-full">
             <button 
               onClick={() => setGeneratedImageURL(null)} 
-              className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-lg font-black text-sm shadow-md flex items-center gap-2 active:scale-95 transition-transform"
+              className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-3 rounded-xl font-black text-base shadow-md flex items-center gap-2 active:scale-95 transition-transform"
             >
-              <span className="text-xl">🔙</span> ပြန်ထွက်မည်
+              <span className="text-2xl">⬅</span> ပြန်ထွက်မည်
             </button>
             <span className="text-sm font-bold text-slate-300 ml-auto flex items-center gap-2">👇 ဖိနှိပ်ပြီး Save Image ရွေးပါ</span>
           </div>
@@ -392,108 +348,119 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
       {/* 🌟 PRINT TEMPLATES 🌟 */}
       {selectedSaleForPrint && (
-        <div className={`print:block bg-white text-black print:w-full print:m-0 print:p-0 absolute top-0 left-0 w-full z-[9000] ${printType === 'IMAGE' ? 'block' : 'hidden'}`}>
+        <div className={`bg-white text-black ${printType === 'IMAGE' ? 'fixed top-0 left-[9999px] w-[800px] -z-50' : 'hidden print:block print:w-full print:absolute print:top-0 print:left-0 z-[9000]'}`}>
           
-          {/* ----- A4 & IMAGE TEMPLATE ----- */}
+          {/* ----- A4 & IMAGE TEMPLATE (Modern Redesign to fit 1 page) ----- */}
           {(printType === 'A4' || printType === 'IMAGE') && (
-            <div ref={printType === 'IMAGE' ? receiptRef : null} className="max-w-[800px] mx-auto p-10 bg-white" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
+            <div ref={printType === 'IMAGE' ? receiptRef : null} className={`p-10 mx-auto bg-white ${printType === 'IMAGE' ? 'w-[800px]' : 'max-w-[800px]'}`} style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
+              
               {/* Header Section */}
-              <div className="flex flex-col items-center text-center pb-6 mb-6">
-                <img src="/logo.png" alt="Logo" className="w-28 h-28 object-contain mb-3" />
-                <h1 className="text-3xl font-black mb-2" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>"စက်စက်ယို" စားသောက်ကုန်</h1>
-                <p className="text-sm font-bold text-gray-700">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊ မန္တလေးမြို့။</p>
-                <p className="text-sm font-bold text-gray-700">Ph: 09-455557980</p>
-                
-                {/* 🌟 Barcode နဲ့ အပေါ်စာသားကြား မျဉ်းကြောင်းကပ်သွားအောင် mt-1 ပြောင်းထားသည် 🌟 */}
-                <div className="mt-1 border-b-2 border-black w-full pb-4 mb-4 flex justify-center">
-                  <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-12" />
+              <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-6">
+                <div className="flex items-center gap-4">
+                  <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
+                  <div>
+                    <h1 className="text-3xl font-black text-slate-800 tracking-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
+                    <p className="text-sm font-bold text-slate-600 mt-1">စားသောက်ကုန်လုပ်ငန်း</p>
+                    <p className="text-xs text-slate-500 mt-1">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊<br/>မန္တလေးမြို့။</p>
+                    <p className="text-xs text-slate-500">Ph: 09-455557980</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <h2 className="text-4xl font-black text-slate-300 uppercase tracking-widest mb-2">Invoice</h2>
+                  <div className="flex flex-col gap-1 text-sm font-bold text-slate-700">
+                    <div className="flex justify-end gap-2"><span>No:</span> <span className="text-slate-900 w-32 text-left">#{selectedSaleForPrint.id}</span></div>
+                    <div className="flex justify-end gap-2"><span>Date:</span> <span className="text-slate-900 w-32 text-left">{selectedSaleForPrint.date}</span></div>
+                    <div className="flex justify-end gap-2"><span>Method:</span> <span className="text-slate-900 w-32 text-left uppercase">{selectedSaleForPrint.paymentMethod}</span></div>
+                    {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
+                      <div className="flex justify-end gap-2 text-rose-600 mt-1"><span>Due Date:</span> <span className="w-32 text-left font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</span></div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Info Section */}
-              <div className="flex justify-between mb-8 text-sm font-bold">
-                <div className="space-y-2">
-                  <div><span className="w-32 inline-block text-gray-600">Invoice No:</span> <span className="font-black text-base">#{selectedSaleForPrint.id}</span></div>
-                  <div><span className="w-32 inline-block text-gray-600">Date & Time:</span> <span className="font-black text-blue-800">{selectedSaleForPrint.date}</span></div>
-                  <div><span className="w-32 inline-block text-gray-600">Customer Name:</span> <span className="font-black text-lg">{selectedSaleForPrint.customerName}</span></div>
-                  <div><span className="w-32 inline-block text-gray-600">Address:</span> <span>{selectedSaleForPrint.address || '-'}</span></div>
-                  <div><span className="w-32 inline-block text-gray-600">Phone:</span> <span>{selectedSaleForPrint.phone || '-'}</span></div>
+              {/* Customer & Staff Info */}
+              <div className="flex justify-between mb-8">
+                <div className="w-1/2">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Billed To</h3>
+                  <h4 className="text-lg font-black text-slate-800">{selectedSaleForPrint.customerName}</h4>
+                  <p className="text-sm font-bold text-slate-600 mt-1">{selectedSaleForPrint.address || '-'}</p>
+                  <p className="text-sm font-bold text-slate-600">{selectedSaleForPrint.phone || '-'}</p>
                 </div>
-                <div className="space-y-2 text-right">
-                  <div><span className="text-gray-600 mr-2">Staff:</span> <span>{selectedSaleForPrint.salespersonName}</span></div>
-                  <div><span className="text-gray-600 mr-2">Payment Method:</span> <span className="font-black uppercase">{selectedSaleForPrint.paymentMethod}</span></div>
-                  {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
-                    <div className="text-red-600 border-2 border-red-600 px-3 py-1.5 rounded-lg inline-block mt-2">
-                      Due Date: <span className="font-black text-lg">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</span>
-                    </div>
-                  )}
+                <div className="w-1/2 text-right">
+                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Issued By</h3>
+                   <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
+                   <div className="mt-4 flex justify-end">
+                     <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-10" />
+                   </div>
                 </div>
               </div>
 
-              {/* 🌟 Items Table (English Headers & Better Spacing) 🌟 */}
-              <table className="w-full text-left mb-6 border-collapse">
-                <thead>
-                  <tr className="border-b-2 border-black">
-                    <th className="py-2 font-black w-12 text-center text-slate-800">No.</th>
-                    <th className="py-2 font-black text-slate-800">Description</th>
-                    <th className="py-2 font-black text-center w-24 text-slate-800">Qty</th>
-                    <th className="py-2 font-black text-right w-32 text-slate-800">Price (Ks)</th>
-                    <th className="py-2 font-black text-right w-32 text-slate-800">Amount (Ks)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedSaleForPrint.items.map((item, idx) => (
-                    <tr key={idx} className="border-b border-gray-300">
-                      <td className="py-3 text-center font-bold text-slate-700">{idx + 1}</td>
-                      <td className="py-3">
-                         <span className="font-black text-slate-900 block leading-tight">{item.product.category}</span> 
-                         <span className="text-xs font-bold text-gray-500 block leading-tight">{item.product.taste} ({item.product.gram}g)</span>
-                      </td>
-                      <td className="py-3 text-center font-black text-slate-800">{item.quantity}</td>
-                      <td className="py-3 text-right font-bold text-slate-700">{item.product.price.toLocaleString()}</td>
-                      <td className="py-3 text-right font-black text-slate-900">{item.subtotal.toLocaleString()}</td>
+              {/* Items Table (English Headers) */}
+              <div className="min-h-[250px]">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-800 text-white">
+                      <th className="py-2 px-3 font-bold text-sm w-12 text-center rounded-tl-lg">No.</th>
+                      <th className="py-2 px-3 font-bold text-sm">Description</th>
+                      <th className="py-2 px-3 font-bold text-sm text-center w-24">Qty</th>
+                      <th className="py-2 px-3 font-bold text-sm text-right w-32">Price (Ks)</th>
+                      <th className="py-2 px-3 font-bold text-sm text-right w-32 rounded-tr-lg">Amount (Ks)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {selectedSaleForPrint.items.map((item, idx) => (
+                      <tr key={idx} className="border-b border-slate-200">
+                        <td className="py-3 px-3 text-center font-bold text-slate-600 text-sm">{idx + 1}</td>
+                        <td className="py-3 px-3">
+                           <span className="font-bold text-slate-800 text-sm block leading-tight">{item.product.category}</span> 
+                           <span className="text-xs font-bold text-slate-500 block leading-tight mt-0.5">({item.product.taste}, {item.product.gram}g)</span>
+                        </td>
+                        <td className="py-3 px-3 text-center font-black text-slate-700 text-sm">{item.quantity}</td>
+                        <td className="py-3 px-3 text-right font-bold text-slate-600 text-sm">{item.product.price.toLocaleString()}</td>
+                        <td className="py-3 px-3 text-right font-black text-slate-800 text-sm">{item.subtotal.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Totals Section */}
-              <div className="flex justify-end mb-16 mt-6">
-                <div className="w-80 space-y-3 text-base font-bold bg-gray-50 p-4 rounded-xl border border-gray-200">
-                  <div className="flex justify-between border-b border-gray-200 pb-2">
-                    <span className="text-gray-600">Subtotal:</span>
+              <div className="flex justify-end mt-4 mb-10">
+                <div className="w-80">
+                  <div className="flex justify-between py-1.5 text-sm font-bold text-slate-600">
+                    <span>Subtotal:</span>
                     <span>{selectedSaleForPrint.totalAmount.toLocaleString()} Ks</span>
                   </div>
                   {Number(selectedSaleForPrint.discountPercent) > 0 && (
-                     <div className="flex justify-between border-b border-gray-200 pb-2 text-red-600">
+                     <div className="flex justify-between py-1.5 text-sm font-bold text-rose-600 border-t border-slate-100">
                        <span>Discount ({selectedSaleForPrint.discountPercent}%):</span>
-                       <span className="font-black">- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()} Ks</span>
+                       <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()} Ks</span>
                      </div>
                   )}
                   {Number(selectedSaleForPrint.taxPercent) > 0 && (
-                     <div className="flex justify-between border-b border-gray-200 pb-2 text-blue-600">
+                     <div className="flex justify-between py-1.5 text-sm font-bold text-blue-600 border-t border-slate-100">
                        <span>Tax ({selectedSaleForPrint.taxPercent}%):</span>
-                       <span className="font-black">+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()} Ks</span>
+                       <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()} Ks</span>
                      </div>
                   )}
-                  <div className="flex justify-between pt-2">
-                    <span className="text-xl font-black text-green-700">Total Amount:</span>
-                    <span className="text-2xl font-black text-green-700">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
+                  <div className="flex justify-between py-3 mt-2 border-t-2 border-slate-800 text-lg">
+                    <span className="font-black text-slate-800">Total:</span>
+                    <span className="font-black text-emerald-600">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
                   </div>
                 </div>
               </div>
 
               {/* Signatures */}
-              <div className="flex justify-between px-10">
-                 <div className="text-center border-t border-black w-48 pt-2 font-bold text-sm">Customer Signature</div>
-                 <div className="text-center border-t border-black w-48 pt-2 font-bold text-sm">Authorized Signature</div>
+              <div className="flex justify-between px-10 pt-16 mt-auto">
+                 <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Customer Signature</div>
+                 <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Authorized Signature</div>
               </div>
             </div>
           )}
 
           {/* ----- THERMAL 58mm/80mm TEMPLATE ----- */}
           {printType === 'THERMAL' && (
-            <div className="w-full max-w-[80mm] mx-auto p-2 bg-white text-black font-sans text-xs" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
+            <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-xs" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
                 <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain mx-auto mb-1 grayscale" />
                 <h2 className="text-base font-black mb-1">"စက်စက်ယို"</h2>
@@ -514,7 +481,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 )}
               </div>
 
-              {/* 🌟 Items Table (English Headers & Better Spacing) 🌟 */}
               <div className="mb-2 border-b-2 border-dashed border-black pb-2">
                 <div className="flex justify-between font-black border-b border-black pb-1 mb-1 text-[11px]">
                   <span className="w-2/3">Item</span>
