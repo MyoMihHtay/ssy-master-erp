@@ -209,8 +209,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
           </div>
         )}
 
+        {/* 🌟 Checkout Modal (md:left-64 ဖြင့် နေရာချထားသည်) 🌟 */}
         {isCheckoutModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-2 md:p-4 backdrop-blur-sm">
+          <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[100] flex items-center justify-center bg-black/70 p-2 md:p-4 backdrop-blur-sm">
             <div className="bg-white rounded-xl md:rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] md:max-h-[90vh]">
               <div className="bg-slate-800 p-2 md:p-4 flex justify-between items-center shrink-0">
                 <h3 className="text-white font-black text-sm md:text-xl flex items-center gap-1.5 md:gap-2"><span>🧾</span> ငွေရှင်းရန်</h3>
@@ -318,9 +319,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         )}
       </div>
 
-      {/* Options Modal */}
+      {/* 🌟 Print Options Modal (md:left-64 ဖြင့် နေရာချထားသည်) 🌟 */}
       {selectedSaleForPrint && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
+        <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4 flex justify-between items-center">
                <h3 className="text-white font-black text-lg flex items-center gap-2"><span>🖨️</span> ဘောက်ချာ ရွေးချယ်ရန်</h3>
@@ -346,11 +347,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* 🌟 FULL SCREEN OVERLAY FOR BOTH MAC & MOBILE (Back Button Fixed) 🌟 */}
+      {/* 🌟 🌟 iOS & Mac Image Save Overlay with CLEAR BACK BUTTON 🌟 🌟 */}
       {generatedImageURL && (
-        <div className="fixed inset-0 z-[99999] bg-slate-800/95 flex flex-col items-center justify-start print:hidden backdrop-blur-sm">
-          {/* Top Bar */}
-          <div className="w-full bg-slate-900 p-4 flex items-center justify-between shadow-xl shrink-0 border-b border-slate-700">
+        <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[99999] bg-slate-900/95 flex flex-col items-center justify-start print:hidden backdrop-blur-md">
+          {/* Top Bar (Visible to user cleanly) */}
+          <div className="w-full bg-slate-800 p-4 md:p-6 flex items-center justify-between shadow-xl shrink-0 border-b border-slate-700">
             <button 
               onClick={() => setGeneratedImageURL(null)} 
               className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-lg font-black text-sm md:text-base shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
@@ -387,37 +388,37 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   </div>
                 </div>
                 
-                {/* 🌟 Invoice Info ကို Table ပုံစံဖြင့် မျဉ်းဖြောင့်တန်းအောင် ပြင်ဆင်ထားသည် 🌟 */}
+                {/* 🌟 🌟 Invoice Header Info Table 🌟 🌟 */}
                 <div className="w-[45%] flex justify-end">
-                  <div className="w-full max-w-[260px]">
+                  <div className="w-full max-w-[280px]">
                     <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest mb-3 text-right">Invoice</h2>
                     <table className="w-full text-sm font-bold text-slate-700">
                       <tbody>
                         <tr>
-                          <td className="py-0.5 text-slate-500 w-20">No.</td>
-                          <td className="py-0.5 w-4 text-center">:</td>
-                          <td className="py-0.5 text-slate-900">#{selectedSaleForPrint.id}</td>
+                          <td className="py-1 text-slate-500 w-24">No.</td>
+                          <td className="py-1 w-4 text-center">:</td>
+                          <td className="py-1 text-slate-900">#{selectedSaleForPrint.id}</td>
                         </tr>
                         <tr>
-                          <td className="py-0.5 text-slate-500">Date</td>
-                          <td className="py-0.5 text-center">:</td>
-                          <td className="py-0.5 text-slate-900">{selectedSaleForPrint.date.split(' ')[0]}</td>
+                          <td className="py-1 text-slate-500">Date</td>
+                          <td className="py-1 text-center">:</td>
+                          <td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ')[0]}</td>
                         </tr>
                         <tr>
-                          <td className="py-0.5 text-slate-500">Time</td>
-                          <td className="py-0.5 text-center">:</td>
-                          <td className="py-0.5 text-slate-900">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td>
+                          <td className="py-1 text-slate-500">Time</td>
+                          <td className="py-1 text-center">:</td>
+                          <td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td>
                         </tr>
                         <tr>
-                          <td className="py-0.5 text-slate-500">Method</td>
-                          <td className="py-0.5 text-center">:</td>
-                          <td className="py-0.5 text-slate-900 uppercase">{selectedSaleForPrint.paymentMethod}</td>
+                          <td className="py-1 text-slate-500">Method</td>
+                          <td className="py-1 text-center">:</td>
+                          <td className="py-1 text-slate-900 uppercase">{selectedSaleForPrint.paymentMethod}</td>
                         </tr>
                         {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
                           <tr>
-                            <td className="py-0.5 text-rose-500">Due Date</td>
-                            <td className="py-0.5 text-center text-rose-500">:</td>
-                            <td className="py-0.5 text-rose-600 font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</td>
+                            <td className="py-1 text-rose-500">Due Date</td>
+                            <td className="py-1 text-center text-rose-500">:</td>
+                            <td className="py-1 text-rose-600 font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</td>
                           </tr>
                         )}
                       </tbody>
@@ -438,14 +439,12 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issued By</h3>
                       <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
                    </div>
-                   {/* 🌟 Barcode Size ကို အနည်းငယ် တိုအောင် width ဖြင့် ချိန်ညှိထားသည် 🌟 */}
-                   <div className="opacity-90">
-                     <Barcode value={selectedSaleForPrint.id} format="CODE128" height={35} width={1.5} displayValue={false} margin={0} background="transparent" />
+                   <div className="opacity-90 mt-1">
+                     <Barcode value={selectedSaleForPrint.id} format="CODE128" height={30} width={1.2} displayValue={false} margin={0} background="transparent" />
                    </div>
                 </div>
               </div>
 
-              {/* 🌟 Items Table (Padding ကို py-2 သို့ပြောင်း၍ Text များကို Center အတိအကျဖြစ်အောင် ပြင်ဆင်ထားသည်) 🌟 */}
               <div className="min-h-[200px]">
                 <table className="w-full text-left border-collapse">
                   <thead style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
