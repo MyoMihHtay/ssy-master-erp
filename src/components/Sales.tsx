@@ -120,7 +120,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     setTimeout(() => { window.print(); }, 300);
   };
 
-  // 🌟 iPhone အတွက် အံဝင်ခွင်ကျဖြစ်မည့် Image Save 🌟
   const handleSaveAsImage = async () => {
     setPrintType('IMAGE');
     setTimeout(async () => {
@@ -140,7 +139,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   return (
     <div className="p-1 md:p-6 h-full overflow-y-auto print:p-0 print:overflow-visible relative">
       <div className="print:hidden">
-        {/* Header & Main POS UI... ( unchanged to keep response precise ) */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 md:mb-6 border-b-2 pb-2 md:pb-4 border-amber-200 gap-2 md:gap-4">
           <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> အရောင်းပိုင်း (POS)</h2>
           <div className="flex gap-1.5 md:gap-2 bg-white p-1 rounded-lg md:rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
@@ -208,7 +206,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <button onClick={() => setIsCheckoutModalOpen(false)} className="text-slate-300 hover:text-white font-bold text-base md:text-xl px-2">✕</button>
               </div>
               <div className="p-3 md:p-6 overflow-y-auto space-y-3 md:space-y-5">
-                 {/* Checkout Form Content... */}
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                   <div className="relative">
                     <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဝယ်သူအမည် *</label>
@@ -326,77 +323,91 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* 🌟 🌟 🌟 iOS အတွက် ပုံအဖြစ် ပြသပြီး Save Image ခိုင်းမည့် မျက်နှာပြင် (Back ခလုတ်ပါဝင်သည်) 🌟 🌟 🌟 */}
+      {/* 🌟 🌟 🌟 iOS အတွက် ပုံအဖြစ် ပြသပြီး Save Image ခိုင်းမည့် မျက်နှာပြင် (Fixed Top Position) 🌟 🌟 🌟 */}
       {generatedImageURL && (
-        <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col print:hidden">
+        <div className="fixed top-[68px] md:top-0 left-0 right-0 bottom-0 z-[9999] bg-slate-900 flex flex-col print:hidden">
           {/* Top Navigation Bar with HUGE Back Button */}
-          <div className="bg-slate-800 p-4 flex items-center shadow-lg w-full">
+          <div className="bg-slate-800 p-4 flex items-center shadow-lg w-full shrink-0">
             <button 
               onClick={() => setGeneratedImageURL(null)} 
-              className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-3 rounded-xl font-black text-base shadow-md flex items-center gap-2 active:scale-95 transition-transform"
+              className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-xl font-black text-sm shadow-md flex items-center gap-2 active:scale-95 transition-transform"
             >
-              <span className="text-2xl">⬅</span> ပြန်ထွက်မည်
+              <span className="text-xl">⬅</span> ပြန်ထွက်မည်
             </button>
             <span className="text-sm font-bold text-slate-300 ml-auto flex items-center gap-2">👇 ဖိနှိပ်ပြီး Save Image ရွေးပါ</span>
           </div>
           {/* Scrollable Image Area */}
           <div className="flex-1 overflow-auto p-4 flex justify-center items-start">
-            <img src={generatedImageURL} alt="Saved Receipt" className="max-w-full md:max-w-md shadow-2xl rounded-xl border-4 border-slate-700" />
+            <img src={generatedImageURL} alt="Saved Receipt" className="max-w-full md:max-w-md shadow-2xl rounded-xl border border-slate-700" />
           </div>
         </div>
       )}
 
-      {/* 🌟 PRINT TEMPLATES 🌟 */}
+      {/* 🌟 🌟 🌟 PRINT TEMPLATES (Redesigned & Aligned) 🌟 🌟 🌟 */}
       {selectedSaleForPrint && (
         <div className={`bg-white text-black ${printType === 'IMAGE' ? 'fixed top-0 left-[9999px] w-[800px] -z-50' : 'hidden print:block print:w-full print:absolute print:top-0 print:left-0 z-[9000]'}`}>
           
-          {/* ----- A4 & IMAGE TEMPLATE (Modern Redesign to fit 1 page) ----- */}
+          {/* ----- A4 & IMAGE TEMPLATE (Modern Redesign to fit 1 page, English Headers, Balanced Sides) ----- */}
           {(printType === 'A4' || printType === 'IMAGE') && (
             <div ref={printType === 'IMAGE' ? receiptRef : null} className={`p-10 mx-auto bg-white ${printType === 'IMAGE' ? 'w-[800px]' : 'max-w-[800px]'}`} style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               
               {/* Header Section */}
               <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-6">
-                <div className="flex items-center gap-4">
+                {/* Left Side: Logo & Address */}
+                <div className="flex items-center gap-5 w-[60%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
                   <div>
-                    <h1 className="text-3xl font-black text-slate-800 tracking-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
-                    <p className="text-sm font-bold text-slate-600 mt-1">စားသောက်ကုန်လုပ်ငန်း</p>
-                    <p className="text-xs text-slate-500 mt-1">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊<br/>မန္တလေးမြို့။</p>
-                    <p className="text-xs text-slate-500">Ph: 09-455557980</p>
+                    <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
+                    <p className="text-sm font-bold text-slate-600 mt-0.5">စားသောက်ကုန်လုပ်ငန်း</p>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊<br/>မန္တလေးမြို့။</p>
+                    <p className="text-xs font-bold text-slate-600 mt-0.5">Ph: 09-455557980</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <h2 className="text-4xl font-black text-slate-300 uppercase tracking-widest mb-2">Invoice</h2>
-                  <div className="flex flex-col gap-1 text-sm font-bold text-slate-700">
-                    <div className="flex justify-end gap-2"><span>No:</span> <span className="text-slate-900 w-32 text-left">#{selectedSaleForPrint.id}</span></div>
-                    <div className="flex justify-end gap-2"><span>Date:</span> <span className="text-slate-900 w-32 text-left">{selectedSaleForPrint.date}</span></div>
-                    <div className="flex justify-end gap-2"><span>Method:</span> <span className="text-slate-900 w-32 text-left uppercase">{selectedSaleForPrint.paymentMethod}</span></div>
-                    {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
-                      <div className="flex justify-end gap-2 text-rose-600 mt-1"><span>Due Date:</span> <span className="w-32 text-left font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</span></div>
-                    )}
+                
+                {/* Right Side: Invoice Info (Moved Left slightly to balance) */}
+                <div className="w-[40%] flex justify-end">
+                  <div className="w-[260px]">
+                    <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest mb-4 text-right">Invoice</h2>
+                    <div className="grid grid-cols-2 gap-y-2 text-sm font-bold text-slate-700">
+                      <div className="text-right pr-3 text-slate-500">No:</div>
+                      <div className="text-left text-slate-900">#{selectedSaleForPrint.id}</div>
+                      
+                      <div className="text-right pr-3 text-slate-500">Date:</div>
+                      <div className="text-left text-slate-900">{selectedSaleForPrint.date.split(' ')[0]} <span className="text-[10px] text-slate-500">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</span></div>
+                      
+                      <div className="text-right pr-3 text-slate-500">Method:</div>
+                      <div className="text-left text-slate-900 uppercase">{selectedSaleForPrint.paymentMethod}</div>
+                      
+                      {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
+                        <>
+                          <div className="text-right pr-3 text-rose-500">Due Date:</div>
+                          <div className="text-left text-rose-600 font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Customer & Staff Info */}
-              <div className="flex justify-between mb-8">
+              {/* Customer & Barcode Section */}
+              <div className="flex justify-between items-end mb-8">
                 <div className="w-1/2">
-                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Billed To</h3>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 pb-1 inline-block">Billed To</h3>
                   <h4 className="text-lg font-black text-slate-800">{selectedSaleForPrint.customerName}</h4>
-                  <p className="text-sm font-bold text-slate-600 mt-1">{selectedSaleForPrint.address || '-'}</p>
-                  <p className="text-sm font-bold text-slate-600">{selectedSaleForPrint.phone || '-'}</p>
+                  <p className="text-sm font-bold text-slate-600 mt-1.5">{selectedSaleForPrint.address || '-'}</p>
+                  <p className="text-sm font-bold text-slate-600 mt-0.5">Ph: {selectedSaleForPrint.phone || '-'}</p>
                 </div>
-                <div className="w-1/2 text-right">
-                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Issued By</h3>
-                   <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
-                   <div className="mt-4 flex justify-end">
-                     <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-10" />
+                <div className="w-1/2 flex flex-col items-end">
+                   <div className="text-right mb-4">
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issued By</h3>
+                      <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
                    </div>
+                   <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-10 opacity-90" />
                 </div>
               </div>
 
-              {/* Items Table (English Headers) */}
-              <div className="min-h-[250px]">
+              {/* Items Table */}
+              <div className="min-h-[200px]">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-800 text-white">
@@ -425,7 +436,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               </div>
 
               {/* Totals Section */}
-              <div className="flex justify-end mt-4 mb-10">
+              <div className="flex justify-end mt-4 mb-8">
                 <div className="w-80">
                   <div className="flex justify-between py-1.5 text-sm font-bold text-slate-600">
                     <span>Subtotal:</span>
@@ -451,7 +462,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               </div>
 
               {/* Signatures */}
-              <div className="flex justify-between px-10 pt-16 mt-auto">
+              <div className="flex justify-between px-10 pt-10 mt-auto">
                  <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Customer Signature</div>
                  <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Authorized Signature</div>
               </div>
