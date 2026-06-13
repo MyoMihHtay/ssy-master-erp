@@ -12,17 +12,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
   const role = (userRole || '').toLowerCase();
 
   // 🌟 Menu စာရင်းနှင့် ရာထူး (Role) အလိုက် ဝင်ရောက်ခွင့် သတ်မှတ်ချက်များ 🌟
+  // (HR Tab အသစ် ထပ်တိုးထားပြီး MD နှင့် HR ရာထူးများသာ ဝင်ခွင့်ပေးထားပါသည်)
   const navItems = [
     { id: 'sales', label: 'အရောင်း (Sales)', icon: '💰', roles: ['md', 'manager', 'sales', 'finance'] },
     { id: 'procurement', label: 'ဝယ်ယူရေး', icon: '🛒', roles: ['md', 'manager', 'purchasing', 'qc', 'finance', 'storekeeper'] },
-    // 🌟 Manager အား ဂိုထောင်အားလုံး ကြည့်ခွင့်ပေးထားပါသည်
     { id: 'inventory', label: 'ကုန်လှောင်ရုံ', icon: '📦', roles: ['md', 'manager', 'storekeeper', 'qc', 'production'] },
     { id: 'production', label: 'ထုတ်လုပ်မှု', icon: '🍳', roles: ['md', 'manager', 'production'] },
     { id: 'packaging', label: 'ထုပ်ပိုးမှု', icon: '🏷️', roles: ['md', 'manager', 'production'] },
-    // 🌟 QC အား ကုန်ချောအရည်အသွေးစစ်နိုင်ရန် FG ဂိုထောင်ကြည့်ခွင့် တိုးပေးထားပါသည် 🌟
     { id: 'finished_goods', label: 'ကုန်ချော', icon: '🛍️', roles: ['md', 'manager', 'storekeeper', 'sales', 'qc'] },
     { id: 'expenses', label: 'ဘဏ္ဍာရေး/စာရင်း', icon: '📊', roles: ['md', 'manager', 'finance'] },
-    { id: 'accounts', label: 'အကောင့်များ', icon: '👥', roles: ['md'] },
+    
+    // 🌟 HR အပိုင်းသစ် - သက်ဆိုင်သူများသာ မြင်ရမည် 🌟
+    { id: 'hr', label: 'ဝန်ထမ်းရေးရာ/HR', icon: '👥', roles: ['md', 'manager', 'hr'] },
+    
+    { id: 'accounts', label: 'အကောင့်များ', icon: '⚙️', roles: ['md'] },
   ];
 
   return (
@@ -41,7 +44,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
       <nav className="flex-1 overflow-y-auto py-6 custom-scrollbar">
         <ul className="space-y-2 px-4">
           {navItems.map(item => {
+            // MD မဟုတ်ပါက၊ သက်ဆိုင်ရာ Role မပါလျှင် ဤ Menu ကို ဖျောက်ထားမည်
             if (!item.roles.includes(role) && role !== 'md') return null;
+            
             return (
               <li key={item.id}>
                 <button
