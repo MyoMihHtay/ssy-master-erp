@@ -209,9 +209,8 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
           </div>
         )}
 
-        {/* 🌟 Checkout Modal (md:left-64 ဖြင့် နေရာချထားသည်) 🌟 */}
         {isCheckoutModalOpen && (
-          <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[100] flex items-center justify-center bg-black/70 p-2 md:p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-2 md:p-4 backdrop-blur-sm">
             <div className="bg-white rounded-xl md:rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] md:max-h-[90vh]">
               <div className="bg-slate-800 p-2 md:p-4 flex justify-between items-center shrink-0">
                 <h3 className="text-white font-black text-sm md:text-xl flex items-center gap-1.5 md:gap-2"><span>🧾</span> ငွေရှင်းရန်</h3>
@@ -319,7 +318,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         )}
       </div>
 
-      {/* 🌟 Print Options Modal (md:left-64 ဖြင့် နေရာချထားသည်) 🌟 */}
+      {/* Options Modal */}
       {selectedSaleForPrint && (
         <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -347,10 +346,10 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* 🌟 🌟 iOS & Mac Image Save Overlay with CLEAR BACK BUTTON 🌟 🌟 */}
+      {/* iOS & Mac Image Save Overlay with CLEAR BACK BUTTON */}
       {generatedImageURL && (
         <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[99999] bg-slate-900/95 flex flex-col items-center justify-start print:hidden backdrop-blur-md">
-          {/* Top Bar (Visible to user cleanly) */}
+          {/* Top Bar */}
           <div className="w-full bg-slate-800 p-4 md:p-6 flex items-center justify-between shadow-xl shrink-0 border-b border-slate-700">
             <button 
               onClick={() => setGeneratedImageURL(null)} 
@@ -381,10 +380,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <div className="flex items-center gap-5 w-[55%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
                   <div>
-                    <h1 className="text-3xl font-black text-slate-800 tracking-tight leading-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
-                    <p className="text-sm font-bold text-slate-600 mt-0.5">စားသောက်ကုန်လုပ်ငန်း</p>
-                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊<br/>မန္တလေးမြို့။</p>
-                    <p className="text-xs font-bold text-slate-600 mt-0.5">Ph: 09-455557980</p>
+                    {/* 🌟 ခေါင်းစဉ်နှင့် လုပ်ငန်းအမည်ကို ရှင်းလင်းစွာ ခွဲခြားထားသည် 🌟 */}
+                    <h1 className="text-4xl font-black text-slate-800 tracking-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
+                    <p className="text-base font-bold text-slate-600 mt-2 tracking-wide">စားသောက်ကုန်လုပ်ငန်း</p>
+                    <p className="text-sm text-slate-500 mt-2 leading-relaxed">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊<br/>မန္တလေးမြို့။</p>
+                    <p className="text-sm font-bold text-slate-700 mt-1">Ph: 09-455557980</p>
                   </div>
                 </div>
                 
