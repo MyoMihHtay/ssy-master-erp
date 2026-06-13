@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import html2canvas from 'html2canvas'; 
-import Barcode from 'react-barcode'; // 🌟 Barcode Library အသစ်
+import Barcode from 'react-barcode'; 
 import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
 
 interface SalesProps {
@@ -86,6 +86,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
   const removeFromCart = (productId: number) => setCart(cart.filter(item => item.product.id !== productId));
 
+  // 🌟 GPS တည်နေရာရယူသည့် Function
+  const fetchLocation = () => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => { setGpsLocation(`${position.coords.latitude}, ${position.coords.longitude}`); },
+        (error) => { alert("GPS location ရယူ၍မရပါ။ Location ဖွင့်ထားခြင်း ရှိမရှိ စစ်ဆေးပါ။"); }
+      );
+    } else { alert("သင့်စက်တွင် GPS မပါဝင်ပါ။"); }
+  };
+
   const totalAmount = cart.reduce((sum, item) => sum + item.subtotal, 0);
   const discountAmount = (totalAmount * Number(discountPercent || 0)) / 100;
   const taxableAmount = totalAmount - discountAmount;
@@ -140,7 +150,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   return (
     <div className="p-1 md:p-6 h-full overflow-y-auto print:p-0 print:overflow-visible relative">
       <div className="print:hidden">
-        {/* Sales Header & Main POS section... */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 md:mb-6 border-b-2 pb-2 md:pb-4 border-amber-200 gap-2 md:gap-4">
           <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> အရောင်းပိုင်း (POS)</h2>
           <div className="flex gap-1.5 md:gap-2 bg-white p-1 rounded-lg md:rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
@@ -186,6 +195,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     </div>
                   </div>
                 ))}
+                {cart.length === 0 && <div className="text-center text-slate-400 font-bold mt-4 md:mt-10 text-[10px] md:text-base">ပစ္စည်းများ ရွေးချယ်ပါ</div>}
               </div>
               <div className="border-t border-dashed border-slate-200 pt-2 md:pt-4 space-y-2 md:space-y-4">
                 <div className="flex justify-between items-center">
@@ -207,6 +217,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <h3 className="text-white font-black text-sm md:text-xl flex items-center gap-1.5 md:gap-2"><span>🧾</span> ငွေရှင်းရန်</h3>
                 <button onClick={() => setIsCheckoutModalOpen(false)} className="text-slate-300 hover:text-white font-bold text-base md:text-xl px-2">✕</button>
               </div>
+              
               <div className="p-3 md:p-6 overflow-y-auto space-y-3 md:space-y-5">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                   <div className="relative">
@@ -215,7 +226,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     {showSuggestions && customerName && (
                       <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
                         {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).map(c => (
-                          <li key={c.id} onMouseDown={(e) => { e.preventDefault(); setCustomerName(c.name); setPhone(c.phone); setShopType(c.shopType || 'Company (ကုမ္ပဏီ)'); setAddress(c.address); setShowSuggestions(false); }} className="p-1.5 md:p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0">
+                          <li key={c.id} onMouseDown={(e) => { e.preventDefault(); setCustomerName(c.name); setPhone(c.phone); setShopType(c.shopType || 'Company (ကုမ္ပဏီ)'); setAddress(c.address); setGpsLocation(c.gpsLocation || ''); setShowSuggestions(false); }} className="p-1.5 md:p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0">
                             <div className="font-bold text-slate-800 text-[10px] md:text-sm">{c.name}</div>
                             <div className="text-[8px] md:text-xs text-slate-500">{c.phone} | {c.shopType}</div>
                           </li>
@@ -228,11 +239,22 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   </div>
                   <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                   <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">လိပ်စာ</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
+                  
+                  {/* 🌟 🌟 GPS တည်နေရာ ထည့်ရန် အကွက် (ပြန်ထည့်ပေးထားပါသည်) 🌟 🌟 */}
+                  <div className="md:col-span-2">
+                    <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">GPS တည်နေရာ (Map Location)</label>
+                    <div className="flex gap-2">
+                      <input type="text" value={gpsLocation} onChange={e => setGpsLocation(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" placeholder="12.3456, 78.9101" />
+                      <button type="button" onClick={fetchLocation} className="bg-blue-500 text-white px-3 py-1.5 md:px-4 md:py-3 rounded-md md:rounded-lg font-bold text-[10px] md:text-sm whitespace-nowrap active:scale-95 transition-transform shadow-sm">📍 ရယူမည်</button>
+                    </div>
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-2 md:gap-4">
                   <div className="bg-emerald-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-emerald-100"><label className="block text-[9px] md:text-xs font-black text-emerald-600 mb-0.5 md:mb-1">လျှော့ဈေး (%)</label><input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-xs md:text-lg" /></div>
                   <div className="bg-rose-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-rose-100"><label className="block text-[9px] md:text-xs font-black text-rose-600 mb-0.5 md:mb-1">အခွန် (%)</label><input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-xs md:text-lg" /></div>
                 </div>
+
                 <div>
                   <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Payment Method</label>
                   <div className="grid grid-cols-3 gap-1 md:gap-2">
@@ -241,6 +263,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     ))}
                   </div>
                 </div>
+
                 {paymentMethod === 'CREDIT' && (
                   <div className="bg-amber-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-amber-200">
                     <label className="block text-[9px] md:text-xs font-black text-amber-700 mb-1">⏳ အကြွေးသက်တမ်း:</label>
@@ -325,7 +348,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* iOS Image Save Overlay */}
+      {/* iOS Image Save Overlay with Back Button */}
       {generatedImageURL && (
         <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col print:hidden overflow-hidden">
           <div className="bg-slate-800 p-4 flex items-center justify-between shadow-lg w-full shrink-0">
@@ -398,7 +421,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issued By</h3>
                       <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
                    </div>
-                   {/* 🌟 🌟 React Barcode အသုံးပြုထားသည် (CORS Error နှင့် လုံခြုံရေးပြဿနာ လုံးဝမရှိပါ) 🌟 🌟 */}
                    <Barcode value={selectedSaleForPrint.id} format="CODE128" height={40} displayValue={false} margin={0} background="transparent" />
                 </div>
               </div>
@@ -463,7 +485,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             </div>
           )}
 
-          {/* ----- THERMAL 58mm/80mm TEMPLATE (🌟 Font ကြီးထားပြီး Barcode ကို ရှင်းလင်းထားသည် 🌟) ----- */}
+          {/* ----- THERMAL 58mm/80mm TEMPLATE ----- */}
           {printType === 'THERMAL' && (
             <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-[14px]" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
@@ -471,7 +493,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <h2 className="text-xl font-black mb-1">"စက်စက်ယို"</h2>
                 <p className="text-xs leading-tight mb-1">မန္တလေးမြို့</p>
                 <p className="text-xs font-bold leading-tight mb-3">Ph: 09-455557980</p>
-                {/* 🌟 Barcode အစစ် 🌟 */}
                 <div className="flex justify-center">
                    <Barcode value={selectedSaleForPrint.id} format="CODE128" height={35} displayValue={false} margin={0} background="transparent" />
                 </div>
