@@ -10,9 +10,13 @@ import { Sales } from './components/Sales';
 import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
+
+// 🌟 HR နှင့် Dashboard အပြင် 🌟
 import { HR } from './components/HR'; 
-// 🌟 1. Dashboard Component ကို Import လုပ်ခြင်း 🌟
 import { Dashboard } from './components/Dashboard';
+
+// 🌟 1. Workspace (CRM) Component ကို အသစ် Import လုပ်ခြင်း 🌟
+import { Workspace } from './components/Workspace';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; }
@@ -48,7 +52,7 @@ export interface SaleRecord {
 
 export interface Customer { id: string; name: string; phone: string; shopType: string; address: string; gpsLocation: string; }
 
-// 🌟 2. HR စနစ်အတွက် လိုအပ်သော Interface များ ဖန်တီးခြင်း 🌟
+// HR Interfaces
 export interface Employee { id: string; name: string; position: string; department: string; basicSalary: number; joinedDate: string; phone: string; status: string; }
 export interface Attendance { id: number; employeeId: string; date: string; checkInTime?: string; checkOutTime?: string; status: string; checkInGps?: string; checkOutGps?: string; }
 export interface Advance { id: number; employeeId: string; date: string; amount: number; reason: string; status: string; deducted: boolean; }
@@ -132,7 +136,7 @@ export default function App() {
   const [recipes, setRecipes, recLoading] = useSupabaseTable<Recipe>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes, pkgRecLoading] = useSupabaseTable<PackageRecipe>('ssy_pkg_recipes', []);
 
-  // 🌟 3. HR အတွက် လိုအပ်သော Cloud Database ချိတ်ဆက်မှုများ 🌟
+  // HR Cloud Database ချိတ်ဆက်မှုများ
   const [employees, setEmployees, empLoading] = useSupabaseTable<Employee>('ssy_employees', []);
   const [attendance, setAttendance, attLoading] = useSupabaseTable<Attendance>('ssy_attendance', []);
   const [advances, setAdvances, advLoading] = useSupabaseTable<Advance>('ssy_advances', []);
@@ -141,7 +145,7 @@ export default function App() {
 
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
   
-  // 🌟 4. Default Tab ကို Dashboard အဖြစ် သတ်မှတ်ခြင်း 🌟
+  // Default Tab
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   useEffect(() => {
@@ -346,7 +350,6 @@ export default function App() {
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
-  // 🌟 Loading တွင် HR နှင့် သက်ဆိုင်သော Table များကိုပါ စစ်ဆေးပါသည် 🌟
   const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading || prLoading || recLoading || pkgRecLoading || empLoading || attLoading || advLoading || leaveLoading || hrsLoading;
   
   if (isAnyLoading) {
@@ -394,8 +397,10 @@ export default function App() {
       
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         
-        {/* 🌟 5. Dashboard Component ကို Render လုပ်ပေးရန် 🌟 */}
         {activeTab === 'dashboard' && <Dashboard sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
+
+        {/* 🌟 2. Workspace (CRM) Component အား Render လုပ်ခြင်း 🌟 */}
+        {activeTab === 'workspace' && <Workspace userName={user.name} userRole={user.role} />}
 
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} onCreditPayment={handleCreditPayment} />}

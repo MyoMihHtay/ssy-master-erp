@@ -13,8 +13,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
 
   // 🌟 Menu စာရင်းနှင့် ရာထူး (Role) အလိုက် ဝင်ရောက်ခွင့် သတ်မှတ်ချက်များ 🌟
   const navItems = [
-    // 🌟 Dashboard အပိုင်းသစ် - ထိပ်ဆုံးတွင် ထပ်တိုးထားပါသည် 🌟
     { id: 'dashboard', label: 'လုပ်ငန်းအကျဉ်းချုပ်', icon: '📊', roles: ['md', 'manager'] },
+    
+    // 🌟 Workspace (CRM) အပိုင်းသစ် ထပ်တိုးထားပါသည် 🌟
+    { id: 'workspace', label: 'လုပ်ငန်းခွင် ဆက်သွယ်ရေး', icon: '💬', roles: ['md', 'manager', 'sales', 'finance', 'purchasing', 'qc', 'storekeeper', 'production', 'hr'] },
     
     { id: 'sales', label: 'အရောင်း (Sales)', icon: '💰', roles: ['md', 'manager', 'sales', 'finance'] },
     { id: 'procurement', label: 'ဝယ်ယူရေး', icon: '🛒', roles: ['md', 'manager', 'purchasing', 'qc', 'finance', 'storekeeper'] },
@@ -22,7 +24,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
     { id: 'production', label: 'ထုတ်လုပ်မှု', icon: '🍳', roles: ['md', 'manager', 'production'] },
     { id: 'packaging', label: 'ထုပ်ပိုးမှု', icon: '🏷️', roles: ['md', 'manager', 'production'] },
     { id: 'finished_goods', label: 'ကုန်ချော', icon: '🛍️', roles: ['md', 'manager', 'storekeeper', 'sales', 'qc'] },
-    { id: 'expenses', label: 'ဘဏ္ဍာရေး/စာရင်း', icon: '💸', roles: ['md', 'manager', 'finance'] }, // 📊 မှ 💸 သို့ ပြောင်းထားသည်
+    { id: 'expenses', label: 'ဘဏ္ဍာရေး/စာရင်း', icon: '💸', roles: ['md', 'manager', 'finance'] },
     { id: 'hr', label: 'ဝန်ထမ်းရေးရာ/HR', icon: '👥', roles: ['md', 'manager', 'hr'] },
     { id: 'accounts', label: 'အကောင့်များ', icon: '⚙️', roles: ['md'] },
   ];
