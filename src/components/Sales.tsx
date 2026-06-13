@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import html2canvas from 'html2canvas'; // 🌟 ပုံအဖြစ် သိမ်းရန် Library
+import html2canvas from 'html2canvas'; 
 import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
 
 interface SalesProps {
@@ -13,10 +13,8 @@ interface SalesProps {
   onDeleteSale: (saleId: string) => void;
 }
 
-// 🌟 Due Date တွက်ချက်ပေးမည့် Function အသစ် (အချိန်ပါလာလည်း Error မတက်အောင် ပြင်ထားသည်) 🌟
 const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
   if (!terms) return '';
-  // အချိန်ကို ဖယ်ထုတ်ပြီး ရက်စွဲကိုပဲ ယူမည် ("12/06/2026 10:09 PM" -> "12/06/2026")
   const dateOnly = saleDateStr.split(' ')[0];
   const parts = dateOnly.split('/');
   if (parts.length !== 3) return terms;
@@ -60,7 +58,9 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   const [selectedSaleForPrint, setSelectedSaleForPrint] = useState<SaleRecord | null>(null);
   const [printType, setPrintType] = useState<'A4' | 'THERMAL' | 'IMAGE'>('A4');
   
-  // 🌟 Image အဖြစ် သိမ်းရန် Reference 🌟
+  // 🌟 iPhone အတွက် Image View State အသစ် 🌟
+  const [generatedImageURL, setGeneratedImageURL] = useState<string | null>(null);
+
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const isManager = userRole === 'manager' || userRole === 'md';
@@ -116,7 +116,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     
     const finalCreditTerms = paymentMethod === 'CREDIT' ? (creditTerms === 'Custom' ? `${customCreditDays} Days (စိတ်ကြိုက်)` : creditTerms) : undefined;
     
-    // 🌟 Date + Time အပြည့်အစုံ သိမ်းမည် 🌟
     const now = new Date();
     const dateTimeStr = `${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
 
@@ -134,7 +133,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
   };
 
   const openPrintModal = (sale: SaleRecord) => {
-    // အကယ်၍ အရင် version မှာ အချိန်မပါခဲ့ရင် (ဥပမာ "12/06/2026" သီးသန့်ဖြစ်နေရင်) အချိန်တုတစ်ခု ပေါင်းထည့်ပေးမည်
     const printSale = { ...sale, date: sale.date.includes(':') ? sale.date : `${sale.date} 12:00 PM` };
     setSelectedSaleForPrint(printSale);
   };
@@ -144,19 +142,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
     setTimeout(() => { window.print(); }, 300);
   };
 
-  // 🌟 Image အဖြစ် သိမ်းမည့် Function 🌟
+  // 🌟 iOS အတွက် Image View ဖွင့်ပေးမည့် Function 🌟
   const handleSaveAsImage = async () => {
     setPrintType('IMAGE');
-    // DOM ပေါ်လာအောင် ခဏစောင့်မည်
     setTimeout(async () => {
       if (receiptRef.current) {
         try {
-          const canvas = await html2canvas(receiptRef.current, { scale: 2 });
+          // Scale မြှင့်ပြီး Font ပုံမပျက်အောင် ဖမ်းယူမည်
+          const canvas = await html2canvas(receiptRef.current, { scale: 3, useCORS: true, logging: false });
           const image = canvas.toDataURL('image/png');
-          const link = document.createElement('a');
-          link.href = image;
-          link.download = `Receipt_${selectedSaleForPrint?.id}.png`;
-          link.click();
+          setGeneratedImageURL(image); 
         } catch (err) {
           alert('ပုံသိမ်းရာတွင် အခက်အခဲရှိပါသည်။');
         }
@@ -370,7 +365,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                </div>
             </div>
             <div className="p-4 bg-white border-t grid grid-cols-2 gap-2">
-               {/* 🌟 ပုံအဖြစ် သိမ်းမည် ခလုတ် 🌟 */}
                <button onClick={handleSaveAsImage} className="py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 shadow-md text-sm">🖼️ ပုံအဖြစ် သိမ်းမည်</button>
                <button onClick={() => handlePrint('A4')} className="py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md text-sm">📄 A4 / PDF ထုတ်မည်</button>
                <button onClick={() => handlePrint('THERMAL')} className="py-3 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 shadow-md text-sm col-span-2">🖨️ BT Thermal Printer (58/80mm)</button>
@@ -380,17 +374,38 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* 🌟 PRINT TEMPLATES 🌟 */}
+      {/* 🌟 🌟 🌟 iOS အတွက် ပုံအဖြစ် ပြသပြီး Save Image ခိုင်းမည့် မျက်နှာပြင် (Back ခလုတ်ပါဝင်သည်) 🌟 🌟 🌟 */}
+      {generatedImageURL && (
+        <div className="fixed inset-0 z-[9999] bg-slate-100 flex flex-col print:hidden">
+          {/* Top Navigation Bar */}
+          <div className="bg-blue-600 text-white p-3 md:p-4 flex justify-between items-center shrink-0 shadow-md">
+            <span className="text-[11px] md:text-sm font-bold flex-1 flex items-center gap-2">👇 အောက်ပါပုံကို ဖိနှိပ်ပြီး Save Image ကို ရွေးပါ</span>
+            <button 
+              onClick={() => setGeneratedImageURL(null)} 
+              className="bg-white text-blue-700 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-black text-xs md:text-sm shadow-sm flex items-center gap-1 active:scale-95 transition-transform"
+            >
+              <span>⬅</span> ပြန်ထွက်မည်
+            </button>
+          </div>
+          {/* Scrollable Image Area */}
+          <div className="flex-1 overflow-auto p-4 flex justify-center items-start">
+            <img src={generatedImageURL} alt="Saved Receipt" className="max-w-full md:max-w-md shadow-2xl rounded-xl border border-slate-300" />
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 PRINT TEMPLATES (Font အမှားများကို ရှင်းလင်းထားသည်) 🌟 */}
       {selectedSaleForPrint && (
-        <div className={`print:block bg-white text-black print:w-full print:m-0 print:p-0 absolute top-0 left-0 w-full z-[9999] ${printType === 'IMAGE' ? 'block' : 'hidden'}`}>
+        <div className={`print:block bg-white text-black print:w-full print:m-0 print:p-0 absolute top-0 left-0 w-full z-[9000] ${printType === 'IMAGE' ? 'block' : 'hidden'}`}>
           
           {/* ----- A4 & IMAGE TEMPLATE ----- */}
           {(printType === 'A4' || printType === 'IMAGE') && (
-            <div ref={printType === 'IMAGE' ? receiptRef : null} className="max-w-[800px] mx-auto p-10 bg-white">
+            <div ref={printType === 'IMAGE' ? receiptRef : null} className="max-w-[800px] mx-auto p-10 bg-white" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               {/* Header Section */}
               <div className="flex flex-col items-center text-center border-b-2 border-black pb-6 mb-6">
                 <img src="/logo.png" alt="Logo" className="w-28 h-28 object-contain mb-3" />
-                <h1 className="text-3xl font-black mb-2 tracking-wider">"စက်စက်ယို" စားသောက်ကုန်</h1>
+                {/* Font ပုံမပျက်စေရန် tracking-wider ကို ဖြုတ်ထားသည် */}
+                <h1 className="text-3xl font-black mb-2" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>"စက်စက်ယို" စားသောက်ကုန်</h1>
                 <p className="text-sm font-bold text-gray-700">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊ မန္တလေးမြို့။</p>
                 <p className="text-sm font-bold text-gray-700">Ph: 09-455557980</p>
                 
@@ -479,10 +494,10 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
           {/* ----- THERMAL 58mm/80mm TEMPLATE ----- */}
           {printType === 'THERMAL' && (
-            <div className="w-full max-w-[80mm] mx-auto p-2 bg-white text-black font-sans text-xs">
+            <div className="w-full max-w-[80mm] mx-auto p-2 bg-white text-black font-sans text-xs" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
                 <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain mx-auto mb-1 grayscale" />
-                <h2 className="text-base font-black tracking-wider mb-1">"စက်စက်ယို"</h2>
+                <h2 className="text-base font-black mb-1">"စက်စက်ယို"</h2>
                 <p className="text-[10px] leading-tight">မန္တလေးမြို့</p>
                 <p className="text-[10px] leading-tight mb-2">Ph: 09-455557980</p>
                 <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-8 mx-auto" />
