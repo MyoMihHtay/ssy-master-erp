@@ -12,8 +12,8 @@ import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
-export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; } // 🌟 LPP အသစ် 🌟
-export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; }
+export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; }
+export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; cogs?: number; } // 🌟 COGS အသစ် 🌟
 export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; type?: 'expense' | 'income'; }
 export interface UserSession { name: string; role: string; }
 export interface BOMResult { itemName: string; amount: number; }
@@ -30,7 +30,7 @@ export interface PurchaseRequest {
   suppliers: SupplierOption[]; selectedSupplierId?: string; 
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
-  paymentMethod?: string; // 🌟 Auto-Sync အတွက် 🌟
+  paymentMethod?: string;
 }
 
 export interface SaleItem { product: FinishedGoodItem; quantity: number; subtotal: number; }
@@ -107,7 +107,7 @@ export default function App() {
   ]);
 
   const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', [
-    { id: 101, category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, stockQty: 50 },
+    { id: 101, category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, stockQty: 50, cogs: 1050 },
   ]);
 
   const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', []); 
@@ -132,17 +132,95 @@ export default function App() {
   }, []);
 
   const handleStockInAndExpense = () => { };
-  const handleConfirmProduction = () => { };
-  const handleConfirmPackaging = () => { };
 
-  // 🌟 🌟 🌟 PROCUREMENT AUTO-SYNC 🌟 🌟 🌟
+  // 🌟 🌟 🌟 PRODUCTION (RM to SFG) AUTO-SYNC 🌟 🌟 🌟
+  const handleConfirmProduction = (recipe: Recipe, batchQty: number, totalCost: number, consumedItems: BOMResult[]) => {
+    const unitSfgCost = totalCost / recipe.outputQtyPerBatch;
+    
+    // ၁။ RM ဂိုထောင်မှ ပစ္စည်းနုတ်ခြင်း
+    setInventoryItems(prev => {
+      let updated = [...prev];
+      consumedItems.forEach(consumed => {
+         const idx = updated.findIndex(i => i.name === consumed.itemName && i.warehouse === 'RM');
+         if (idx !== -1) {
+           updated[idx] = { ...updated[idx], inStock: updated[idx].inStock - consumed.amount };
+         }
+      });
+
+      // ၂။ SFG ဂိုထောင်သို့ SFG ငါးရေခွံကြော် ပေါင်းထည့်ခြင်း နှင့် LPP (အရင်း) သတ်မှတ်ခြင်း
+      const sfgIdx = updated.findIndex(i => i.name === recipe.name && i.warehouse === 'SFG');
+      if (sfgIdx !== -1) {
+         updated[sfgIdx] = { 
+           ...updated[sfgIdx], 
+           inStock: updated[sfgIdx].inStock + recipe.outputQtyPerBatch,
+           lastPurchasePrice: unitSfgCost // ထုတ်လုပ်မှု အရင်းဈေးကို LPP အဖြစ် သတ်မှတ်သည်
+         };
+      } else {
+         updated.push({
+           id: Date.now(), code: `SFG-${Date.now().toString().slice(-4)}`,
+           name: recipe.name, category: recipe.outputCategory, unit: recipe.outputUnit,
+           inStock: recipe.outputQtyPerBatch, warehouse: 'SFG',
+           lastPurchasePrice: unitSfgCost
+         });
+      }
+      return updated;
+    });
+
+    // ၃။ ထုတ်လုပ်မှု ကုန်ကျစရိတ် မှတ်တမ်း သိမ်းဆည်းခြင်း (optional - Supabase table needs to exist)
+    supabase.from('ssy_production_cost_logs').insert([{
+       recipe_name: recipe.name, batch_qty: recipe.outputQtyPerBatch, total_rm_cost: totalCost, unit_sfg_cost: unitSfgCost, date: new Date().toLocaleDateString('en-GB')
+    }]).then(({error}) => { if(error) console.error("Error logging production cost:", error); });
+
+    alert(`✅ ${recipe.name} (${recipe.outputQtyPerBatch} ${recipe.outputUnit}) ထုတ်လုပ်မှု အောင်မြင်ပြီး SFG ဂိုထောင်သို့ အရင်းဈေး ${unitSfgCost.toLocaleString()} Ks ဖြင့် ပေါင်းထည့်ပြီးပါပြီ။`);
+  };
+
+  // 🌟 🌟 🌟 PACKAGING (SFG to FG) AUTO-SYNC & COGS 🌟 🌟 🌟
+  const handleConfirmPackaging = (recipe: PackageRecipe, packQty: number, totalCost: number, consumedSFG: BOMResult[], consumedPKG: BOMResult[]) => {
+    // totalCost တွင် SFG အရင်းဈေး နှင့် PKG (အိတ်+တံဆိပ်) ဈေးများ ပါဝင်ပြီးသားဖြစ်သည်
+    const unitFgCogs = totalCost / packQty;
+    
+    // ၁။ SFG နှင့် PKG ဂိုထောင်မှ ပစ္စည်းနုတ်ခြင်း
+    setInventoryItems(prev => {
+      let updated = [...prev];
+      [...consumedSFG, ...consumedPKG].forEach(consumed => {
+         // SFG သို့မဟုတ် PKGWarehouse နှစ်ခုလုံးကို စစ်ဆေးသည်
+         const idx = updated.findIndex(i => i.name === consumed.itemName && (i.warehouse === 'SFG' || i.warehouse === 'PKG'));
+         if (idx !== -1) {
+           updated[idx] = { ...updated[idx], inStock: updated[idx].inStock - consumed.amount };
+         }
+      });
+      return updated;
+    });
+
+    // ၂။ ကုန်ချော (Finished Goods) ဂိုထောင်သို့ ပေါင်းထည့်ခြင်း နှင့် COGS သတ်မှတ်ခြင်း
+    setFinishedGoods(prev => {
+       let updated = [...prev];
+       const fgIdx = updated.findIndex(fg => fg.category === recipe.category && fg.taste === recipe.taste && fg.gram === recipe.gram);
+       
+       if (fgIdx !== -1) {
+         updated[fgIdx] = { 
+           ...updated[fgIdx], 
+           stockQty: updated[fgIdx].stockQty + packQty,
+           cogs: unitFgCogs, // နောက်ဆုံးထုပ်ပိုးမှု အရင်းဈေးကို COGS အဖြစ် သတ်မှတ်သည်
+           price: recipe.price // ရောင်းဈေးကိုလည်း နောက်ဆုံး Update ဖြစ်အောင် ပြင်ဆင်သည်
+         };
+       } else {
+         updated.push({
+           id: Date.now(), category: recipe.category, taste: recipe.taste, gram: recipe.gram,
+           price: recipe.price, stockQty: packQty, cogs: unitFgCogs
+         });
+       }
+       return updated;
+    });
+
+    alert(`✅ ${recipe.skuName} (${packQty} ထုပ်) ထုပ်ပိုးမှု အောင်မြင်ပြီး အရောင်းစာရင်းသို့ COGS ${unitFgCogs.toLocaleString()} Ks ဖြင့် ရောင်းရန်အသင့် ပေါင်းထည့်ပြီးပါပြီ။`);
+  };
+
   const handleProcurementComplete = (pr: PurchaseRequest) => {
     const selectedSupplier = pr.suppliers.find(s => s.id === pr.selectedSupplierId);
     if (!selectedSupplier) return;
-    
     const totalCost = selectedSupplier.price || 0;
     
-    // ၁။ Inventory ထဲသို့ အသစ်ပေါင်းထည့်ခြင်းနှင့် LPP ဈေးတွက်ချက်ခြင်း
     setInventoryItems(prevItems => {
       let newItems = [...prevItems];
       const itemsToProcess = pr.items || [{ itemName: pr.itemName, requestedQty: pr.requestedQty, unit: pr.unit, targetWarehouse: pr.targetWarehouse }];
@@ -150,8 +228,6 @@ export default function App() {
       itemsToProcess.forEach(prItem => {
         if (!prItem.itemName) return;
         const existingIdx = newItems.findIndex(i => i.name.toLowerCase() === prItem.itemName.toLowerCase() && i.warehouse === prItem.targetWarehouse);
-        
-        // ပစ္စည်းအမျိုးအစားအရေအတွက်နဲ့ စုစုပေါင်းဈေးကိုစားပြီး တစ်ခုချင်းစီ၏ ပျမ်းမျှ LPP ရှာသည်
         const estimatedUnitPrice = totalCost / (itemsToProcess.length * (prItem.requestedQty || 1));
 
         if (existingIdx >= 0) {
@@ -165,7 +241,7 @@ export default function App() {
             id: Date.now() + Math.random(),
             code: `NEW-${Date.now().toString().slice(-4)}`,
             name: prItem.itemName,
-            category: prItem.targetWarehouse === 'RM' ? 'Raw Materials' : 'Packaging',
+            category: prItem.targetWarehouse === 'RM' ? 'Raw Materials' : prItem.targetWarehouse === 'SFG' ? 'Semi-Finished Goods' : 'Packaging',
             unit: prItem.unit || 'ခု',
             inStock: prItem.requestedQty || 0,
             warehouse: prItem.targetWarehouse as 'RM' | 'SFG' | 'PKG',
@@ -176,16 +252,9 @@ export default function App() {
       return newItems;
     });
 
-    // ၂။ "အကြွေး" မဟုတ်ပါက Expenses သို့ အလိုအလျောက် သွင်းပေးခြင်း
     if (pr.paymentMethod !== 'CREDIT (အကြွေး)') {
       setExpenses(prev => [{
-        id: Date.now(),
-        date: new Date().toLocaleDateString('en-GB'),
-        category: 'ကုန်ကြမ်းဝယ်ယူမှု',
-        description: `Auto-Sync: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name}) - ${pr.paymentMethod || 'CASH'}`,
-        amount: totalCost,
-        voucherNo: `PR-${pr.id}`,
-        type: 'expense'
+        id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူမှု', description: `Auto-Sync: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name}) - ${pr.paymentMethod || 'CASH'}`, amount: totalCost, voucherNo: `PR-${pr.id}`, type: 'expense'
       }, ...prev]);
       alert(`✅ ဂိုထောင်စာရင်းထဲသို့ ပစ္စည်းများရောက်ရှိသွားပြီး၊ ငွေကျပ် ${totalCost.toLocaleString()} အား ဘဏ္ဍာရေးစာရင်းသို့ (အော်တို) သွင်းပေးလိုက်ပါပြီ။`);
     } else {
@@ -250,12 +319,10 @@ export default function App() {
   return (
     <div className="flex w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative">
       
-      {/* 🌟 Mobile Top App Bar (print:hidden) 🌟 */}
+      {/* Mobile Top App Bar (print:hidden) */}
       <div className="md:hidden fixed top-0 left-0 w-full bg-gray-900 text-white z-50 p-4 flex justify-between items-center shadow-md print:hidden">
         <h1 className="font-black text-xl tracking-wider">SSY <span className="text-emerald-400">ERP</span></h1>
-        <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">
-          ☰
-        </button>
+        <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">☰</button>
       </div>
 
       {/* Sidebar Area */}
