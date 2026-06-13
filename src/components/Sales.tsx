@@ -238,7 +238,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                   <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">လိပ်စာ</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                   
-                  {/* GPS */}
                   <div className="md:col-span-2">
                     <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">GPS တည်နေရာ (Map Location)</label>
                     <div className="flex gap-2">
@@ -320,7 +319,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
       {/* Options Modal */}
       {selectedSaleForPrint && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
+        <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4 flex justify-between items-center">
                <h3 className="text-white font-black text-lg flex items-center gap-2"><span>🖨️</span> ဘောက်ချာ ရွေးချယ်ရန်</h3>
@@ -346,7 +345,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         </div>
       )}
 
-      {/* iOS & Mac Image Save Overlay with CLEAR BACK BUTTON */}
+      {/* iOS & Mac Image Save Overlay */}
       {generatedImageURL && (
         <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[99999] bg-slate-900/95 flex flex-col items-center justify-start print:hidden backdrop-blur-md">
           <div className="w-full bg-slate-800 p-4 md:p-6 flex items-center justify-between shadow-xl shrink-0 border-b border-slate-700">
@@ -378,10 +377,10 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <div className="flex items-center gap-5 w-[55%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
                   <div>
-                    {/* 🌟 MD ကြီး လိုချင်သော လိပ်စာနှင့် စာသား အတိအကျ ပြင်ဆင်ထားပါသည် 🌟 */}
-                    <h1 className="text-4xl font-black text-slate-800 tracking-tight leading-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
-                    <p className="text-base font-bold text-slate-600 mt-2 tracking-wide">စားသောက်ကုန်လုပ်ငန်း</p>
-                    <p className="text-sm text-slate-500 mt-3 leading-relaxed">
+                    {/* 🌟 အကွာအဝေး (mt-4) နှင့် letter-spacing (tracking) အားလုံးဖြုတ်၍ ပြင်ဆင်ထားသည် 🌟 */}
+                    <h1 className="text-4xl font-black text-slate-800" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
+                    <p className="text-base font-bold text-slate-600 mt-4" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စားသောက်ကုန်လုပ်ငန်း</p>
+                    <p className="text-sm text-slate-500 mt-2 leading-relaxed" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
                       အမှတ် (၄၃/၃၂)၊ (၅၄) ဘီ လမ်း၊ <br/>
                       ၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား၊ <br/>
                       မန္တလေးမြို့။
@@ -511,12 +510,11 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-[14px]" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
                 <img crossOrigin="anonymous" src="/logo.png" alt="Logo" className="w-20 h-20 object-contain mx-auto mb-2" />
-                {/* 🌟 MD ကြီး လိုချင်သော လိပ်စာနှင့် စာသား အတိအကျ ပြင်ဆင်ထားပါသည် 🌟 */}
-                <h2 className="text-2xl font-black mb-1">စက်စက်ယို</h2>
-                <p className="text-sm font-bold leading-tight mb-2">စားသောက်ကုန်လုပ်ငန်း</p>
-                <p className="text-xs leading-tight mb-1">အမှတ် (၄၃/၃၂)၊ (၅၄) ဘီ လမ်း၊</p>
-                <p className="text-xs leading-tight mb-1">၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား၊</p>
-                <p className="text-xs leading-tight mb-1">မန္တလေးမြို့။</p>
+                <h2 className="text-2xl font-black mb-1" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h2>
+                <p className="text-sm font-bold leading-tight mb-3" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စားသောက်ကုန်လုပ်ငန်း</p>
+                <p className="text-xs leading-tight mb-1" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>အမှတ် (၄၃/၃၂)၊ (၅၄) ဘီ လမ်း၊</p>
+                <p className="text-xs leading-tight mb-1" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား၊</p>
+                <p className="text-xs leading-tight mb-2" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>မန္တလေးမြို့။</p>
                 <p className="text-xs font-bold leading-tight mb-3">Ph: 09-455557980</p>
                 <div className="flex justify-center">
                    <Barcode value={selectedSaleForPrint.id} format="CODE128" height={35} width={1.5} displayValue={false} margin={0} background="transparent" />
