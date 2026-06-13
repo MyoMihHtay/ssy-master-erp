@@ -414,7 +414,3 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   );
 };
 
-Terminal တွင် တွန်းတင်ရန် 🚀
-git add .
-git commit -m "Add MD-only credit payment button in Procurement that syncs to Finance expenses upon settlement"
-git push
