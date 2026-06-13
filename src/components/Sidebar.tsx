@@ -15,8 +15,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
   const navItems = [
     { id: 'dashboard', label: 'လုပ်ငန်းအကျဉ်းချုပ်', icon: '📊', roles: ['md', 'manager'] },
     
-    // 🌟 Workspace (CRM) အပိုင်းသစ် ထပ်တိုးထားပါသည် 🌟
-    { id: 'workspace', label: 'လုပ်ငန်းခွင် ဆက်သွယ်ရေး', icon: '💬', roles: ['md', 'manager', 'sales', 'finance', 'purchasing', 'qc', 'storekeeper', 'production', 'hr'] },
+    // 🌟 Workspace စာသားကို နှစ်ကြောင်းခွဲပြီး ဘယ်ဘက်ကပ်ရန် \n ကို အသုံးပြုထားပါသည် 🌟
+    { id: 'workspace', label: 'လုပ်ငန်းခွင်\nဆက်သွယ်ရေး', icon: '💬', roles: ['md', 'manager', 'sales', 'finance', 'purchasing', 'qc', 'storekeeper', 'production', 'hr'] },
     
     { id: 'sales', label: 'အရောင်း (Sales)', icon: '💰', roles: ['md', 'manager', 'sales', 'finance'] },
     { id: 'procurement', label: 'ဝယ်ယူရေး', icon: '🛒', roles: ['md', 'manager', 'purchasing', 'qc', 'finance', 'storekeeper'] },
@@ -45,7 +45,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
       <nav className="flex-1 overflow-y-auto py-6 custom-scrollbar">
         <ul className="space-y-2 px-4">
           {navItems.map(item => {
-            // MD မဟုတ်ပါက၊ သက်ဆိုင်ရာ Role မပါလျှင် ဤ Menu ကို ဖျောက်ထားမည်
             if (!item.roles.includes(role) && role !== 'md') return null;
             
             return (
@@ -58,8 +57,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
                       : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
                   }`}
                 >
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="tracking-wide">{item.label}</span>
+                  <span className="text-xl shrink-0">{item.icon}</span>
+                  {/* 🌟 text-left, leading-tight နှင့် whitespace-pre-line များကို အသုံးပြုထားပါသည် 🌟 */}
+                  <span className="tracking-wide text-left leading-tight whitespace-pre-line">{item.label}</span>
                 </button>
               </li>
             );
