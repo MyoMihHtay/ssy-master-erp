@@ -86,7 +86,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
   const removeFromCart = (productId: number) => setCart(cart.filter(item => item.product.id !== productId));
 
-  // 🌟 GPS တည်နေရာရယူသည့် Function
+  // 🌟 GPS တည်နေရာရယူသည့် Function 🌟
   const fetchLocation = () => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -217,7 +217,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <h3 className="text-white font-black text-sm md:text-xl flex items-center gap-1.5 md:gap-2"><span>🧾</span> ငွေရှင်းရန်</h3>
                 <button onClick={() => setIsCheckoutModalOpen(false)} className="text-slate-300 hover:text-white font-bold text-base md:text-xl px-2">✕</button>
               </div>
-              
               <div className="p-3 md:p-6 overflow-y-auto space-y-3 md:space-y-5">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                   <div className="relative">
@@ -240,7 +239,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                   <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">လိပ်စာ</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                   
-                  {/* 🌟 🌟 GPS တည်နေရာ ထည့်ရန် အကွက် (ပြန်ထည့်ပေးထားပါသည်) 🌟 🌟 */}
+                  {/* 🌟 🌟 GPS တည်နေရာ ထည့်ရန် အကွက် (ပြန်လည်ပါဝင်လာပါပြီ) 🌟 🌟 */}
                   <div className="md:col-span-2">
                     <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">GPS တည်နေရာ (Map Location)</label>
                     <div className="flex gap-2">
@@ -254,7 +253,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                   <div className="bg-emerald-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-emerald-100"><label className="block text-[9px] md:text-xs font-black text-emerald-600 mb-0.5 md:mb-1">လျှော့ဈေး (%)</label><input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-xs md:text-lg" /></div>
                   <div className="bg-rose-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-rose-100"><label className="block text-[9px] md:text-xs font-black text-rose-600 mb-0.5 md:mb-1">အခွန် (%)</label><input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-xs md:text-lg" /></div>
                 </div>
-
                 <div>
                   <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Payment Method</label>
                   <div className="grid grid-cols-3 gap-1 md:gap-2">
@@ -263,7 +261,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                     ))}
                   </div>
                 </div>
-
                 {paymentMethod === 'CREDIT' && (
                   <div className="bg-amber-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-amber-200">
                     <label className="block text-[9px] md:text-xs font-black text-amber-700 mb-1">⏳ အကြွေးသက်တမ်း:</label>
