@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { PurchaseRequest, SupplierOption, AttachedFile, PRItem } from '../App';
 
-interface ProcurementProps { userRole: string; requests: PurchaseRequest[]; setRequests: React.Dispatch<React.SetStateAction<PurchaseRequest[]>>; onComplete: (pr: PurchaseRequest) => void; }
+// 🌟 onCreditPayment Prop ကို အသစ်ထည့်သွင်းထားပါသည် 🌟
+interface ProcurementProps { userRole: string; requests: PurchaseRequest[]; setRequests: React.Dispatch<React.SetStateAction<PurchaseRequest[]>>; onComplete: (pr: PurchaseRequest) => void; onCreditPayment: (pr: PurchaseRequest) => void; }
 
 const compressImage = (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -23,7 +24,7 @@ const compressImage = (file: File): Promise<string> => {
   });
 };
 
-export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, setRequests, onComplete }) => {
+export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, setRequests, onComplete, onCreditPayment }) => {
   const [requestItems, setRequestItems] = useState<PRItem[]>([{ id: Date.now().toString(), itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([{ id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [], itemUnitPrices: {} }]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -35,6 +36,9 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const isFinance = userRole === 'finance' || userRole === 'md' || userRole === 'manager';
   const isStoreKeeper = userRole === 'storekeeper' || userRole === 'md' || userRole === 'manager';
   const isMDorManager = userRole === 'md' || userRole === 'manager';
+  
+  // 🌟 MD အတွက် သီးသန့်စစ်ဆေးရန် 🌟
+  const isMDOnly = userRole?.toLowerCase() === 'md';
 
   const handleAddPRItem = () => setRequestItems([...requestItems, { id: Date.now().toString() + Math.random(), itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
   
@@ -316,7 +320,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
                   <div className="text-xs font-medium text-gray-700 bg-gray-50 p-3 rounded-xl border mb-4 print:bg-white">{sup.qualityDesc}</div>
                   
-                  {/* 🌟 🌟 🌟 QC & Finance ၏ သဘောထားမှတ်ချက်များ ပြန်လည်ထည့်သွင်းခြင်း 🌟 🌟 🌟 */}
                   <div className="space-y-2 my-4">
                      {req.qcSelectedSupplierId === sup.id && (
                         <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl print:border-none shadow-sm">
@@ -368,6 +371,35 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                 )}
               </div>
             )}
+            
+            {/* 🌟 🌟 🌟 အကြွေးဆပ်မည့် Button (MD Only) 🌟 🌟 🌟 */}
+            {req.status === 'Completed' && req.paymentMethod === 'CREDIT (အကြွေး)' && (
+               <div className="bg-rose-50/50 p-5 flex flex-wrap justify-end gap-3 items-center print:hidden border-t border-rose-100">
+                 {!req.isCreditPaid ? (
+                     isMDOnly ? (
+                        <>
+                           <span className="text-xs font-black text-rose-600 mr-auto uppercase tracking-widest">⚠️ ဤဝယ်ယူမှုမှာ အကြွေးဖြစ်ပါသည်</span>
+                           <button
+                              onClick={() => {
+                                  const confirm = window.confirm(`⚠️ ${req.suppliers.find(s => s.id === req.selectedSupplierId)?.name} ထံမှ အကြွေး ${req.suppliers.find(s => s.id === req.selectedSupplierId)?.price.toLocaleString()} Ks ကို အကြွေးဆပ်ပြီး Finance သို့ စာရင်းသွင်းမည်လား?`);
+                                  if (confirm) {
+                                      onCreditPayment(req);
+                                      alert("✅ အကြွေးဆပ်ပြီး Finance စာရင်းသို့ အောင်မြင်စွာ သွင်းပေးလိုက်ပါပြီ။");
+                                  }
+                              }}
+                              className="bg-rose-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-rose-700 animate-pulse"
+                           >
+                              💸 အကြွေးဆပ်မည် (MD Only)
+                           </button>
+                        </>
+                     ) : (
+                        <span className="text-sm font-bold text-rose-600 w-full text-right">⚠️ အကြွေးဆပ်ရန် ကျန်ရှိပါသေးသည် (MD မှသာ ရှင်းနိုင်မည်)</span>
+                     )
+                 ) : (
+                     <span className="text-sm font-black text-emerald-700 w-full text-right">✅ အကြွေးဆပ်ပြီးပါပြီ (Finance စာရင်းဝင်ပြီး)</span>
+                 )}
+              </div>
+            )}
           </div>
         );})}
       </div>
@@ -381,3 +413,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
     </div>
   );
 };
+
+Terminal တွင် တွန်းတင်ရန် 🚀
+git add .
+git commit -m "Add MD-only credit payment button in Procurement that syncs to Finance expenses upon settlement"
+git push

@@ -21,8 +21,6 @@ export interface RecipeIngredient { itemName: string; requiredQty: number; unit:
 export interface Recipe { id: string; name: string; outputCategory: string; outputUnit: string; outputQtyPerBatch: number; ingredients: RecipeIngredient[]; }
 export interface PackageRecipe { id: string; skuName: string; category: string; taste: string; gram: number; price: number; ingredients: RecipeIngredient[]; }
 export interface AttachedFile { name: string; dataUrl: string; type: string; }
-
-// 🌟 SupplierOption နှင့် PRItem တွင် ပစ္စည်းအလိုက်ဈေးနှုန်းများ (itemUnitPrices) သိမ်းနိုင်ရန် ပြင်ဆင်ထားပါသည် 🌟
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; itemUnitPrices?: Record<string, number>; }
 export interface PRItem { id?: string; itemName: string; requestedQty: number; unit: string; targetWarehouse: 'RM' | 'SFG' | 'PKG'; }
 
@@ -33,6 +31,7 @@ export interface PurchaseRequest {
   status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
   paymentMethod?: string;
+  isCreditPaid?: boolean; // 🌟 အကြွေးဆပ်ပြီးကြောင်း သိမ်းဆည်းရန် State အသစ် 🌟
 }
 
 export interface SaleItem { product: FinishedGoodItem; quantity: number; subtotal: number; }
@@ -105,21 +104,15 @@ export default function App() {
 
   const [inventoryItems, setInventoryItems, invLoading] = useSupabaseTable<InventoryItem>('ssy_inventory', [
     { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM', lastPurchasePrice: 15000 },
-    { id: 3, code: 'PK-001', name: 'ပလက်စတစ်အိတ် (၇x၅)', category: 'Packaging', unit: 'ခု', inStock: 5000, warehouse: 'PKG', lastPurchasePrice: 50 },
   ]);
 
-  const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', [
-    { id: 101, category: 'ငါးရေခွံကြော်', taste: 'Normal', gram: 35, price: 1500, stockQty: 50, cogs: 1050 },
-  ]);
-
+  const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', []);
   const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', []); 
   const [expenses, setExpenses, expLoading] = useSupabaseTable<ExpenseItem>('ssy_expenses', []);
   const [customers, setCustomers, custLoading] = useSupabaseTable<Customer>('ssy_customers', []);
-
   const [purchaseRequests, setPurchaseRequests] = useLocalStorage<PurchaseRequest[]>('ssy_pr', []);
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
   const [activeTab, setActiveTab] = useState<string>('sales');
-
   const [recipes, setRecipes] = useLocalStorage<Recipe[]>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes] = useLocalStorage<PackageRecipe[]>('ssy_pkg_recipes', []);
 
@@ -137,7 +130,6 @@ export default function App() {
 
   const handleConfirmProduction = (recipe: Recipe, producedQty: number, totalCost: number, consumedItems: BOMResult[]) => {
     const unitSfgCost = totalCost / producedQty;
-    
     setInventoryItems(prev => {
       let updated = [...prev];
       consumedItems.forEach(consumed => {
@@ -214,7 +206,6 @@ export default function App() {
     alert(`✅ ${recipe.skuName} (${packQty} ထုပ်) ထုပ်ပိုးမှု အောင်မြင်ပြီး အရောင်းစာရင်းသို့ COGS ${unitFgCogs.toLocaleString()} Ks ဖြင့် ရောင်းရန်အသင့် ပေါင်းထည့်ပြီးပါပြီ။`);
   };
 
-  // 🌟 🌟 🌟 ပစ္စည်းအလိုက် ဈေးနှုန်းများ (LPP) ကို အတိအကျ သွင်းပေးမည့် Logic 🌟 🌟 🌟
   const handleProcurementComplete = (pr: PurchaseRequest) => {
     const selectedSupplier = pr.suppliers.find(s => s.id === pr.selectedSupplierId);
     if (!selectedSupplier) return;
@@ -224,11 +215,10 @@ export default function App() {
       let newItems = [...prevItems];
       const itemsToProcess = pr.items || [];
 
-      itemsToProcess.forEach((prItem, index) => {
+      itemsToProcess.forEach((prItem) => {
         if (!prItem.itemName) return;
         const existingIdx = newItems.findIndex(i => i.name.toLowerCase() === prItem.itemName.toLowerCase() && i.warehouse === prItem.targetWarehouse);
         
-        // 🌟 Supplier ဆီမှ သက်ဆိုင်ရာ Item ၏ Unit Price ကို တိုက်ရိုက်ယူသည် (မရှိပါက ပျမ်းမျှတွက်သည်)
         let exactUnitPrice = selectedSupplier.itemUnitPrices?.[prItem.id || ''] || 0;
         if (!exactUnitPrice && totalCost > 0) {
             exactUnitPrice = totalCost / (itemsToProcess.length * (prItem.requestedQty || 1));
@@ -262,8 +252,26 @@ export default function App() {
       }, ...prev]);
       alert(`✅ ဂိုထောင်စာရင်းထဲသို့ ပစ္စည်းများရောက်ရှိသွားပြီး၊ ငွေကျပ် ${totalCost.toLocaleString()} အား ဘဏ္ဍာရေးစာရင်းသို့ (အော်တို) သွင်းပေးလိုက်ပါပြီ။`);
     } else {
-      alert(`📌 အကြွေးဝယ်ယူမှုဖြစ်သဖြင့် Finance စာရင်းထဲသို့ ထွက်ငွေ (Auto-Sync) မဝင်ပါ။ \nဂိုထောင်ထဲသို့သာ ပစ္စည်းများ ဝင်သွားပါမည်။`);
+      alert(`📌 အကြွေးဝယ်ယူမှုဖြစ်သဖြင့် Finance စာရင်းထဲသို့ ထွက်ငွေ (Auto-Sync) မဝင်ပါ။ \nအကြွေးဆပ်သည့်အခါမှသာ MD အကောင့်ဖြင့် Finance ထဲသို့ သွင်းပေးနိုင်ပါသည်။`);
     }
+  };
+
+  // 🌟 🌟 🌟 အကြွေးဆပ်ပြီး Finance သို့ ထွက်ငွေ အော်တိုသွင်းမည့် Function သစ် 🌟 🌟 🌟
+  const handleCreditPayment = (pr: PurchaseRequest) => {
+    const selectedSupplier = pr.suppliers.find(s => s.id === pr.selectedSupplierId);
+    if (!selectedSupplier) return;
+
+    setExpenses(prev => [{
+      id: Date.now(), 
+      date: new Date().toLocaleDateString('en-GB'), 
+      category: 'ကုန်ကြမ်းဝယ်ယူမှု (အကြွေးဆပ်)', 
+      description: `Credit Payment: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name})`, 
+      amount: selectedSupplier.price || 0, 
+      voucherNo: `PR-${pr.id}`, 
+      type: 'expense'
+    }, ...prev]);
+
+    setPurchaseRequests(prev => prev.map(r => r.id === pr.id ? { ...r, isCreditPaid: true } : r));
   };
 
   const handleCheckoutSale = (newSale: SaleRecord) => {
@@ -356,7 +364,10 @@ export default function App() {
       
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
-        {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} />}
+        
+        {/* 🌟 onCreditPayment Props အား Procurement သို့ ပေးပို့ထားပါသည် 🌟 */}
+        {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} onCreditPayment={handleCreditPayment} />}
+        
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
