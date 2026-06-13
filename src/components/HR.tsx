@@ -29,7 +29,6 @@ const parseTimeToMinutes = (timeStr: string) => {
 };
 
 export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmployees, attendance, setAttendance, advances, setAdvances, hrSettings, setHrSettings, setExpenses }) => {
-  // 🌟 history tab အသစ် ထပ်တိုးထားပါသည် 🌟
   const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'employees' | 'advances' | 'payroll' | 'settings' | 'history'>('attendance');
   
   const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
@@ -37,6 +36,11 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const [empDept, setEmpDept] = useState(''); const [empSalary, setEmpSalary] = useState('');
   const [empPhone, setEmpPhone] = useState('');
   
+  // 🌟 ကြိုတင်ငွေအတွက် State များ 🌟
+  const [advEmpId, setAdvEmpId] = useState('');
+  const [advAmount, setAdvAmount] = useState('');
+  const [advReason, setAdvReason] = useState('');
+
   const [extraPays, setExtraPays] = useState<Record<string, { bonus: number; commission: number; }>>({});
 
   const defaultSetting: HRSetting = hrSettings.find(s => s.id === 'default') || { 
@@ -95,6 +99,16 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
 
   const handleEditEmployee = (emp: Employee) => { setEditingEmpId(emp.id); setEmpName(emp.name); setEmpPos(emp.position); setEmpDept(emp.department); setEmpSalary(emp.basicSalary.toString()); setEmpPhone(emp.phone); };
   const handleDeleteEmployee = (id: string) => { if (window.confirm("⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?")) { setEmployees(employees.filter(e => e.id !== id)); } };
+
+  // 🌟 ကြိုတင်ငွေ ထည့်သွင်းခြင်း Function 🌟
+  const handleAddAdvance = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!advEmpId || !advAmount) return alert('အချက်အလက် ပြည့်စုံစွာ ထည့်ပါ။');
+    const newAdvance: Advance = { id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false };
+    setAdvances([newAdvance, ...advances]);
+    setAdvEmpId(''); setAdvAmount(''); setAdvReason('');
+    alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။');
+  };
 
   const handleAutoGetGPS = () => {
     if (currentLoc) {
@@ -217,7 +231,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         </div>
       )}
 
-      {/* 📅 မှတ်တမ်းများ (History Tab အသစ်) */}
+      {/* 📅 မှတ်တမ်းများ (History Tab) */}
       {activeSubTab === 'history' && isAdminOrHR && (
          <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
             <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
@@ -226,13 +240,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
             <div className="overflow-x-auto">
                <table className="w-full text-left text-sm whitespace-nowrap">
                  <thead className="bg-gray-100 text-gray-600 font-bold border-b">
-                   <tr>
-                     <th className="p-4">ရက်စွဲ (Date)</th>
-                     <th className="p-4">ဝန်ထမ်းအမည်</th>
-                     <th className="p-4">ရုံးတက်ချိန် (In)</th>
-                     <th className="p-4">ရုံးဆင်းချိန် (Out)</th>
-                     <th className="p-4">Status</th>
-                   </tr>
+                   <tr><th className="p-4">ရက်စွဲ (Date)</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ရုံးတက်ချိန် (In)</th><th className="p-4">ရုံးဆင်းချိန် (Out)</th><th className="p-4">Status</th></tr>
                  </thead>
                  <tbody>
                     {[...attendance].reverse().map(att => {
@@ -243,15 +251,11 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                            <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
                            <td className="p-4 text-emerald-600 font-bold">{att.checkInTime || '-'}</td>
                            <td className="p-4 text-rose-600 font-bold">{att.checkOutTime || '-'}</td>
-                           <td className="p-4">
-                              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{att.status}</span>
-                           </td>
+                           <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{att.status}</span></td>
                          </tr>
                        );
                     })}
-                    {attendance.length === 0 && (
-                       <tr><td colSpan={5} className="p-8 text-center text-gray-400 font-bold">မှတ်တမ်းများ မရှိသေးပါ</td></tr>
-                    )}
+                    {attendance.length === 0 && (<tr><td colSpan={5} className="p-8 text-center text-gray-400 font-bold">မှတ်တမ်းများ မရှိသေးပါ</td></tr>)}
                  </tbody>
                </table>
             </div>
@@ -285,6 +289,49 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                        )}
                        </tr>
                     ))}
+                 </tbody>
+               </table>
+            </div>
+         </div>
+      )}
+
+      {/* 🌟 💸 Advances Tab (ကြိုတင်ငွေ) 🌟 */}
+      {activeSubTab === 'advances' && isAdminOrHR && (
+         <div className="space-y-6">
+            <form onSubmit={handleAddAdvance} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+               <div>
+                  <label className="text-xs font-bold text-gray-500">ဝန်ထမ်းရွေးချယ်ရန်</label>
+                  <select required value={advEmpId} onChange={e=>setAdvEmpId(e.target.value)} className="w-full border p-2.5 rounded-lg bg-white">
+                     <option value="">-- ရွေးချယ်ပါ --</option>
+                     {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.position})</option>)}
+                  </select>
+               </div>
+               <div><label className="text-xs font-bold text-gray-500">ကြိုတင်ငွေပမာဏ (Ks)</label><input type="number" required value={advAmount} onChange={e=>setAdvAmount(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+               <div><label className="text-xs font-bold text-gray-500">အကြောင်းရင်း</label><input required value={advReason} onChange={e=>setAdvReason(e.target.value)} className="w-full border p-2.5 rounded-lg" placeholder="ဥပမာ - ဆေးဖိုး..." /></div>
+               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">➕ ထည့်မည်</button>
+            </form>
+
+            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+               <table className="w-full text-left text-sm">
+                 <thead className="bg-gray-50 text-gray-600 font-bold border-b">
+                   <tr><th className="p-4">ရက်စွဲ</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">အကြောင်းရင်း</th><th className="p-4">ပမာဏ</th><th className="p-4">Status</th></tr>
+                 </thead>
+                 <tbody>
+                    {advances.map(a => {
+                       const emp = employees.find(e => e.id === a.employeeId);
+                       return (
+                         <tr key={a.id} className="border-b hover:bg-gray-50">
+                           <td className="p-4 font-bold text-gray-500">{a.date}</td>
+                           <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
+                           <td className="p-4 text-gray-600">{a.reason}</td>
+                           <td className="p-4 font-bold text-rose-600">{a.amount.toLocaleString()} Ks</td>
+                           <td className="p-4">
+                             {a.deducted ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase border">လစာမှနုတ်ပြီး</span> : <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-yellow-200">နုတ်ရန်ကျန်</span>}
+                           </td>
+                         </tr>
+                       )
+                    })}
+                    {advances.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-gray-400 font-bold">ကြိုတင်ငွေ ထုတ်ယူထားခြင်း မရှိသေးပါ</td></tr>}
                  </tbody>
                </table>
             </div>
@@ -342,7 +389,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-               {/* အချိန်နှင့် ရုံးတည်နေရာ */}
                <div className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
                   <h4 className="font-bold text-gray-700 border-b pb-2">⏰ ရုံးချိန် & တည်နေရာ (GPS)</h4>
                   <div className="grid grid-cols-2 gap-4">
@@ -359,7 +405,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                   <div><label className="text-xs font-bold text-gray-500">GPS ခွင့်ပြုမည့်အကွာအဝေး (မီတာ)</label><input type="number" value={setRad} onChange={e=>setSetRad(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                </div>
 
-               {/* ရက်မှန်ကြေး & အချိန်မှန်ကြေး */}
                <div className="space-y-4 bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
                   <h4 className="font-bold text-emerald-800 border-b border-emerald-200 pb-2">💰 အားပေးဆုငွေများ (Bonuses)</h4>
                   <div><label className="text-xs font-bold text-emerald-600">ရက်မှန်ကြေး (Perfect Attendance)</label><input type="number" value={setPerfect} onChange={e=>setSetPerfect(e.target.value)} className="w-full border-emerald-200 p-2.5 rounded-lg" /></div>
@@ -368,7 +413,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                </div>
             </div>
 
-            {/* အရှင်သတ်မှတ်နိုင်သော နောက်ကျဒဏ်ကြေး စနစ် */}
             <div className="bg-rose-50 p-5 md:p-6 rounded-2xl border border-rose-100">
                <h4 className="font-bold text-rose-800 border-b border-rose-200 pb-2 mb-4 flex justify-between items-center">
                   <span>📉 နောက်ကျဒဏ်ကြေး မူဝါဒများ (Dynamic Rules)</span>
