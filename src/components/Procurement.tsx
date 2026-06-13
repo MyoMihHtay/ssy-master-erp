@@ -24,12 +24,10 @@ const compressImage = (file: File): Promise<string> => {
 };
 
 export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, setRequests, onComplete }) => {
-  const [requestItems, setRequestItems] = useState<PRItem[]>([{ itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
-  const [suppliers, setSuppliers] = useState<SupplierOption[]>([{ id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]);
+  const [requestItems, setRequestItems] = useState<PRItem[]>([{ id: Date.now().toString(), itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([{ id: '1', name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [], itemUnitPrices: {} }]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [displayLimit, setDisplayLimit] = useState(50);
-  
-  // 🌟 Finance Auto-sync အတွက် ငွေချေစနစ် ရွေးချယ်မည့် State 🌟
   const [syncPaymentMethod, setSyncPaymentMethod] = useState('CASH (လက်ငင်း)');
 
   const isPurchasing = userRole === 'purchasing' || userRole === 'md' || userRole === 'manager';
@@ -38,12 +36,46 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   const isStoreKeeper = userRole === 'storekeeper' || userRole === 'md' || userRole === 'manager';
   const isMDorManager = userRole === 'md' || userRole === 'manager';
 
-  const handleAddPRItem = () => setRequestItems([...requestItems, { itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
-  const handlePRItemChange = (index: number, field: keyof PRItem, value: any) => { const updated = [...requestItems]; updated[index] = { ...updated[index], [field]: value }; setRequestItems(updated); };
+  const handleAddPRItem = () => setRequestItems([...requestItems, { id: Date.now().toString() + Math.random(), itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
+  
+  const handlePRItemChange = (index: number, field: keyof PRItem, value: any) => { 
+    const updatedItems = [...requestItems]; 
+    updatedItems[index] = { ...updatedItems[index], [field]: value }; 
+    setRequestItems(updatedItems); 
+
+    // အရေအတွက် (Qty) ပြောင်းလဲပါက Supplier စုစုပေါင်းဈေးနှုန်းများကို အော်တို တွက်ချက်ပေးမည်
+    if (field === 'requestedQty') {
+        const updatedSups = suppliers.map(sup => {
+           let total = 0;
+           updatedItems.forEach(item => {
+              total += (sup.itemUnitPrices?.[item.id!] || 0) * (item.requestedQty || 0);
+           });
+           return { ...sup, price: total };
+        });
+        setSuppliers(updatedSups);
+    }
+  };
+
   const handleRemovePRItem = (index: number) => { if (requestItems.length > 1) setRequestItems(requestItems.filter((_, i) => i !== index)); };
 
-  const handleAddSupplier = () => { if (suppliers.length < 3) setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]); else alert('အများဆုံး ၃ ခုသာ ရွေးချယ်ခွင့်ရှိသည်။'); };
+  const handleAddSupplier = () => { if (suppliers.length < 3) setSuppliers([...suppliers, { id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [], itemUnitPrices: {} }]); else alert('အများဆုံး ၃ ခုသာ ရွေးချယ်ခွင့်ရှိသည်။'); };
   const handleSupplierChange = (index: number, field: keyof SupplierOption, value: any) => { const updated = [...suppliers]; updated[index] = { ...updated[index], [field]: value }; setSuppliers(updated); };
+
+  // 🌟 ပစ္စည်းတစ်ခုချင်းစီ၏ Unit Price ပြောင်းလဲသောအခါ စုစုပေါင်းကို အော်တိုတွက်ချက်မည့် Logic 🌟
+  const handleItemPriceChange = (supIndex: number, itemId: string, price: number) => {
+      const updated = [...suppliers];
+      const sup = updated[supIndex];
+      sup.itemUnitPrices = { ...sup.itemUnitPrices, [itemId]: price };
+      
+      let total = 0;
+      requestItems.forEach(item => {
+        const qty = item.requestedQty || 0;
+        const uPrice = sup.itemUnitPrices?.[item.id!] || 0;
+        total += (qty * uPrice);
+      });
+      sup.price = total;
+      setSuppliers(updated);
+  };
 
   const handleCameraCapture = async (index: number, field: 'productFiles' | 'quotationFiles', e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -76,8 +108,8 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
     const newPR: PurchaseRequest = { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), items: requestItems, suppliers, status: 'Pending' };
     setRequests([newPR, ...requests]);
-    setRequestItems([{ itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
-    setSuppliers([{ id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [] }]);
+    setRequestItems([{ id: Date.now().toString(), itemName: '', requestedQty: 0, unit: '', targetWarehouse: 'RM' }]);
+    setSuppliers([{ id: Date.now().toString(), name: '', price: 0, qualityDesc: '', analysisNote: '', productFiles: [], quotationFiles: [], itemUnitPrices: {} }]);
     alert('✅ ဝယ်ယူခွင့် တင်ပြခြင်း အောင်မြင်ပါသည်။'); setDisplayLimit(50);
   };
 
@@ -147,7 +179,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
           <div className="mb-8">
             <div className="space-y-3">
               {requestItems.map((item, idx) => (
-                <div key={idx} className="flex flex-wrap md:flex-nowrap gap-3 items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                <div key={item.id} className="flex flex-wrap md:flex-nowrap gap-3 items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
                   <div className="w-full md:flex-1"><label className="block text-xs font-bold text-gray-500 mb-1">ပစ္စည်းအမည်</label><input type="text" value={item.itemName} onChange={e => handlePRItemChange(idx, 'itemName', e.target.value)} required className="w-full border-2 border-white shadow-sm p-2.5 rounded-lg outline-none focus:border-indigo-400" placeholder="ဥပမာ - အာလူးကြော် (ဇကာစပ်)" /></div>
                   <div className="w-full md:w-28"><label className="block text-xs font-bold text-gray-500 mb-1">အရေအတွက်</label><input type="number" value={item.requestedQty || ''} onChange={e => handlePRItemChange(idx, 'requestedQty', Number(e.target.value))} required className="w-full border-2 border-white shadow-sm p-2.5 rounded-lg outline-none focus:border-indigo-400" /></div>
                   <div className="w-full md:w-28"><label className="block text-xs font-bold text-gray-500 mb-1">ယူနစ်</label><input type="text" value={item.unit} onChange={e => handlePRItemChange(idx, 'unit', e.target.value)} required className="w-full border-2 border-white shadow-sm p-2.5 rounded-lg outline-none focus:border-indigo-400" placeholder="ပိဿာ / ထုပ်" /></div>
@@ -165,26 +197,62 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
             </div>
             <button type="button" onClick={handleAddPRItem} className="mt-4 bg-white border-2 border-dashed border-indigo-300 text-indigo-600 w-full py-3 rounded-xl font-bold hover:bg-indigo-50">+ ပစ္စည်းအမျိုးအစား ထပ်ထည့်မည်</button>
           </div>
+          
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
             {suppliers.map((sup, idx) => (
               <div key={sup.id} className="border-2 border-dashed border-gray-300 p-5 rounded-2xl bg-white shadow-sm">
                 <h4 className="font-extrabold text-indigo-800 mb-4 border-b pb-2 text-lg flex items-center justify-between">Supplier {idx + 1}</h4>
                 <div className="space-y-4">
-                  <input type="text" value={sup.name} onChange={e => handleSupplierChange(idx, 'name', e.target.value)} required className="w-full border-b-2 border-gray-200 p-2 font-bold outline-none focus:border-indigo-500" placeholder="ဆိုင်အမည်" />
-                  <input type="number" value={sup.price || ''} onChange={e => handleSupplierChange(idx, 'price', Number(e.target.value))} required className="w-full border-b-2 border-gray-200 p-2 font-black text-red-600 outline-none focus:border-indigo-500" placeholder="စုစုပေါင်း ဈေးနှုန်း Ks" />
+                  <input type="text" value={sup.name} onChange={e => handleSupplierChange(idx, 'name', e.target.value)} required className="w-full border-b-2 border-gray-200 p-2 font-bold outline-none focus:border-indigo-500 mb-2" placeholder="ဆိုင်အမည်" />
+                  
+                  {/* 🌟 🌟 🌟 ပစ္စည်းတစ်ခုချင်းစီ၏ ဈေးနှုန်းခွဲထည့်ရန် နေရာ 🌟 🌟 🌟 */}
+                  <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+                    <h5 className="text-xs font-bold text-indigo-800 mb-3 border-b border-indigo-100 pb-1">ပစ္စည်းတစ်ခုချင်းစီ၏ ဈေးနှုန်း (Unit Price)</h5>
+                    {requestItems.map((reqItem) => (
+                       <div key={reqItem.id} className="flex flex-col gap-1 mb-3">
+                          <span className="text-xs font-bold text-gray-700 truncate w-full">
+                             {reqItem.itemName || 'ပစ္စည်းအမည်မသိ'} <span className="text-indigo-600">({reqItem.requestedQty || 0} {reqItem.unit})</span>
+                          </span>
+                          <div className="flex items-center gap-2">
+                              <input
+                                 type="number"
+                                 value={sup.itemUnitPrices?.[reqItem.id!] || ''}
+                                 onChange={e => handleItemPriceChange(idx, reqItem.id!, Number(e.target.value))}
+                                 placeholder="1 ယူနစ် ဈေးနှုန်း..."
+                                 required
+                                 className="flex-1 p-2 border border-white shadow-sm rounded-lg text-right font-bold text-sm outline-none focus:border-indigo-500"
+                              />
+                              <span className="text-xs font-bold text-gray-500 w-6">Ks</span>
+                          </div>
+                       </div>
+                    ))}
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t-2 border-dashed border-indigo-200">
+                       <span className="font-bold text-indigo-900 text-sm">စုစုပေါင်း ကျသင့်ငွေ</span>
+                       <span className="font-black text-red-600 text-lg">{sup.price.toLocaleString()} Ks</span>
+                    </div>
+                  </div>
+
                   <textarea value={sup.qualityDesc} onChange={e => handleSupplierChange(idx, 'qualityDesc', e.target.value)} required className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm h-16 bg-gray-50 outline-none focus:border-indigo-500" placeholder="အရည်အသွေး သုံးသပ်ချက်" />
+                  
                   <div className="space-y-3 mt-4">
                     <div>
+                        {/* 🌟 🌟 🌟 ဓာတ်ပုံရိုက်ရန်နှင့် ဖိုင်အစုံရွေးရန် ခလုတ်များ 🌟 🌟 🌟 */}
                         <div className="text-[11px] font-bold text-gray-700 mb-2">သက်သေခံ ဘောက်ချာ/ပုံများ</div>
                         <div className="flex gap-2">
-                           <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-blue-100 text-blue-700">📸 ကင်မရာ <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'productFiles', e)} className="sr-only" /></label>
-                           <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-300 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-gray-100">📂 ဖိုင်အစုံရွေးရန် <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'productFiles', e)} className="sr-only" /></label>
+                           <label className="flex-1 cursor-pointer bg-blue-50 border border-blue-200 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-blue-100 text-blue-700 transition-colors shadow-sm">
+                             📸 ကင်မရာ 
+                             <input type="file" accept="image/*" capture="environment" onChange={(e) => handleCameraCapture(idx, 'productFiles', e)} className="sr-only" />
+                           </label>
+                           <label className="flex-1 cursor-pointer bg-gray-50 border border-gray-300 p-2.5 rounded-lg text-center text-xs font-bold hover:bg-gray-100 transition-colors shadow-sm">
+                             📂 ဖိုင်အစုံရွေးရန် 
+                             <input type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx" onChange={(e) => handleMultipleFilesSelect(idx, 'productFiles', e)} className="sr-only" />
+                           </label>
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-3">
+                        <div className="flex flex-wrap gap-2 mt-3">
                            {sup.productFiles?.map((file, i) => (
-                             <div key={i} className="relative group w-12 h-12 border rounded bg-gray-50 flex items-center justify-center overflow-hidden shadow-sm">
-                               {file.type?.startsWith('image/') ? <img src={file.dataUrl} className="w-full h-full object-cover"/> : <span className="text-[10px] font-bold text-indigo-600">📄 File</span>}
-                               <button type="button" onClick={() => removeFile(idx, 'productFiles', i)} className="absolute inset-0 bg-red-500/90 text-white text-[10px] flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                             <div key={i} className="relative group w-14 h-14 border-2 border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden shadow-sm">
+                               {file.type?.startsWith('image/') ? <img src={file.dataUrl} className="w-full h-full object-cover"/> : <span className="text-2xl font-bold text-indigo-600">📄</span>}
+                               <button type="button" onClick={() => removeFile(idx, 'productFiles', i)} className="absolute inset-0 bg-red-500/90 text-white text-[10px] flex items-center justify-center font-bold opacity-0 group-hover:opacity-100 transition-opacity">✕ ဖျက်မည်</button>
                              </div>
                            ))}
                         </div>
@@ -202,7 +270,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
       <div className="space-y-8 print:space-y-6">
         {visibleRequests.map(req => {
           const itemsToDisplay = req.items && req.items.length > 0 
-            ? req.items : [{ itemName: req.itemName, requestedQty: req.requestedQty, unit: req.unit, targetWarehouse: req.targetWarehouse || 'RM' }];
+            ? req.items : [{ id: 'old', itemName: req.itemName || '', requestedQty: req.requestedQty || 0, unit: req.unit || '', targetWarehouse: req.targetWarehouse || 'RM' }];
 
           return (
           <div key={req.id} className="bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-200 break-inside-avoid print:border-gray-400 print:shadow-none">
@@ -238,7 +306,19 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                 <div key={sup.id} className={`border-2 p-5 rounded-2xl relative bg-white ${req.selectedSupplierId === sup.id ? 'border-green-500 shadow-lg ring-4 ring-green-50' : 'border-gray-200'}`}>
                   {req.selectedSupplierId === sup.id && <div className="absolute -top-3 -right-3 bg-green-500 text-white w-8 h-8 flex justify-center items-center rounded-full font-black shadow print:hidden">✓</div>}
                   <h5 className="font-black text-lg text-gray-800 mb-1">{sup.name}</h5>
-                  <div className="text-red-600 font-black text-2xl mb-4 print:text-black">{sup.price?.toLocaleString()} Ks</div>
+                  <div className="text-red-600 font-black text-2xl mb-3 print:text-black">{sup.price?.toLocaleString()} Ks</div>
+                  
+                  {/* 🌟 🌟 🌟 Approved ဖြစ်ပြီးနောက် Item အလိုက် ဈေးနှုန်းကို ပြသပေးခြင်း 🌟 🌟 🌟 */}
+                  <div className="bg-gray-100 p-3 rounded-lg mb-4 space-y-2 border border-gray-200">
+                     <h6 className="text-[10px] font-bold text-gray-500 uppercase">ပစ္စည်းအလိုက် ဈေးနှုန်းများ</h6>
+                     {itemsToDisplay.map(item => (
+                        <div key={item.id} className="flex justify-between text-xs text-gray-700 font-bold border-b border-gray-200 pb-1 last:border-0 last:pb-0">
+                           <span className="truncate w-1/2">{item.itemName}:</span>
+                           <span className="text-indigo-700">{(sup.itemUnitPrices?.[item.id!] || 0).toLocaleString()} Ks / {item.unit}</span>
+                        </div>
+                     ))}
+                  </div>
+
                   <div className="text-xs font-medium text-gray-700 bg-gray-50 p-3 rounded-xl border mb-4 print:bg-white">{sup.qualityDesc}</div>
                   
                   <div className="mt-4 print:hidden space-y-2">
@@ -252,7 +332,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               ))}
             </div>
 
-            {/* 🌟 Finance Auto Sync Action (ငွေချေစနစ်ရွေးချယ်ရန်) 🌟 */}
             {req.status !== 'Completed' && req.status !== 'Rejected' && (
               <div className="bg-indigo-50/50 p-5 flex flex-wrap justify-end gap-3 items-center print:hidden border-t">
                 <span className="text-xs font-black text-indigo-800/50 mr-auto uppercase tracking-widest">Next Action</span>
@@ -267,7 +346,6 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                         <option value="BANK TRANSFER">BANK TRANSFER</option>
                         <option value="CREDIT (အကြွေး)">CREDIT (အကြွေးဝယ်)</option>
                       </select>
-                      {/* 🌟 ဤနေရာတွင် စာရင်းသွင်းမည် နှိပ်ပါက App.tsx သို့ paymentMethod ပါ ပေးပို့ပါမည် 🌟 */}
                       <button onClick={() => updateStatus(req.id, 'Completed', undefined, undefined, { paymentMethod: syncPaymentMethod })} className="bg-teal-600 text-white px-6 py-2.5 rounded-lg font-black shadow hover:bg-teal-700 animate-pulse whitespace-nowrap">
                         ✅ စာရင်းသွင်းမည် (Auto +)
                       </button>
