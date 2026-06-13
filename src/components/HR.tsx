@@ -39,13 +39,14 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   
   const [advEmpId, setAdvEmpId] = useState(''); const [advAmount, setAdvAmount] = useState(''); const [advReason, setAdvReason] = useState('');
   
-  // Leaves
   const [lvEmpId, setLvEmpId] = useState(''); const [lvStart, setLvStart] = useState(''); const [lvEnd, setLvEnd] = useState(''); 
   const [lvType, setLvType] = useState('Sick Leave (နေမကောင်းခွင့်)'); const [lvReason, setLvReason] = useState('');
 
-  // Payslip Modal State
+  // 🌟 Action Modal State for Leave 🌟
+  const [actionLeave, setActionLeave] = useState<Leave | null>(null);
+  const [leaveRemark, setLeaveRemark] = useState('');
+
   const [payslipData, setPayslipData] = useState<{ emp: Employee, data: any } | null>(null);
-  
   const [extraPays, setExtraPays] = useState<Record<string, { bonus: number; commission: number; }>>({});
 
   const defaultSetting: HRSetting = hrSettings.find(s => s.id === 'default') || { 
@@ -94,10 +95,19 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
 
   const handleAddAdvance = (e: React.FormEvent) => { e.preventDefault(); if (!advEmpId || !advAmount) return; setAdvances([{ id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false }, ...advances]); setAdvEmpId(''); setAdvAmount(''); setAdvReason(''); alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။'); };
   
+  // 🌟 ခွင့်တိုင်ကြားမှု အသစ် 🌟
   const handleAddLeave = (e: React.FormEvent) => {
     e.preventDefault(); if (!lvEmpId || !lvStart || !lvEnd) return;
-    setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Approved' }, ...leaves]);
-    setLvEmpId(''); setLvStart(''); setLvEnd(''); setLvReason(''); alert('✅ ခွင့်တိုင်ကြားခြင်း မှတ်တမ်းတင်ပြီးပါပြီ။');
+    setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Pending' }, ...leaves]);
+    setLvEmpId(''); setLvStart(''); setLvEnd(''); setLvReason(''); 
+    alert('✅ ခွင့်တိုင်ကြားခြင်း မှတ်တမ်းတင်ပြီးပါပြီ။ MD/HR မှ အတည်ပြုပေးရန် စောင့်ဆိုင်းပါ။');
+  };
+
+  // 🌟 Leave Approve/Reject Action 🌟
+  const handleLeaveAction = (status: 'Approved' | 'Rejected') => {
+    if (!actionLeave) return;
+    setLeaves(leaves.map(l => l.id === actionLeave.id ? { ...l, status, reason: `${l.reason} | 👨‍💼 HR မှတ်ချက်: ${leaveRemark || '-'}` } : l));
+    setActionLeave(null); setLeaveRemark('');
   };
 
   const handleAutoGetGPS = () => { if (currentLoc) { setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString()); alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)'); } else { alert('⚠️ GPS ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် Location ပိတ်ထားပါသည်။'); } };
@@ -109,12 +119,18 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const calculatePayroll = (emp: Employee) => {
     const empAtt = attendance.filter(a => a.employeeId === emp.id);
     const empAdvances = advances.filter(a => a.employeeId === emp.id && !a.deducted);
+    // Get Approved Leaves only
+    const empLeaves = leaves.filter(l => l.employeeId === emp.id && l.status === 'Approved');
+
     const totalAdvance = empAdvances.reduce((sum, a) => sum + a.amount, 0);
     const extra = extraPays[emp.id] || { bonus: 0, commission: 0 };
     
     let totalLateDeduction = 0;
     let isPerfectAttendance = true; 
     let isPunctual = true;
+
+    // Check if there's any leave, if so, NO perfect attendance.
+    if (empLeaves.length > 0) isPerfectAttendance = false;
 
     const startMinutes = parseTimeToMinutes(defaultSetting.officeStartTime);
     
@@ -150,15 +166,93 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
     alert(`✅ ${emp.name} အတွက် လစာငွေ ထုတ်ပေးပြီး Finance Expense သို့ အော်တိုသွင်းပေးလိုက်ပါပြီ။`);
   };
 
+  // 🌟 Thermal Print Function 🌟
+  const handleThermalPrint = () => {
+    const printWindow = window.open('', '', 'width=300,height=600');
+    if (!printWindow || !payslipData) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <style>
+            body { font-family: monospace; font-size: 12px; margin: 0; padding: 10px; width: 280px; }
+            h2 { font-size: 16px; text-align: center; margin: 0 0 5px 0; }
+            p { margin: 2px 0; }
+            .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
+            .flex { display: flex; justify-content: space-between; }
+            .bold { font-weight: bold; }
+            .center { text-align: center; }
+            .net { font-size: 16px; font-weight: bold; border-top: 1px solid #000; border-bottom: 1px solid #000; padding: 5px 0; margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <h2>SSY ERP</h2>
+          <p class="center">OFFICIAL PAYSLIP</p>
+          <div class="divider"></div>
+          <p>Date: ${today}</p>
+          <p>Name: <span class="bold">${payslipData.emp.name}</span></p>
+          <p>Role: ${payslipData.emp.position}</p>
+          <div class="divider"></div>
+          
+          <p>Basic Salary:</p>
+          <p class="bold text-right" style="text-align:right;">${payslipData.emp.basicSalary.toLocaleString()} Ks</p>
+          
+          ${payslipData.data.earnedPerfect > 0 ? `<p>Perfect Attendance:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.earnedPerfect.toLocaleString()} Ks</p>` : ''}
+          ${payslipData.data.earnedPunctuality > 0 ? `<p>Punctuality Bonus:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.earnedPunctuality.toLocaleString()} Ks</p>` : ''}
+          ${payslipData.data.extra.bonus > 0 ? `<p>Extra Bonus:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.extra.bonus.toLocaleString()} Ks</p>` : ''}
+          ${payslipData.data.extra.commission > 0 ? `<p>Commission:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.extra.commission.toLocaleString()} Ks</p>` : ''}
+          
+          ${payslipData.data.totalLateDeduction > 0 ? `<p>Late Deductions:</p><p class="bold" style="text-align:right;">- ${payslipData.data.totalLateDeduction.toLocaleString()} Ks</p>` : ''}
+          ${payslipData.data.totalAdvance > 0 ? `<p>Advances Deducted:</p><p class="bold" style="text-align:right;">- ${payslipData.data.totalAdvance.toLocaleString()} Ks</p>` : ''}
+          
+          <div class="flex net">
+            <span>NET PAY:</span>
+            <span>${payslipData.data.netPay.toLocaleString()} Ks</span>
+          </div>
+          
+          <div class="divider"></div>
+          <p class="center" style="font-size:10px;">Generated by SSY System</p>
+          <p class="center" style="font-size:10px;">Thank You!</p>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+  };
+
   const todayAtt = currentEmployee ? attendance.find(a => a.employeeId === currentEmployee.id && a.date === today) : null;
 
   return (
     <div className="p-2 md:p-6 max-w-7xl mx-auto space-y-6 print:p-0">
-      {/* 🌟 PAYSLIP MODAL (PDF Print) 🌟 */}
+      
+      {/* 🌟 Leave Action Modal 🌟 */}
+      {actionLeave && (
+         <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm print:hidden">
+            <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
+               <h3 className="font-black text-lg text-indigo-900 mb-4">ခွင့်ပြုချက် စီမံရန်</h3>
+               <div className="bg-gray-50 p-4 rounded-xl mb-4 text-sm space-y-2">
+                 <p><span className="font-bold text-gray-500">ဝန်ထမ်း:</span> {employees.find(e => e.id === actionLeave.employeeId)?.name}</p>
+                 <p><span className="font-bold text-gray-500">ရက်စွဲ:</span> {actionLeave.startDate} မှ {actionLeave.endDate}</p>
+                 <p><span className="font-bold text-gray-500">အမျိုးအစား:</span> {actionLeave.leaveType}</p>
+                 <p><span className="font-bold text-gray-500">အကြောင်းရင်း:</span> {actionLeave.reason}</p>
+               </div>
+               <div className="mb-6">
+                 <label className="text-xs font-bold text-gray-500 block mb-1">MD / HR မှတ်ချက် (Optional)</label>
+                 <textarea value={leaveRemark} onChange={e=>setLeaveRemark(e.target.value)} className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" rows={3} placeholder="ခွင့်ပြု/မပြု အကြောင်းရင်း..."></textarea>
+               </div>
+               <div className="flex gap-3">
+                 <button onClick={() => setActionLeave(null)} className="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl">Cancel</button>
+                 <button onClick={() => handleLeaveAction('Rejected')} className="flex-1 bg-rose-100 text-rose-700 hover:bg-rose-200 font-bold py-3 rounded-xl">❌ ပယ်ချမည်</button>
+                 <button onClick={() => handleLeaveAction('Approved')} className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 font-bold py-3 rounded-xl shadow-md">✅ ခွင့်ပြုမည်</button>
+               </div>
+            </div>
+         </div>
+      )}
+
+      {/* 🌟 PAYSLIP MODAL (PDF & Thermal Print) 🌟 */}
       {payslipData && (
         <div className="fixed inset-0 bg-gray-900/80 z-[200] flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:z-auto backdrop-blur-sm">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:rounded-none">
-            {/* Modal Header */}
             <div className="p-8 print:p-0">
                <div className="text-center border-b-2 border-indigo-100 pb-6 mb-6">
                  <h2 className="text-3xl font-black text-indigo-900 tracking-wider">SSY <span className="text-emerald-500">ERP</span></h2>
@@ -170,47 +264,30 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                     <h3 className="font-black text-xl text-gray-800">{payslipData.emp.name}</h3>
                     <p className="text-xs font-bold text-indigo-600 uppercase mt-1">{payslipData.emp.position}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-gray-400">ထုတ်ပေးသည့်ရက်စွဲ</p>
-                    <p className="font-bold text-gray-700">{today}</p>
-                  </div>
+                  <div className="text-right"><p className="text-xs font-bold text-gray-400">ထုတ်ပေးသည့်ရက်စွဲ</p><p className="font-bold text-gray-700">{today}</p></div>
                </div>
 
                <div className="space-y-3">
                  <div className="flex justify-between text-sm font-bold border-b border-gray-100 pb-2">
-                   <span className="text-gray-600">အခြေခံလစာ (Basic Salary)</span>
-                   <span className="text-gray-900">{payslipData.emp.basicSalary.toLocaleString()} Ks</span>
+                   <span className="text-gray-600">အခြေခံလစာ (Basic Salary)</span><span className="text-gray-900">{payslipData.emp.basicSalary.toLocaleString()} Ks</span>
                  </div>
                  {payslipData.data.earnedPerfect > 0 && (
-                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
-                     <span>ရက်မှန်ကြေး (Perfect Attendance)</span><span>+ {payslipData.data.earnedPerfect.toLocaleString()} Ks</span>
-                   </div>
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2"><span>ရက်မှန်ကြေး (Perfect Attendance)</span><span>+ {payslipData.data.earnedPerfect.toLocaleString()} Ks</span></div>
                  )}
                  {payslipData.data.earnedPunctuality > 0 && (
-                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
-                     <span>အချိန်မှန်ကြေး (Punctuality)</span><span>+ {payslipData.data.earnedPunctuality.toLocaleString()} Ks</span>
-                   </div>
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2"><span>အချိန်မှန်ကြေး (Punctuality)</span><span>+ {payslipData.data.earnedPunctuality.toLocaleString()} Ks</span></div>
                  )}
                  {payslipData.data.extra.bonus > 0 && (
-                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
-                     <span>အပိုဆုကြေး (Bonus)</span><span>+ {payslipData.data.extra.bonus.toLocaleString()} Ks</span>
-                   </div>
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2"><span>အပိုဆုကြေး (Bonus)</span><span>+ {payslipData.data.extra.bonus.toLocaleString()} Ks</span></div>
                  )}
                  {payslipData.data.extra.commission > 0 && (
-                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
-                     <span>ကော်မရှင် (Commission)</span><span>+ {payslipData.data.extra.commission.toLocaleString()} Ks</span>
-                   </div>
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2"><span>ကော်မရှင် (Commission)</span><span>+ {payslipData.data.extra.commission.toLocaleString()} Ks</span></div>
                  )}
-                 
                  {payslipData.data.totalLateDeduction > 0 && (
-                   <div className="flex justify-between text-sm font-bold text-rose-500 border-b border-gray-50 pb-2">
-                     <span>နောက်ကျဒဏ်ကြေး (Late Fine)</span><span>- {payslipData.data.totalLateDeduction.toLocaleString()} Ks</span>
-                   </div>
+                   <div className="flex justify-between text-sm font-bold text-rose-500 border-b border-gray-50 pb-2"><span>နောက်ကျဒဏ်ကြေး (Late Fine)</span><span>- {payslipData.data.totalLateDeduction.toLocaleString()} Ks</span></div>
                  )}
                  {payslipData.data.totalAdvance > 0 && (
-                   <div className="flex justify-between text-sm font-bold text-rose-500 border-b border-gray-50 pb-2">
-                     <span>ကြိုတင်ငွေဖြတ်တောက်ခြင်း (Advances)</span><span>- {payslipData.data.totalAdvance.toLocaleString()} Ks</span>
-                   </div>
+                   <div className="flex justify-between text-sm font-bold text-rose-500 border-b border-gray-50 pb-2"><span>ကြိုတင်ငွေဖြတ်တောက်ခြင်း (Advances)</span><span>- {payslipData.data.totalAdvance.toLocaleString()} Ks</span></div>
                  )}
                </div>
 
@@ -224,11 +301,13 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                </div>
             </div>
 
-            {/* Action Buttons (Hidden on Print) */}
-            <div className="p-4 bg-gray-50 border-t flex justify-end gap-3 print:hidden">
+            <div className="p-4 bg-gray-50 border-t flex flex-wrap justify-end gap-2 print:hidden">
               <button onClick={() => setPayslipData(null)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-200 rounded-lg">ပိတ်မည်</button>
-              <button onClick={() => window.print()} className="px-4 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">🖨️ PDF ထုတ်မည် / Print</button>
-              <button onClick={confirmPayment} className="px-6 py-2 text-sm font-black bg-emerald-600 text-white rounded-lg shadow-md hover:bg-emerald-700">✅ ငွေထုတ်ပေးပြီး Finance သွင်းမည်</button>
+              {/* 🌟 PDF & Thermal Print Buttons 🌟 */}
+              <button onClick={() => window.print()} className="px-4 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">A4 PDF ထုတ်မည်</button>
+              <button onClick={handleThermalPrint} className="px-4 py-2 text-sm font-bold bg-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-900">🖨️ Thermal (58/80mm) ထုတ်မည်</button>
+              
+              <button onClick={confirmPayment} className="px-4 py-2 text-sm font-black bg-emerald-600 text-white rounded-lg shadow-md hover:bg-emerald-700">✅ Finance သွင်းမည်</button>
             </div>
           </div>
         </div>
@@ -276,7 +355,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         </div>
       )}
 
-      {/* 📅 မှတ်တမ်းများ (History Tab) */}
+      {/* 📅 History Tab */}
       {activeSubTab === 'history' && isAdminOrHR && (
          <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
             <div className="p-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-700">နေ့စဉ် တက်ရောက်မှု မှတ်တမ်း</h3></div>
@@ -304,10 +383,10 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
          </div>
       )}
 
-      {/* 📝 ခွင့်တိုင်ကြားမှု (Leaves Tab - အသစ်) */}
+      {/* 📝 Leaves Tab */}
       {activeSubTab === 'leaves' && isAdminOrHR && (
          <div className="space-y-6">
-            <form onSubmit={handleAddLeave} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <form onSubmit={handleAddLeave} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                <div>
                   <label className="text-xs font-bold text-gray-500">ဝန်ထမ်းရွေးချယ်ရန်</label>
                   <select required value={lvEmpId} onChange={e=>setLvEmpId(e.target.value)} className="w-full border p-2.5 rounded-lg bg-white">
@@ -324,13 +403,14 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                      <option value="Casual Leave (ကိစ္စရှိ၍ခွင့်)">Casual Leave (ကိစ္စရှိ၍ခွင့်)</option>
                   </select>
                </div>
+               <div className="col-span-1"><label className="text-xs font-bold text-gray-500">အကြောင်းရင်း</label><input required value={lvReason} onChange={e=>setLvReason(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 shadow-sm">➕ ခွင့်တင်မည်</button>
             </form>
 
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                <table className="w-full text-left text-sm">
                  <thead className="bg-gray-50 text-gray-600 font-bold border-b">
-                   <tr><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ခွင့်ရက်စွဲ (From - To)</th><th className="p-4">ခွင့်အမျိုးအစား</th><th className="p-4">Status</th></tr>
+                   <tr><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ခွင့်ရက်စွဲ (From - To)</th><th className="p-4">ခွင့်အမျိုးအစား & အကြောင်းရင်း</th><th className="p-4">Status</th><th className="p-4 text-right">Action</th></tr>
                  </thead>
                  <tbody>
                     {leaves.map(l => {
@@ -338,9 +418,16 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                        return (
                          <tr key={l.id} className="border-b hover:bg-gray-50">
                            <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
-                           <td className="p-4 font-bold text-gray-600">{l.startDate} မှ {l.endDate}</td>
-                           <td className="p-4 text-gray-500">{l.leaveType}</td>
-                           <td className="p-4"><span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">{l.status}</span></td>
+                           <td className="p-4 font-bold text-gray-600">{l.startDate} <span className="text-xs font-normal">မှ</span> {l.endDate}</td>
+                           <td className="p-4 text-gray-500">{l.leaveType} <br/><span className="text-xs text-gray-400">{l.reason}</span></td>
+                           <td className="p-4">
+                              {l.status === 'Pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-amber-200">⏳ စောင့်ဆိုင်းဆဲ</span>}
+                              {l.status === 'Approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">✅ ခွင့်ပြုပြီး</span>}
+                              {l.status === 'Rejected' && <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">❌ ပယ်ချသည်</span>}
+                           </td>
+                           <td className="p-4 text-right">
+                              {l.status === 'Pending' && <button onClick={() => setActionLeave(l)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-blue-200">စီမံမည်</button>}
+                           </td>
                          </tr>
                        )
                     })}
@@ -420,7 +507,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
          </div>
       )}
 
-      {/* 💰 Payroll Tab (With PDF Payslip Trigger) */}
+      {/* 💰 Payroll Tab */}
       {activeSubTab === 'payroll' && isAdminOrHR && (
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {employees.map(emp => {
@@ -456,7 +543,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                         <span className="font-black text-indigo-900 text-sm">အသားတင်ရငွေ (Net Pay)</span>
                         <span className="text-2xl font-black text-indigo-600">{pData.netPay.toLocaleString()} Ks</span>
                      </div>
-                     {/* 🌟 ခလုတ်နှိပ်ပါက Payslip PDF မျက်နှာပြင် (Modal) တက်လာမည် 🌟 */}
                      <button onClick={() => setPayslipData({ emp, data: pData })} className="mt-4 w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black shadow-md">🖨️ လစာထုတ်ပေးမည် / PDF ကြည့်မည်</button>
                   </div>
                )
