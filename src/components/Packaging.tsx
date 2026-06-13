@@ -91,7 +91,7 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
          <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-2"><span>🏷️</span> ကုန်ချော ထုပ်ပိုးခြင်း (Packaging)</h2>
          <div className="flex gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-200 w-full md:w-auto">
             <button onClick={() => setActiveTab('pack')} className={`flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm ${activeTab === 'pack' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-gray-100'}`}>📦 ထုပ်ပိုးမည်</button>
-            <button onClick={() => setActiveTab('recipes')} className={`flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm ${activeTab === 'recipes' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-gray-100'}`}>📋 SKU (ုန်ချော) စီမံမည်</button>
+            <button onClick={() => setActiveTab('recipes')} className={`flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm ${activeTab === 'recipes' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-gray-100'}`}>📋 SKU (ကုန်ချော) စီမံမည်</button>
          </div>
       </div>
 
