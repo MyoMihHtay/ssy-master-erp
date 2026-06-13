@@ -88,7 +88,7 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
 
 export default function App() {
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false); // 🌟 Mobile Menu ဖွင့်/ပိတ် State 🌟
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false); // 🌟 Mobile Menu State
 
   const [accounts, setAccounts] = useLocalStorage<AccountItem[]>('ssy_accounts', [
     { id: 1, username: 'md', password: '123', role: 'md', displayName: 'Managing Director (MD)' },
@@ -195,6 +195,7 @@ export default function App() {
       {/* 🌟 Mobile Top App Bar (ဖုန်းမှာပဲ ပေါ်မည်) 🌟 */}
       <div className="md:hidden fixed top-0 left-0 w-full bg-gray-900 text-white z-50 p-4 flex justify-between items-center shadow-md">
         <h1 className="font-black text-xl tracking-wider">SSY <span className="text-emerald-400">ERP</span></h1>
+        {/* Hamburger Menu Icon */}
         <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">
           ☰
         </button>
@@ -221,11 +222,13 @@ export default function App() {
          <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
            {isCloudConnected ? (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
-               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>☁️ Cloud ချိတ်ဆက်ထားသည်
+               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+               ☁️ Cloud ချိတ်ဆက်ထားသည်
              </div>
            ) : (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-500 bg-amber-500/10 py-2 rounded-lg border border-amber-500/20">
-               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
+               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+               ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
              </div>
            )}
          </div>
