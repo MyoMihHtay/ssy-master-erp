@@ -326,18 +326,18 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
       {/* 🌟 iOS Image Save Overlay with Back Button 🌟 */}
       {generatedImageURL && (
-        <div className="fixed top-[68px] md:top-0 left-0 right-0 bottom-0 z-[9999] bg-slate-900 flex flex-col print:hidden">
-          <div className="bg-slate-800 p-4 flex items-center shadow-lg w-full shrink-0">
+        <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col print:hidden overflow-hidden">
+          <div className="bg-slate-800 p-4 flex items-center justify-between shadow-lg w-full shrink-0">
             <button 
               onClick={() => setGeneratedImageURL(null)} 
-              className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-xl font-black text-sm shadow-md flex items-center gap-2 active:scale-95 transition-transform"
+              className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 md:px-5 md:py-2.5 rounded-lg font-black text-sm shadow-md flex items-center gap-2 active:scale-95 transition-transform"
             >
-              <span className="text-xl">⬅</span> ပြန်ထွက်မည်
+              <span className="text-xl">⬅</span> ပြန်ထွက်မည် (Back)
             </button>
-            <span className="text-sm font-bold text-slate-300 ml-auto flex items-center gap-2">👇 ဖိနှိပ်ပြီး Save Image ရွေးပါ</span>
+            <span className="text-xs md:text-sm font-bold text-slate-300 ml-auto flex items-center gap-2">👇 ဖိနှိပ်ပြီး Save Image ရွေးပါ</span>
           </div>
-          <div className="flex-1 overflow-auto p-4 flex justify-center items-start">
-            <img src={generatedImageURL} alt="Saved Receipt" className="max-w-full md:max-w-md shadow-2xl rounded-xl border border-slate-700" />
+          <div className="flex-1 overflow-y-auto p-4 flex justify-center items-start">
+            <img src={generatedImageURL} alt="Saved Receipt" className="w-full max-w-md shadow-2xl rounded-xl border border-slate-700" />
           </div>
         </div>
       )}
@@ -386,7 +386,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 </div>
               </div>
 
-              {/* Customer & Barcode Section (🌟 Barcode ကို အပေါ်တင်ပြီး Table နဲ့ ကွာဟချက်ကို ပြင်ဆင်ထားသည် 🌟) */}
+              {/* Customer & Barcode Section */}
               <div className="flex justify-between items-start mb-6">
                 <div className="w-1/2">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 pb-1 inline-block">Billed To</h3>
@@ -399,33 +399,34 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                       <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issued By</h3>
                       <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
                    </div>
-                   <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-10 opacity-90" />
+                   {/* 🌟 🌟 Barcode Image Fix 🌟 🌟 */}
+                   <img crossOrigin="anonymous" src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-10 opacity-90" />
                 </div>
               </div>
 
-              {/* Items Table (🌟 Table ခေါင်းစဉ်ကို အလယ်ဗဟိုကျအောင် (align-middle) ပြင်ဆင်ထားသည် 🌟) */}
+              {/* Items Table (🌟 Box အမည်းကို အတိအကျ ချိန်ညှိထားပြီး Print ထုတ်လျှင်ပါရန် ပြင်ဆင်ထားသည် 🌟) */}
               <div className="min-h-[200px]">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-800 text-white">
-                      <th className="py-3 px-3 font-bold text-sm w-12 text-center align-middle rounded-tl-lg">No.</th>
-                      <th className="py-3 px-3 font-bold text-sm align-middle">Description</th>
-                      <th className="py-3 px-3 font-bold text-sm text-center w-24 align-middle">Qty</th>
-                      <th className="py-3 px-3 font-bold text-sm text-right w-32 align-middle">Price (Ks)</th>
-                      <th className="py-3 px-3 font-bold text-sm text-right w-32 align-middle rounded-tr-lg">Amount (Ks)</th>
+                  <thead style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+                    <tr className="bg-slate-800 text-white print:bg-slate-800 print:text-white">
+                      <th className="py-1.5 px-2 font-bold text-sm w-12 text-center align-middle rounded-tl-md print:bg-slate-800 print:text-white">No.</th>
+                      <th className="py-1.5 px-2 font-bold text-sm align-middle print:bg-slate-800 print:text-white">Description</th>
+                      <th className="py-1.5 px-2 font-bold text-sm text-center w-24 align-middle print:bg-slate-800 print:text-white">Qty</th>
+                      <th className="py-1.5 px-2 font-bold text-sm text-right w-32 align-middle print:bg-slate-800 print:text-white">Price (Ks)</th>
+                      <th className="py-1.5 px-2 font-bold text-sm text-right w-32 align-middle rounded-tr-md print:bg-slate-800 print:text-white">Amount (Ks)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {selectedSaleForPrint.items.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-200">
-                        <td className="py-3 px-3 text-center font-bold text-slate-600 text-sm align-middle">{idx + 1}</td>
-                        <td className="py-3 px-3 align-middle">
+                        <td className="py-2 px-2 text-center font-bold text-slate-600 text-sm align-middle">{idx + 1}</td>
+                        <td className="py-2 px-2 align-middle">
                            <span className="font-bold text-slate-800 text-sm block leading-tight">{item.product.category}</span> 
                            <span className="text-xs font-bold text-slate-500 block leading-tight mt-0.5">({item.product.taste}, {item.product.gram}g)</span>
                         </td>
-                        <td className="py-3 px-3 text-center font-black text-slate-700 text-sm align-middle">{item.quantity}</td>
-                        <td className="py-3 px-3 text-right font-bold text-slate-600 text-sm align-middle">{item.product.price.toLocaleString()}</td>
-                        <td className="py-3 px-3 text-right font-black text-slate-800 text-sm align-middle">{item.subtotal.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-center font-black text-slate-700 text-sm align-middle">{item.quantity}</td>
+                        <td className="py-2 px-2 text-right font-bold text-slate-600 text-sm align-middle">{item.product.price.toLocaleString()}</td>
+                        <td className="py-2 px-2 text-right font-black text-slate-800 text-sm align-middle">{item.subtotal.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -466,15 +467,16 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             </div>
           )}
 
-          {/* ----- THERMAL 58mm/80mm TEMPLATE ----- */}
+          {/* ----- THERMAL 58mm/80mm TEMPLATE (🌟 Logo Fixed 🌟) ----- */}
           {printType === 'THERMAL' && (
             <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-xs" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
-                <img src="/logo.png" alt="Logo" className="w-16 h-16 object-contain mx-auto mb-1 grayscale" />
+                {/* 🌟 Grayscale ဖြုတ်ပြီး crossOrigin ထည့်ထားသည် 🌟 */}
+                <img crossOrigin="anonymous" src="/logo.png" alt="Logo" className="w-16 h-16 object-contain mx-auto mb-1" />
                 <h2 className="text-base font-black mb-1">"စက်စက်ယို"</h2>
                 <p className="text-[10px] leading-tight">မန္တလေးမြို့</p>
                 <p className="text-[10px] leading-tight mb-2">Ph: 09-455557980</p>
-                <img src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-8 mx-auto" />
+                <img crossOrigin="anonymous" src={`https://barcode.tec-it.com/barcode.ashx?data=${selectedSaleForPrint.id}&code=Code128&dpi=96&dataseparator=`} alt="Barcode" className="h-8 mx-auto" />
               </div>
 
               <div className="mb-2 text-[11px] font-bold space-y-1 border-b-2 border-dashed border-black pb-2">
