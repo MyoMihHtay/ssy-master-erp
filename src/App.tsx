@@ -11,7 +11,7 @@ import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
 
-// 🌟 1. HR ဖိုင်ကို App ထဲသို့ ချိတ်ဆက် (Import) ယူခြင်း 🌟
+// 🌟 1. HR Component ကို Import လုပ်ခြင်း 🌟
 import { HR } from './components/HR'; 
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
@@ -52,7 +52,13 @@ export interface Customer { id: string; name: string; phone: string; shopType: s
 export interface Employee { id: string; name: string; position: string; department: string; basicSalary: number; joinedDate: string; phone: string; status: string; }
 export interface Attendance { id: number; employeeId: string; date: string; checkInTime?: string; checkOutTime?: string; status: string; checkInGps?: string; checkOutGps?: string; }
 export interface Advance { id: number; employeeId: string; date: string; amount: number; reason: string; status: string; deducted: boolean; }
-export interface HRSetting { id: string; officeLatitude: number; officeLongitude: number; allowedRadius: number; }
+export interface LateRule { id: number; startMin: number; endMin: number; deduction: number; type: 'amount' | 'half_day' | 'full_day'; }
+export interface HRSetting { 
+  id: string; officeLatitude: number; officeLongitude: number; allowedRadius: number; 
+  officeStartTime: string; officeEndTime: string; 
+  punctualityBonus: number; perfectAttendanceBonus: number; 
+  lateRules: LateRule[]; 
+}
 
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [storedValue, setStoredValue] = useState<T>(() => {
