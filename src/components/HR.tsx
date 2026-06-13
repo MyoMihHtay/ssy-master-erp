@@ -18,7 +18,6 @@ const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: num
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); return R * c;
 };
 
-// အချိန် (08:30 AM) ကို မိနစ်သို့ ပြောင်းရန်
 const parseTimeToMinutes = (timeStr: string) => {
   if (!timeStr) return 0;
   const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
@@ -30,14 +29,14 @@ const parseTimeToMinutes = (timeStr: string) => {
 };
 
 export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmployees, attendance, setAttendance, advances, setAdvances, hrSettings, setHrSettings, setExpenses }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'employees' | 'advances' | 'payroll' | 'settings'>('attendance');
+  // 🌟 history tab အသစ် ထပ်တိုးထားပါသည် 🌟
+  const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'employees' | 'advances' | 'payroll' | 'settings' | 'history'>('attendance');
   
   const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
   const [empName, setEmpName] = useState(''); const [empPos, setEmpPos] = useState('');
   const [empDept, setEmpDept] = useState(''); const [empSalary, setEmpSalary] = useState('');
   const [empPhone, setEmpPhone] = useState('');
   
-  // Payroll Extra Inputs state per employee
   const [extraPays, setExtraPays] = useState<Record<string, { bonus: number; commission: number; }>>({});
 
   const defaultSetting: HRSetting = hrSettings.find(s => s.id === 'default') || { 
@@ -97,11 +96,9 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const handleEditEmployee = (emp: Employee) => { setEditingEmpId(emp.id); setEmpName(emp.name); setEmpPos(emp.position); setEmpDept(emp.department); setEmpSalary(emp.basicSalary.toString()); setEmpPhone(emp.phone); };
   const handleDeleteEmployee = (id: string) => { if (window.confirm("⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?")) { setEmployees(employees.filter(e => e.id !== id)); } };
 
-  // 🌟 Auto GPS ရယူမည့် Function အသစ် 🌟
   const handleAutoGetGPS = () => {
     if (currentLoc) {
-      setSetLat(currentLoc.lat.toString());
-      setSetLon(currentLoc.lon.toString());
+      setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString());
       alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)');
     } else {
       alert('⚠️ GPS တည်နေရာ ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် ဖုန်း/ကွန်ပျူတာ Location ပိတ်ထားပါသည်။');
@@ -187,10 +184,11 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         <button onClick={() => setActiveSubTab('attendance')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'attendance' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📍 GPS Attendance</button>
         {isAdminOrHR && (
           <>
+            <button onClick={() => setActiveSubTab('history')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'history' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📅 မှတ်တမ်းများ</button>
             <button onClick={() => setActiveSubTab('employees')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'employees' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>👩‍💼 ဝန်ထမ်းစာရင်း</button>
             <button onClick={() => setActiveSubTab('advances')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'advances' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💸 ကြိုတင်ငွေ</button>
             <button onClick={() => setActiveSubTab('payroll')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'payroll' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💰 လစာပေးချေမှု</button>
-            {isMD && <button onClick={() => setActiveSubTab('settings')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'settings' ? 'bg-gray-800 text-white shadow' : 'bg-white text-gray-600 border'}`}>⚙️ မူဝါဒ & Settings (MD)</button>}
+            {isMD && <button onClick={() => setActiveSubTab('settings')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'settings' ? 'bg-gray-800 text-white shadow' : 'bg-white text-gray-600 border'}`}>⚙️ မူဝါဒ & Settings</button>}
           </>
         )}
       </div>
@@ -219,7 +217,48 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         </div>
       )}
 
-      {/* 👩‍💼 Employees Tab (With Edit/Delete for MD) */}
+      {/* 📅 မှတ်တမ်းများ (History Tab အသစ်) */}
+      {activeSubTab === 'history' && isAdminOrHR && (
+         <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+               <h3 className="font-bold text-gray-700">ဝန်ထမ်းများ၏ နေ့စဉ် တက်ရောက်မှု မှတ်တမ်း</h3>
+            </div>
+            <div className="overflow-x-auto">
+               <table className="w-full text-left text-sm whitespace-nowrap">
+                 <thead className="bg-gray-100 text-gray-600 font-bold border-b">
+                   <tr>
+                     <th className="p-4">ရက်စွဲ (Date)</th>
+                     <th className="p-4">ဝန်ထမ်းအမည်</th>
+                     <th className="p-4">ရုံးတက်ချိန် (In)</th>
+                     <th className="p-4">ရုံးဆင်းချိန် (Out)</th>
+                     <th className="p-4">Status</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                    {[...attendance].reverse().map(att => {
+                       const emp = employees.find(e => e.id === att.employeeId);
+                       return (
+                         <tr key={att.id} className="border-b hover:bg-gray-50">
+                           <td className="p-4 font-bold text-gray-700">{att.date}</td>
+                           <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
+                           <td className="p-4 text-emerald-600 font-bold">{att.checkInTime || '-'}</td>
+                           <td className="p-4 text-rose-600 font-bold">{att.checkOutTime || '-'}</td>
+                           <td className="p-4">
+                              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{att.status}</span>
+                           </td>
+                         </tr>
+                       );
+                    })}
+                    {attendance.length === 0 && (
+                       <tr><td colSpan={5} className="p-8 text-center text-gray-400 font-bold">မှတ်တမ်းများ မရှိသေးပါ</td></tr>
+                    )}
+                 </tbody>
+               </table>
+            </div>
+         </div>
+      )}
+
+      {/* 👩‍💼 Employees Tab */}
       {activeSubTab === 'employees' && isAdminOrHR && (
          <div className="space-y-6">
             <form onSubmit={handleSaveEmployee} className={`bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-6 gap-4 items-end ${editingEmpId ? 'border-yellow-400 bg-yellow-50' : ''}`}>
@@ -252,7 +291,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
          </div>
       )}
 
-      {/* 💰 Payroll Tab (With Auto Calculations & Bonus/Commission Inputs) */}
+      {/* 💰 Payroll Tab */}
       {activeSubTab === 'payroll' && isAdminOrHR && (
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {employees.map(emp => {
@@ -270,7 +309,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                         <div className="flex justify-between items-center text-emerald-600"><span>ရက်မှန်ကြေး:</span><span>+ {pData.earnedPerfect.toLocaleString()} Ks</span></div>
                         <div className="flex justify-between items-center text-emerald-600"><span>အချိန်မှန်ကြေး:</span><span>+ {pData.earnedPunctuality.toLocaleString()} Ks</span></div>
                         
-                        {/* Bonus & Commission Inputs */}
                         <div className="flex justify-between items-center mt-2">
                            <span>Bonus အပိုဆု:</span>
                            <input type="number" value={pData.extra.bonus || ''} onChange={(e) => setExtraPays({...extraPays, [emp.id]: {...pData.extra, bonus: Number(e.target.value)}})} placeholder="0" className="w-24 text-right border rounded p-1 text-xs" />
@@ -311,18 +349,13 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                      <div><label className="text-xs font-bold text-gray-500">ရုံးတက်ချိန်</label><input type="time" value={setStartTime} onChange={e=>setSetStartTime(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                      <div><label className="text-xs font-bold text-gray-500">ရုံးဆင်းချိန်</label><input type="time" value={setEndTime} onChange={e=>setSetEndTime(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                   </div>
-                  
-                  {/* 🌟 📍 Auto GPS ရယူမည့် အပိုင်း 🌟 */}
                   <div className="pt-2 border-t mt-2">
                      <div className="flex justify-between items-end gap-2 mb-2">
                         <div className="flex-1"><label className="text-xs font-bold text-gray-500">Latitude</label><input value={setLat} onChange={e=>setSetLat(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                         <div className="flex-1"><label className="text-xs font-bold text-gray-500">Longitude</label><input value={setLon} onChange={e=>setSetLon(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                      </div>
-                     <button type="button" onClick={handleAutoGetGPS} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                        <span>📍</span> လက်ရှိနေရာကို (Auto) ရယူမည်
-                     </button>
+                     <button type="button" onClick={handleAutoGetGPS} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"><span>📍</span> လက်ရှိနေရာကို (Auto) ရယူမည်</button>
                   </div>
-                  
                   <div><label className="text-xs font-bold text-gray-500">GPS ခွင့်ပြုမည့်အကွာအဝေး (မီတာ)</label><input type="number" value={setRad} onChange={e=>setSetRad(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                </div>
 
@@ -341,7 +374,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                   <span>📉 နောက်ကျဒဏ်ကြေး မူဝါဒများ (Dynamic Rules)</span>
                   <button onClick={() => setSetRules([...setRules, {id: Date.now(), startMin: 0, endMin: 0, deduction: 0, type: 'amount'}])} className="bg-rose-200 text-rose-800 text-xs px-3 py-1 rounded font-bold hover:bg-rose-300">+ ထပ်ထည့်မည်</button>
                </h4>
-               
                <div className="space-y-3">
                   {setRules.map((rule, index) => (
                      <div key={rule.id} className="flex flex-wrap md:flex-nowrap gap-3 items-center bg-white p-3 rounded-xl border border-rose-100 shadow-sm">
@@ -350,13 +382,11 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                         <span className="text-xs font-bold text-gray-500">မှ</span>
                         <input type="number" value={rule.endMin} onChange={(e) => { const newR = [...setRules]; newR[index].endMin = Number(e.target.value); setSetRules(newR); }} className="w-16 border rounded p-2 text-sm text-center" />
                         <span className="text-xs font-bold text-gray-500 w-16">အထိ =</span>
-                        
                         <select value={rule.type} onChange={(e) => { const newR = [...setRules]; newR[index].type = e.target.value as any; setSetRules(newR); }} className="w-32 border rounded p-2 text-sm bg-gray-50 font-bold text-rose-600 outline-none">
                            <option value="amount">ငွေသားဖြတ်မည်</option>
                            <option value="half_day">နေ့ဝက် (Half-Day)</option>
                            <option value="full_day">ရက်ပျက် (Full-Day)</option>
                         </select>
-                        
                         {rule.type === 'amount' && (
                            <input type="number" value={rule.deduction} onChange={(e) => { const newR = [...setRules]; newR[index].deduction = Number(e.target.value); setSetRules(newR); }} placeholder="ဖြတ်မည့်ငွေ" className="w-24 border rounded p-2 text-sm text-right" />
                         )}
