@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import type { Employee, Attendance, Advance, HRSetting, LateRule, ExpenseItem, AccountItem } from '../App';
+import type { Employee, Attendance, Advance, Leave, HRSetting, LateRule, ExpenseItem, AccountItem } from '../App';
 
 interface HRProps {
   userRole: string; userName: string;
   employees: Employee[]; setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>;
   attendance: Attendance[]; setAttendance: React.Dispatch<React.SetStateAction<Attendance[]>>;
   advances: Advance[]; setAdvances: React.Dispatch<React.SetStateAction<Advance[]>>;
+  leaves: Leave[]; setLeaves: React.Dispatch<React.SetStateAction<Leave[]>>;
   hrSettings: HRSetting[]; setHrSettings: React.Dispatch<React.SetStateAction<HRSetting[]>>;
   setExpenses: React.Dispatch<React.SetStateAction<ExpenseItem[]>>;
   accounts: AccountItem[];
@@ -28,19 +29,23 @@ const parseTimeToMinutes = (timeStr: string) => {
   return hours * 60 + minutes;
 };
 
-export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmployees, attendance, setAttendance, advances, setAdvances, hrSettings, setHrSettings, setExpenses }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'employees' | 'advances' | 'payroll' | 'settings' | 'history'>('attendance');
+export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmployees, attendance, setAttendance, advances, setAdvances, leaves, setLeaves, hrSettings, setHrSettings, setExpenses }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'history' | 'employees' | 'advances' | 'leaves' | 'payroll' | 'settings'>('attendance');
   
   const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
   const [empName, setEmpName] = useState(''); const [empPos, setEmpPos] = useState('');
   const [empDept, setEmpDept] = useState(''); const [empSalary, setEmpSalary] = useState('');
   const [empPhone, setEmpPhone] = useState('');
   
-  // 🌟 ကြိုတင်ငွေအတွက် State များ 🌟
-  const [advEmpId, setAdvEmpId] = useState('');
-  const [advAmount, setAdvAmount] = useState('');
-  const [advReason, setAdvReason] = useState('');
+  const [advEmpId, setAdvEmpId] = useState(''); const [advAmount, setAdvAmount] = useState(''); const [advReason, setAdvReason] = useState('');
+  
+  // Leaves
+  const [lvEmpId, setLvEmpId] = useState(''); const [lvStart, setLvStart] = useState(''); const [lvEnd, setLvEnd] = useState(''); 
+  const [lvType, setLvType] = useState('Sick Leave (နေမကောင်းခွင့်)'); const [lvReason, setLvReason] = useState('');
 
+  // Payslip Modal State
+  const [payslipData, setPayslipData] = useState<{ emp: Employee, data: any } | null>(null);
+  
   const [extraPays, setExtraPays] = useState<Record<string, { bonus: number; commission: number; }>>({});
 
   const defaultSetting: HRSetting = hrSettings.find(s => s.id === 'default') || { 
@@ -83,65 +88,23 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   }, []);
 
   const resetEmpForm = () => { setEditingEmpId(null); setEmpName(''); setEmpPos(''); setEmpDept(''); setEmpSalary(''); setEmpPhone(''); };
-
-  const handleSaveEmployee = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingEmpId) {
-       setEmployees(employees.map(emp => emp.id === editingEmpId ? { ...emp, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), phone: empPhone } : emp));
-       alert('✅ ပြင်ဆင်မှု အောင်မြင်ပါသည်။');
-    } else {
-       const newEmp: Employee = { id: `EMP-${Date.now()}`, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), joinedDate: today, phone: empPhone, status: 'Active' };
-       setEmployees([...employees, newEmp]);
-       alert('✅ ဝန်ထမ်းအသစ် စာရင်းသွင်းပြီးပါပြီ။');
-    }
-    resetEmpForm();
-  };
-
+  const handleSaveEmployee = (e: React.FormEvent) => { e.preventDefault(); if (editingEmpId) { setEmployees(employees.map(emp => emp.id === editingEmpId ? { ...emp, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), phone: empPhone } : emp)); alert('✅ ပြင်ဆင်မှု အောင်မြင်ပါသည်။'); } else { const newEmp: Employee = { id: `EMP-${Date.now()}`, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), joinedDate: today, phone: empPhone, status: 'Active' }; setEmployees([...employees, newEmp]); alert('✅ ဝန်ထမ်းအသစ် စာရင်းသွင်းပြီးပါပြီ။'); } resetEmpForm(); };
   const handleEditEmployee = (emp: Employee) => { setEditingEmpId(emp.id); setEmpName(emp.name); setEmpPos(emp.position); setEmpDept(emp.department); setEmpSalary(emp.basicSalary.toString()); setEmpPhone(emp.phone); };
   const handleDeleteEmployee = (id: string) => { if (window.confirm("⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?")) { setEmployees(employees.filter(e => e.id !== id)); } };
 
-  // 🌟 ကြိုတင်ငွေ ထည့်သွင်းခြင်း Function 🌟
-  const handleAddAdvance = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!advEmpId || !advAmount) return alert('အချက်အလက် ပြည့်စုံစွာ ထည့်ပါ။');
-    const newAdvance: Advance = { id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false };
-    setAdvances([newAdvance, ...advances]);
-    setAdvEmpId(''); setAdvAmount(''); setAdvReason('');
-    alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။');
+  const handleAddAdvance = (e: React.FormEvent) => { e.preventDefault(); if (!advEmpId || !advAmount) return; setAdvances([{ id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false }, ...advances]); setAdvEmpId(''); setAdvAmount(''); setAdvReason(''); alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။'); };
+  
+  const handleAddLeave = (e: React.FormEvent) => {
+    e.preventDefault(); if (!lvEmpId || !lvStart || !lvEnd) return;
+    setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Approved' }, ...leaves]);
+    setLvEmpId(''); setLvStart(''); setLvEnd(''); setLvReason(''); alert('✅ ခွင့်တိုင်ကြားခြင်း မှတ်တမ်းတင်ပြီးပါပြီ။');
   };
 
-  const handleAutoGetGPS = () => {
-    if (currentLoc) {
-      setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString());
-      alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)');
-    } else {
-      alert('⚠️ GPS တည်နေရာ ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် ဖုန်း/ကွန်ပျူတာ Location ပိတ်ထားပါသည်။');
-    }
-  };
-
-  const handleSaveSettings = () => {
-    setHrSettings([{ id: 'default', officeLatitude: Number(setLat), officeLongitude: Number(setLon), allowedRadius: Number(setRad), officeStartTime: setStartTime, officeEndTime: setEndTime, punctualityBonus: Number(setPunctuality), perfectAttendanceBonus: Number(setPerfect), lateRules: setRules }]);
-    alert('✅ HR နှင့် GPS မူဝါဒများ သိမ်းဆည်းခြင်း အောင်မြင်ပါသည်။');
-  };
-
-  const handleCheckIn = () => {
-    if (!currentEmployee) return alert('သင်၏ အကောင့်အမည်ဖြင့် ဝန်ထမ်းစာရင်းတွင် မတွေ့ရှိပါ။ (HR ကို ဆက်သွယ်ပါ)');
-    if (!currentLoc) return alert('GPS Location ရှာဖွေနေဆဲဖြစ်ပါသည်။ (ဖုန်း Location ဖွင့်ထားရန် သေချာစစ်ဆေးပါ)');
-    const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude);
-    if (distance > defaultSetting.allowedRadius) return alert(`❌ သင်သည် ရုံးတည်နေရာမှ (${Math.round(distance)} မီတာ) ကွာဝေးနေသဖြင့် ရုံးတက်စာရင်း သွင်း၍မရပါ။`);
-    const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    setAttendance([...attendance, { id: Date.now(), employeeId: currentEmployee.id, date: today, checkInTime: nowTime, status: 'Present', checkInGps: `${currentLoc.lat}, ${currentLoc.lon}` }]);
-    alert(`✅ အောင်မြင်ပါသည်။ (ရုံးတက်ချိန်: ${nowTime})`);
-  };
-
-  const handleCheckOut = () => {
-    if (!currentEmployee || !currentLoc) return;
-    const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude);
-    if (distance > defaultSetting.allowedRadius) return alert('❌ ရုံးပတ်ဝန်းကျင်မှသာ ရုံးဆင်းစာရင်း သွင်းနိုင်ပါသည်။');
-    const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    setAttendance(attendance.map(a => a.employeeId === currentEmployee.id && a.date === today ? { ...a, checkOutTime: nowTime, checkOutGps: `${currentLoc.lat}, ${currentLoc.lon}` } : a));
-    alert(`✅ ရုံးဆင်းစာရင်း သွင်းပြီးပါပြီ။ (ရုံးဆင်းချိန်: ${nowTime})`);
-  };
+  const handleAutoGetGPS = () => { if (currentLoc) { setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString()); alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)'); } else { alert('⚠️ GPS ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် Location ပိတ်ထားပါသည်။'); } };
+  const handleSaveSettings = () => { setHrSettings([{ id: 'default', officeLatitude: Number(setLat), officeLongitude: Number(setLon), allowedRadius: Number(setRad), officeStartTime: setStartTime, officeEndTime: setEndTime, punctualityBonus: Number(setPunctuality), perfectAttendanceBonus: Number(setPerfect), lateRules: setRules }]); alert('✅ မူဝါဒများ သိမ်းဆည်းခြင်း အောင်မြင်ပါသည်။'); };
+  
+  const handleCheckIn = () => { if (!currentEmployee) return alert('ဝန်ထမ်းစာရင်းတွင် မတွေ့ရှိပါ။'); if (!currentLoc) return alert('GPS ရှာဖွေနေဆဲပါ။'); const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert(`❌ ရုံးတည်နေရာမှ (${Math.round(distance)} မီတာ) ကွာဝေးနေပါသည်။`); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance([...attendance, { id: Date.now(), employeeId: currentEmployee.id, date: today, checkInTime: nowTime, status: 'Present', checkInGps: `${currentLoc.lat}, ${currentLoc.lon}` }]); alert(`✅ အောင်မြင်ပါသည်။ (${nowTime})`); };
+  const handleCheckOut = () => { if (!currentEmployee || !currentLoc) return; const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert('❌ ရုံးပတ်ဝန်းကျင်မှသာ ရုံးဆင်းစာရင်း သွင်းနိုင်ပါသည်။'); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance(attendance.map(a => a.employeeId === currentEmployee.id && a.date === today ? { ...a, checkOutTime: nowTime, checkOutGps: `${currentLoc.lat}, ${currentLoc.lon}` } : a)); alert(`✅ ရုံးဆင်းစာရင်း သွင်းပြီးပါပြီ။ (${nowTime})`); };
 
   const calculatePayroll = (emp: Employee) => {
     const empAtt = attendance.filter(a => a.employeeId === emp.id);
@@ -178,18 +141,99 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
     return { totalAdvance, totalLateDeduction, earnedPunctuality, earnedPerfect, extra, netPay };
   };
 
-  const handleProcessPayroll = (emp: Employee, payrollData: any) => {
-    if (window.confirm(`⚠️ ${emp.name} အတွက် လစာငွေ ${payrollData.netPay.toLocaleString()} Ks အား ထုတ်ပေးပြီး Finance သို့ စာရင်းသွင်းမည်လား?`)) {
-       setAdvances(advances.map(a => a.employeeId === emp.id ? { ...a, deducted: true } : a));
-       setExpenses(prev => [{ id: Date.now(), date: today, category: 'လစာနှင့် လုပ်အားခ', description: `Payroll: ${emp.name} ၏ လစာငွေထုတ်ပေးခြင်း`, amount: payrollData.netPay, type: 'expense' }, ...prev]);
-       alert('✅ လစာငွေ ထုတ်ပေးပြီး Finance Expense ထဲသို့ အော်တိုသွင်းပေးလိုက်ပါပြီ။');
-    }
+  const confirmPayment = () => {
+    if (!payslipData) return;
+    const { emp, data } = payslipData;
+    setAdvances(advances.map(a => a.employeeId === emp.id ? { ...a, deducted: true } : a));
+    setExpenses(prev => [{ id: Date.now(), date: today, category: 'လစာနှင့် လုပ်အားခ', description: `Payroll: ${emp.name} ၏ လစာငွေထုတ်ပေးခြင်း`, amount: data.netPay, type: 'expense' }, ...prev]);
+    setPayslipData(null);
+    alert(`✅ ${emp.name} အတွက် လစာငွေ ထုတ်ပေးပြီး Finance Expense သို့ အော်တိုသွင်းပေးလိုက်ပါပြီ။`);
   };
 
   const todayAtt = currentEmployee ? attendance.find(a => a.employeeId === currentEmployee.id && a.date === today) : null;
 
   return (
     <div className="p-2 md:p-6 max-w-7xl mx-auto space-y-6 print:p-0">
+      {/* 🌟 PAYSLIP MODAL (PDF Print) 🌟 */}
+      {payslipData && (
+        <div className="fixed inset-0 bg-gray-900/80 z-[200] flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:z-auto backdrop-blur-sm">
+          <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:rounded-none">
+            {/* Modal Header */}
+            <div className="p-8 print:p-0">
+               <div className="text-center border-b-2 border-indigo-100 pb-6 mb-6">
+                 <h2 className="text-3xl font-black text-indigo-900 tracking-wider">SSY <span className="text-emerald-500">ERP</span></h2>
+                 <p className="text-gray-500 font-bold tracking-widest text-xs mt-1 uppercase">Official Payslip (လစာဖြတ်ပိုင်း)</p>
+               </div>
+               
+               <div className="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <div>
+                    <h3 className="font-black text-xl text-gray-800">{payslipData.emp.name}</h3>
+                    <p className="text-xs font-bold text-indigo-600 uppercase mt-1">{payslipData.emp.position}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-gray-400">ထုတ်ပေးသည့်ရက်စွဲ</p>
+                    <p className="font-bold text-gray-700">{today}</p>
+                  </div>
+               </div>
+
+               <div className="space-y-3">
+                 <div className="flex justify-between text-sm font-bold border-b border-gray-100 pb-2">
+                   <span className="text-gray-600">အခြေခံလစာ (Basic Salary)</span>
+                   <span className="text-gray-900">{payslipData.emp.basicSalary.toLocaleString()} Ks</span>
+                 </div>
+                 {payslipData.data.earnedPerfect > 0 && (
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
+                     <span>ရက်မှန်ကြေး (Perfect Attendance)</span><span>+ {payslipData.data.earnedPerfect.toLocaleString()} Ks</span>
+                   </div>
+                 )}
+                 {payslipData.data.earnedPunctuality > 0 && (
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
+                     <span>အချိန်မှန်ကြေး (Punctuality)</span><span>+ {payslipData.data.earnedPunctuality.toLocaleString()} Ks</span>
+                   </div>
+                 )}
+                 {payslipData.data.extra.bonus > 0 && (
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
+                     <span>အပိုဆုကြေး (Bonus)</span><span>+ {payslipData.data.extra.bonus.toLocaleString()} Ks</span>
+                   </div>
+                 )}
+                 {payslipData.data.extra.commission > 0 && (
+                   <div className="flex justify-between text-sm font-bold text-emerald-600 border-b border-gray-50 pb-2">
+                     <span>ကော်မရှင် (Commission)</span><span>+ {payslipData.data.extra.commission.toLocaleString()} Ks</span>
+                   </div>
+                 )}
+                 
+                 {payslipData.data.totalLateDeduction > 0 && (
+                   <div className="flex justify-between text-sm font-bold text-rose-500 border-b border-gray-50 pb-2">
+                     <span>နောက်ကျဒဏ်ကြေး (Late Fine)</span><span>- {payslipData.data.totalLateDeduction.toLocaleString()} Ks</span>
+                   </div>
+                 )}
+                 {payslipData.data.totalAdvance > 0 && (
+                   <div className="flex justify-between text-sm font-bold text-rose-500 border-b border-gray-50 pb-2">
+                     <span>ကြိုတင်ငွေဖြတ်တောက်ခြင်း (Advances)</span><span>- {payslipData.data.totalAdvance.toLocaleString()} Ks</span>
+                   </div>
+                 )}
+               </div>
+
+               <div className="mt-8 bg-indigo-50 p-6 rounded-2xl border border-indigo-100 flex justify-between items-center">
+                  <span className="font-black text-indigo-900">အသားတင်ရငွေ (Net Pay)</span>
+                  <span className="text-3xl font-black text-indigo-700">{payslipData.data.netPay.toLocaleString()} Ks</span>
+               </div>
+               
+               <div className="mt-8 text-center text-[10px] font-bold text-gray-300 print:block">
+                 *** ဤဖြတ်ပိုင်းသည် SSY ERP မှ အလိုအလျောက် ထုတ်ပေးထားခြင်းဖြစ်ပါသည် ***
+               </div>
+            </div>
+
+            {/* Action Buttons (Hidden on Print) */}
+            <div className="p-4 bg-gray-50 border-t flex justify-end gap-3 print:hidden">
+              <button onClick={() => setPayslipData(null)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-200 rounded-lg">ပိတ်မည်</button>
+              <button onClick={() => window.print()} className="px-4 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">🖨️ PDF ထုတ်မည် / Print</button>
+              <button onClick={confirmPayment} className="px-6 py-2 text-sm font-black bg-emerald-600 text-white rounded-lg shadow-md hover:bg-emerald-700">✅ ငွေထုတ်ပေးပြီး Finance သွင်းမည်</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3 border-b-2 border-indigo-200 pb-4 print:hidden">
         <span className="text-4xl">👥</span><h2 className="text-2xl font-extrabold text-indigo-900">ဝန်ထမ်းရေးရာ နှင့် ရုံးတက်/ဆင်း စနစ် (HR System)</h2>
       </div>
@@ -199,6 +243,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         {isAdminOrHR && (
           <>
             <button onClick={() => setActiveSubTab('history')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'history' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📅 မှတ်တမ်းများ</button>
+            <button onClick={() => setActiveSubTab('leaves')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'leaves' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📝 ခွင့်တိုင်ကြားမှု</button>
             <button onClick={() => setActiveSubTab('employees')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'employees' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>👩‍💼 ဝန်ထမ်းစာရင်း</button>
             <button onClick={() => setActiveSubTab('advances')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'advances' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💸 ကြိုတင်ငွေ</button>
             <button onClick={() => setActiveSubTab('payroll')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'payroll' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💰 လစာပေးချေမှု</button>
@@ -234,13 +279,11 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
       {/* 📅 မှတ်တမ်းများ (History Tab) */}
       {activeSubTab === 'history' && isAdminOrHR && (
          <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-            <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
-               <h3 className="font-bold text-gray-700">ဝန်ထမ်းများ၏ နေ့စဉ် တက်ရောက်မှု မှတ်တမ်း</h3>
-            </div>
+            <div className="p-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-700">နေ့စဉ် တက်ရောက်မှု မှတ်တမ်း</h3></div>
             <div className="overflow-x-auto">
                <table className="w-full text-left text-sm whitespace-nowrap">
                  <thead className="bg-gray-100 text-gray-600 font-bold border-b">
-                   <tr><th className="p-4">ရက်စွဲ (Date)</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ရုံးတက်ချိန် (In)</th><th className="p-4">ရုံးဆင်းချိန် (Out)</th><th className="p-4">Status</th></tr>
+                   <tr><th className="p-4">ရက်စွဲ</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ရုံးတက်ချိန်</th><th className="p-4">ရုံးဆင်းချိန်</th><th className="p-4">Status</th></tr>
                  </thead>
                  <tbody>
                     {[...attendance].reverse().map(att => {
@@ -255,7 +298,52 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                          </tr>
                        );
                     })}
-                    {attendance.length === 0 && (<tr><td colSpan={5} className="p-8 text-center text-gray-400 font-bold">မှတ်တမ်းများ မရှိသေးပါ</td></tr>)}
+                 </tbody>
+               </table>
+            </div>
+         </div>
+      )}
+
+      {/* 📝 ခွင့်တိုင်ကြားမှု (Leaves Tab - အသစ်) */}
+      {activeSubTab === 'leaves' && isAdminOrHR && (
+         <div className="space-y-6">
+            <form onSubmit={handleAddLeave} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+               <div>
+                  <label className="text-xs font-bold text-gray-500">ဝန်ထမ်းရွေးချယ်ရန်</label>
+                  <select required value={lvEmpId} onChange={e=>setLvEmpId(e.target.value)} className="w-full border p-2.5 rounded-lg bg-white">
+                     <option value="">-- ရွေးချယ်ပါ --</option>
+                     {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  </select>
+               </div>
+               <div><label className="text-xs font-bold text-gray-500">စတင်မည့်ရက် (From)</label><input type="date" required value={lvStart} onChange={e=>setLvStart(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+               <div><label className="text-xs font-bold text-gray-500">ပြီးဆုံးမည့်ရက် (To)</label><input type="date" required value={lvEnd} onChange={e=>setLvEnd(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+               <div>
+                  <label className="text-xs font-bold text-gray-500">ခွင့်အမျိုးအစား</label>
+                  <select value={lvType} onChange={e=>setLvType(e.target.value)} className="w-full border p-2.5 rounded-lg bg-white">
+                     <option value="Sick Leave (နေမကောင်းခွင့်)">Sick Leave (နေမကောင်းခွင့်)</option>
+                     <option value="Casual Leave (ကိစ္စရှိ၍ခွင့်)">Casual Leave (ကိစ္စရှိ၍ခွင့်)</option>
+                  </select>
+               </div>
+               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 shadow-sm">➕ ခွင့်တင်မည်</button>
+            </form>
+
+            <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+               <table className="w-full text-left text-sm">
+                 <thead className="bg-gray-50 text-gray-600 font-bold border-b">
+                   <tr><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ခွင့်ရက်စွဲ (From - To)</th><th className="p-4">ခွင့်အမျိုးအစား</th><th className="p-4">Status</th></tr>
+                 </thead>
+                 <tbody>
+                    {leaves.map(l => {
+                       const emp = employees.find(e => e.id === l.employeeId);
+                       return (
+                         <tr key={l.id} className="border-b hover:bg-gray-50">
+                           <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
+                           <td className="p-4 font-bold text-gray-600">{l.startDate} မှ {l.endDate}</td>
+                           <td className="p-4 text-gray-500">{l.leaveType}</td>
+                           <td className="p-4"><span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">{l.status}</span></td>
+                         </tr>
+                       )
+                    })}
                  </tbody>
                </table>
             </div>
@@ -277,7 +365,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
             </form>
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                <table className="w-full text-left text-sm">
-                 <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ID</th><th className="p-4">အမည်</th><th className="p-4">ရာထူး</th><th className="p-4">လစာ</th><th className="p-4">Status</th>{isMD && <th className="p-4 text-right">Action (MD Only)</th>}</tr></thead>
+                 <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ID</th><th className="p-4">အမည်</th><th className="p-4">ရာထူး</th><th className="p-4">လစာ</th><th className="p-4">Status</th>{isMD && <th className="p-4 text-right">Action</th>}</tr></thead>
                  <tbody>
                     {employees.map(e => (
                        <tr key={e.id} className="border-b"><td className="p-4 text-xs text-gray-400">{e.id}</td><td className="p-4 font-bold">{e.name}</td><td className="p-4">{e.position} ({e.department})</td><td className="p-4 font-bold text-emerald-600">{e.basicSalary.toLocaleString()} Ks</td><td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{e.status}</span></td>
@@ -295,7 +383,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
          </div>
       )}
 
-      {/* 🌟 💸 Advances Tab (ကြိုတင်ငွေ) 🌟 */}
+      {/* 💸 Advances Tab */}
       {activeSubTab === 'advances' && isAdminOrHR && (
          <div className="space-y-6">
             <form onSubmit={handleAddAdvance} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -308,14 +396,11 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                </div>
                <div><label className="text-xs font-bold text-gray-500">ကြိုတင်ငွေပမာဏ (Ks)</label><input type="number" required value={advAmount} onChange={e=>setAdvAmount(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                <div><label className="text-xs font-bold text-gray-500">အကြောင်းရင်း</label><input required value={advReason} onChange={e=>setAdvReason(e.target.value)} className="w-full border p-2.5 rounded-lg" placeholder="ဥပမာ - ဆေးဖိုး..." /></div>
-               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">➕ ထည့်မည်</button>
+               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 shadow-sm">➕ ထည့်မည်</button>
             </form>
-
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                <table className="w-full text-left text-sm">
-                 <thead className="bg-gray-50 text-gray-600 font-bold border-b">
-                   <tr><th className="p-4">ရက်စွဲ</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">အကြောင်းရင်း</th><th className="p-4">ပမာဏ</th><th className="p-4">Status</th></tr>
-                 </thead>
+                 <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ရက်စွဲ</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">အကြောင်းရင်း</th><th className="p-4">ပမာဏ</th><th className="p-4">Status</th></tr></thead>
                  <tbody>
                     {advances.map(a => {
                        const emp = employees.find(e => e.id === a.employeeId);
@@ -325,20 +410,17 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                            <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
                            <td className="p-4 text-gray-600">{a.reason}</td>
                            <td className="p-4 font-bold text-rose-600">{a.amount.toLocaleString()} Ks</td>
-                           <td className="p-4">
-                             {a.deducted ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase border">လစာမှနုတ်ပြီး</span> : <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-yellow-200">နုတ်ရန်ကျန်</span>}
-                           </td>
+                           <td className="p-4">{a.deducted ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase border">လစာမှနုတ်ပြီး</span> : <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-yellow-200">နုတ်ရန်ကျန်</span>}</td>
                          </tr>
                        )
                     })}
-                    {advances.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-gray-400 font-bold">ကြိုတင်ငွေ ထုတ်ယူထားခြင်း မရှိသေးပါ</td></tr>}
                  </tbody>
                </table>
             </div>
          </div>
       )}
 
-      {/* 💰 Payroll Tab */}
+      {/* 💰 Payroll Tab (With PDF Payslip Trigger) */}
       {activeSubTab === 'payroll' && isAdminOrHR && (
          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {employees.map(emp => {
@@ -374,20 +456,18 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                         <span className="font-black text-indigo-900 text-sm">အသားတင်ရငွေ (Net Pay)</span>
                         <span className="text-2xl font-black text-indigo-600">{pData.netPay.toLocaleString()} Ks</span>
                      </div>
-                     <button onClick={() => handleProcessPayroll(emp, pData)} className="mt-4 w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black shadow-md">💳 လစာထုတ်ပေးမည်</button>
+                     {/* 🌟 ခလုတ်နှိပ်ပါက Payslip PDF မျက်နှာပြင် (Modal) တက်လာမည် 🌟 */}
+                     <button onClick={() => setPayslipData({ emp, data: pData })} className="mt-4 w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black shadow-md">🖨️ လစာထုတ်ပေးမည် / PDF ကြည့်မည်</button>
                   </div>
                )
             })}
          </div>
       )}
 
-      {/* ⚙️ Settings Tab (Dynamic Policies for MD Only) */}
+      {/* ⚙️ Settings Tab */}
       {activeSubTab === 'settings' && isMD && (
          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xl border border-gray-200 max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center gap-3 border-b-2 border-indigo-100 pb-4">
-              <h3 className="font-black text-2xl text-indigo-900">⚙️ လုပ်ငန်းခွင် မူဝါဒနှင့် ဒဏ်ကြေးသတ်မှတ်ချက်များ</h3>
-            </div>
-
+            <div className="flex items-center gap-3 border-b-2 border-indigo-100 pb-4"><h3 className="font-black text-2xl text-indigo-900">⚙️ လုပ်ငန်းခွင် မူဝါဒနှင့် ဒဏ်ကြေးသတ်မှတ်ချက်များ</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
                   <h4 className="font-bold text-gray-700 border-b pb-2">⏰ ရုံးချိန် & တည်နေရာ (GPS)</h4>
@@ -440,7 +520,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                </div>
                <p className="text-[10px] text-rose-600 font-bold mt-4">မှတ်ချက်: လစာတွက်ချက်ရာတွင် ဤစည်းမျဉ်းများကို ကြည့်၍ အော်တို ဖြတ်တောက်မည်ဖြစ်သည်။</p>
             </div>
-
             <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-black py-4 rounded-xl shadow-lg hover:from-indigo-700 hover:to-indigo-900 text-lg transition-transform active:scale-95">💾 မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည်</button>
          </div>
       )}

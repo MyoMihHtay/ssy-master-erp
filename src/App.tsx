@@ -48,10 +48,11 @@ export interface SaleRecord {
 
 export interface Customer { id: string; name: string; phone: string; shopType: string; address: string; gpsLocation: string; }
 
-// 🌟 2. HR စနစ်အတွက် လိုအပ်သော Interface များ ဖန်တီးခြင်း 🌟
+// 🌟 2. HR စနစ်အတွက် လိုအပ်သော Interface များ ဖန်တီးခြင်း (Leave အသစ်ပါဝင်သည်) 🌟
 export interface Employee { id: string; name: string; position: string; department: string; basicSalary: number; joinedDate: string; phone: string; status: string; }
 export interface Attendance { id: number; employeeId: string; date: string; checkInTime?: string; checkOutTime?: string; status: string; checkInGps?: string; checkOutGps?: string; }
 export interface Advance { id: number; employeeId: string; date: string; amount: number; reason: string; status: string; deducted: boolean; }
+export interface Leave { id: number; employeeId: string; startDate: string; endDate: string; leaveType: string; reason: string; status: 'Pending' | 'Approved' | 'Rejected'; }
 export interface LateRule { id: number; startMin: number; endMin: number; deduction: number; type: 'amount' | 'half_day' | 'full_day'; }
 export interface HRSetting { 
   id: string; officeLatitude: number; officeLongitude: number; allowedRadius: number; 
@@ -131,10 +132,11 @@ export default function App() {
   const [recipes, setRecipes, recLoading] = useSupabaseTable<Recipe>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes, pkgRecLoading] = useSupabaseTable<PackageRecipe>('ssy_pkg_recipes', []);
 
-  // 🌟 3. HR အတွက် လိုအပ်သော Cloud Database ချိတ်ဆက်မှုများ 🌟
+  // 🌟 3. HR အတွက် လိုအပ်သော Cloud Database ချိတ်ဆက်မှုများ (Leaves အသစ်ပါဝင်သည်) 🌟
   const [employees, setEmployees, empLoading] = useSupabaseTable<Employee>('ssy_employees', []);
   const [attendance, setAttendance, attLoading] = useSupabaseTable<Attendance>('ssy_attendance', []);
   const [advances, setAdvances, advLoading] = useSupabaseTable<Advance>('ssy_advances', []);
+  const [leaves, setLeaves, leaveLoading] = useSupabaseTable<Leave>('ssy_leaves', []);
   const [hrSettings, setHrSettings, hrsLoading] = useSupabaseTable<HRSetting>('ssy_hr_settings', []);
 
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
@@ -343,7 +345,7 @@ export default function App() {
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
 
   // 🌟 Loading တွင် HR နှင့် သက်ဆိုင်သော Table များကိုပါ စစ်ဆေးပါသည် 🌟
-  const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading || prLoading || recLoading || pkgRecLoading || empLoading || attLoading || advLoading || hrsLoading;
+  const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading || prLoading || recLoading || pkgRecLoading || empLoading || attLoading || advLoading || leaveLoading || hrsLoading;
   
   if (isAnyLoading) {
     return (
@@ -397,13 +399,14 @@ export default function App() {
         {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         
-        {/* 🌟 4. HR မျက်နှာပြင် (Component) ကို Render လုပ်ပေးရန် 🌟 */}
+        {/* 🌟 4. HR မျက်နှာပြင် (Component) ကို Render လုပ်ပေးရန် (leaves များကို Pass လုပ်ပေးသည်) 🌟 */}
         {activeTab === 'hr' && (
            <HR 
              userRole={user.role} userName={user.name} 
              employees={employees} setEmployees={setEmployees} 
              attendance={attendance} setAttendance={setAttendance} 
              advances={advances} setAdvances={setAdvances} 
+             leaves={leaves} setLeaves={setLeaves}
              hrSettings={hrSettings} setHrSettings={setHrSettings} 
              setExpenses={setExpenses} accounts={accounts} 
            />
