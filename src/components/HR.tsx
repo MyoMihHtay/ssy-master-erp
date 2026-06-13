@@ -97,6 +97,17 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const handleEditEmployee = (emp: Employee) => { setEditingEmpId(emp.id); setEmpName(emp.name); setEmpPos(emp.position); setEmpDept(emp.department); setEmpSalary(emp.basicSalary.toString()); setEmpPhone(emp.phone); };
   const handleDeleteEmployee = (id: string) => { if (window.confirm("⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?")) { setEmployees(employees.filter(e => e.id !== id)); } };
 
+  // 🌟 Auto GPS ရယူမည့် Function အသစ် 🌟
+  const handleAutoGetGPS = () => {
+    if (currentLoc) {
+      setSetLat(currentLoc.lat.toString());
+      setSetLon(currentLoc.lon.toString());
+      alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)');
+    } else {
+      alert('⚠️ GPS တည်နေရာ ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် ဖုန်း/ကွန်ပျူတာ Location ပိတ်ထားပါသည်။');
+    }
+  };
+
   const handleSaveSettings = () => {
     setHrSettings([{ id: 'default', officeLatitude: Number(setLat), officeLongitude: Number(setLon), allowedRadius: Number(setRad), officeStartTime: setStartTime, officeEndTime: setEndTime, punctualityBonus: Number(setPunctuality), perfectAttendanceBonus: Number(setPerfect), lateRules: setRules }]);
     alert('✅ HR နှင့် GPS မူဝါဒများ သိမ်းဆည်းခြင်း အောင်မြင်ပါသည်။');
@@ -128,7 +139,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
     const extra = extraPays[emp.id] || { bonus: 0, commission: 0 };
     
     let totalLateDeduction = 0;
-    let isPerfectAttendance = true; // No absent logic simple check
+    let isPerfectAttendance = true; 
     let isPunctual = true;
 
     const startMinutes = parseTimeToMinutes(defaultSetting.officeStartTime);
@@ -300,8 +311,18 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                      <div><label className="text-xs font-bold text-gray-500">ရုံးတက်ချိန်</label><input type="time" value={setStartTime} onChange={e=>setSetStartTime(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                      <div><label className="text-xs font-bold text-gray-500">ရုံးဆင်းချိန်</label><input type="time" value={setEndTime} onChange={e=>setSetEndTime(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                   </div>
-                  <div><label className="text-xs font-bold text-gray-500">Latitude</label><input value={setLat} onChange={e=>setSetLat(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-                  <div><label className="text-xs font-bold text-gray-500">Longitude</label><input value={setLon} onChange={e=>setSetLon(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+                  
+                  {/* 🌟 📍 Auto GPS ရယူမည့် အပိုင်း 🌟 */}
+                  <div className="pt-2 border-t mt-2">
+                     <div className="flex justify-between items-end gap-2 mb-2">
+                        <div className="flex-1"><label className="text-xs font-bold text-gray-500">Latitude</label><input value={setLat} onChange={e=>setSetLat(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+                        <div className="flex-1"><label className="text-xs font-bold text-gray-500">Longitude</label><input value={setLon} onChange={e=>setSetLon(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+                     </div>
+                     <button type="button" onClick={handleAutoGetGPS} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                        <span>📍</span> လက်ရှိနေရာကို (Auto) ရယူမည်
+                     </button>
+                  </div>
+                  
                   <div><label className="text-xs font-bold text-gray-500">GPS ခွင့်ပြုမည့်အကွာအဝေး (မီတာ)</label><input type="number" value={setRad} onChange={e=>setSetRad(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
                </div>
 
