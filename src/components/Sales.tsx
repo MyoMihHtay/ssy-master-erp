@@ -320,7 +320,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
       {/* Options Modal */}
       {selectedSaleForPrint && (
-        <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4 flex justify-between items-center">
                <h3 className="text-white font-black text-lg flex items-center gap-2"><span>🖨️</span> ဘောက်ချာ ရွေးချယ်ရန်</h3>
@@ -349,7 +349,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
       {/* iOS & Mac Image Save Overlay with CLEAR BACK BUTTON */}
       {generatedImageURL && (
         <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[99999] bg-slate-900/95 flex flex-col items-center justify-start print:hidden backdrop-blur-md">
-          {/* Top Bar */}
           <div className="w-full bg-slate-800 p-4 md:p-6 flex items-center justify-between shadow-xl shrink-0 border-b border-slate-700">
             <button 
               onClick={() => setGeneratedImageURL(null)} 
@@ -361,7 +360,6 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
               👇 ပုံကိုဖိနှိပ်ပြီး Save Image ရွေးပါ (သို့) Right-click ထောက်ပါ
             </span>
           </div>
-          {/* Scrollable Image Area */}
           <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start w-full">
             <img src={generatedImageURL} alt="Saved Receipt" className="w-full max-w-lg shadow-2xl rounded-xl border-4 border-slate-400" />
           </div>
@@ -380,15 +378,18 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
                 <div className="flex items-center gap-5 w-[55%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
                   <div>
-                    {/* 🌟 ခေါင်းစဉ်နှင့် လုပ်ငန်းအမည်ကို ရှင်းလင်းစွာ ခွဲခြားထားသည် 🌟 */}
-                    <h1 className="text-4xl font-black text-slate-800 tracking-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
+                    {/* 🌟 MD ကြီး လိုချင်သော လိပ်စာနှင့် စာသား အတိအကျ ပြင်ဆင်ထားပါသည် 🌟 */}
+                    <h1 className="text-4xl font-black text-slate-800 tracking-tight leading-tight" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
                     <p className="text-base font-bold text-slate-600 mt-2 tracking-wide">စားသောက်ကုန်လုပ်ငန်း</p>
-                    <p className="text-sm text-slate-500 mt-2 leading-relaxed">အမှတ် (43/32)၊ 54 (B) လမ်း၊ 124 x 125 လမ်းကြား၊<br/>မန္တလေးမြို့။</p>
-                    <p className="text-sm font-bold text-slate-700 mt-1">Ph: 09-455557980</p>
+                    <p className="text-sm text-slate-500 mt-3 leading-relaxed">
+                      အမှတ် (၄၃/၃၂)၊ (၅၄) ဘီ လမ်း၊ <br/>
+                      ၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား၊ <br/>
+                      မန္တလေးမြို့။
+                    </p>
+                    <p className="text-sm font-bold text-slate-700 mt-2">Ph: 09-455557980</p>
                   </div>
                 </div>
                 
-                {/* 🌟 🌟 Invoice Header Info Table 🌟 🌟 */}
                 <div className="w-[45%] flex justify-end">
                   <div className="w-full max-w-[280px]">
                     <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest mb-3 text-right">Invoice</h2>
@@ -510,8 +511,12 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
             <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-[14px]" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
                 <img crossOrigin="anonymous" src="/logo.png" alt="Logo" className="w-20 h-20 object-contain mx-auto mb-2" />
-                <h2 className="text-xl font-black mb-1">"စက်စက်ယို"</h2>
-                <p className="text-xs leading-tight mb-1">မန္တလေးမြို့</p>
+                {/* 🌟 MD ကြီး လိုချင်သော လိပ်စာနှင့် စာသား အတိအကျ ပြင်ဆင်ထားပါသည် 🌟 */}
+                <h2 className="text-2xl font-black mb-1">စက်စက်ယို</h2>
+                <p className="text-sm font-bold leading-tight mb-2">စားသောက်ကုန်လုပ်ငန်း</p>
+                <p className="text-xs leading-tight mb-1">အမှတ် (၄၃/၃၂)၊ (၅၄) ဘီ လမ်း၊</p>
+                <p className="text-xs leading-tight mb-1">၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား၊</p>
+                <p className="text-xs leading-tight mb-1">မန္တလေးမြို့။</p>
                 <p className="text-xs font-bold leading-tight mb-3">Ph: 09-455557980</p>
                 <div className="flex justify-center">
                    <Barcode value={selectedSaleForPrint.id} format="CODE128" height={35} width={1.5} displayValue={false} margin={0} background="transparent" />
