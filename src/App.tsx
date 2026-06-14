@@ -11,12 +11,12 @@ import { Expenses } from './components/Expenses';
 import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
 
-// 🌟 HR နှင့် Dashboard အပြင် 🌟
 import { HR } from './components/HR'; 
 import { Dashboard } from './components/Dashboard';
-
-// 🌟 1. Workspace (CRM) Component ကို အသစ် Import လုပ်ခြင်း 🌟
 import { Workspace } from './components/Workspace';
+
+// 🌟 Reports Component အား အသစ် Import လုပ်ခြင်း 🌟
+import { Reports } from './components/Reports';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; }
@@ -145,7 +145,6 @@ export default function App() {
 
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
   
-  // Default Tab
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   useEffect(() => {
@@ -398,9 +397,10 @@ export default function App() {
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         
         {activeTab === 'dashboard' && <Dashboard sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
-
-        {/* 🌟 2. Workspace (CRM) Component အား Render လုပ်ခြင်း 🌟 */}
         {activeTab === 'workspace' && <Workspace userName={user.name} userRole={user.role} />}
+        
+        {/* 🌟 Reports Component ကို Render လုပ်ခြင်း 🌟 */}
+        {activeTab === 'reports' && <Reports sales={salesRecords} inventory={inventoryItems} finishedGoods={finishedGoods} expenses={expenses} purchaseRequests={purchaseRequests} />}
 
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} onCreditPayment={handleCreditPayment} />}

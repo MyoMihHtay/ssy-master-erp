@@ -25,6 +25,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
     { id: 'packaging', label: 'ထုပ်ပိုးမှု', icon: '🏷️', roles: ['md', 'manager', 'production'] },
     { id: 'finished_goods', label: 'ကုန်ချော', icon: '🛍️', roles: ['md', 'manager', 'storekeeper', 'sales', 'qc'] },
     { id: 'expenses', label: 'ဘဏ္ဍာရေး/စာရင်း', icon: '💸', roles: ['md', 'manager', 'finance'] },
+    
+    // 🌟 Reports အပိုင်းသစ် ထပ်တိုးထားပါသည် 🌟
+    { id: 'reports', label: 'အစီရင်ခံစာ\n(Reports)', icon: '📑', roles: ['md', 'manager', 'finance'] },
+    
     { id: 'hr', label: 'ဝန်ထမ်းရေးရာ/HR', icon: '👥', roles: ['md', 'manager', 'hr'] },
     { id: 'accounts', label: 'အကောင့်များ', icon: '⚙️', roles: ['md'] },
   ];
