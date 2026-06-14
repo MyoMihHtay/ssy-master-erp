@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import html2canvas from 'html2canvas'; 
 import Barcode from 'react-barcode'; 
 import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
@@ -12,12 +12,8 @@ interface SalesProps {
   onCheckout: (sale: SaleRecord) => void;
   onMarkAsPaid: (saleId: string) => void;
   onDeleteSale: (saleId: string) => void;
-  
-  // Highlight လုပ်ရန် လိုအပ်သော Props များ
   highlightSaleId?: string | null;
   setHighlightSaleId?: (id: string | null) => void;
-
-  // 🌟 (အသစ်) ပစ္စည်းပြန်အပ်/အလဲအလှယ်အတွက် Handler Props 🌟
   onReturnSale?: (
     saleId: string, 
     returnedItems: { product: FinishedGoodItem; quantity: number }[], 
@@ -48,7 +44,7 @@ const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
 };
 
 export const Sales: React.FC<SalesProps> = ({ 
-  userRole, userName, finishedGoods, sales, customers, onCheckout, onMarkAsPaid, onDeleteSale, highlightSaleId, setHighlightSaleId, onReturnSale 
+  userRole, userName, finishedGoods = [], sales = [], customers = [], onCheckout, onMarkAsPaid, onDeleteSale, highlightSaleId, setHighlightSaleId, onReturnSale 
 }) => {
   const [activeTab, setActiveTab] = useState<'pos' | 'records'>('pos');
   const [cart, setCart] = useState<SaleItem[]>([]);
@@ -72,7 +68,6 @@ export const Sales: React.FC<SalesProps> = ({
   const [printType, setPrintType] = useState<'A4' | 'THERMAL' | 'IMAGE'>('A4');
   const [generatedImageURL, setGeneratedImageURL] = useState<string | null>(null);
 
-  // 🌟 (အသစ်) Return & Exchange အတွက် လိုအပ်သော States များ 🌟
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<SaleRecord | null>(null);
   const [returnQuantities, setReturnQuantities] = useState<Record<number, number>>({});
@@ -153,11 +148,10 @@ export const Sales: React.FC<SalesProps> = ({
     setActiveTab('records');
   };
 
-  // 🌟 (အသစ်) ပစ္စည်းပြန်အပ်ခြင်း တွက်ချက်မှုနှင့် တင်သွင်းခြင်းစနစ် 🌟
   const openReturnModal = (sale: SaleRecord) => {
     setSelectedSaleForReturn(sale);
     const initialQtys: Record<number, number> = {};
-    sale.items.forEach(item => {
+    sale.items?.forEach(item => {
       initialQtys[item.product.id] = 0;
     });
     setReturnQuantities(initialQtys);
@@ -171,16 +165,14 @@ export const Sales: React.FC<SalesProps> = ({
     setReturnQuantities(prev => ({ ...prev, [productId]: qty }));
   };
 
-  // အော်တို အမ်းငွေတွက်ချက်ပေးသည့်စနစ် (Proportional Discount ပါ စနစ်တကျ နှုတ်ပေးပါသည်)
   const calculatedRefundTotal = useMemo(() => {
     if (!selectedSaleForReturn) return 0;
     let sum = 0;
-    selectedSaleForReturn.items.forEach(item => {
+    selectedSaleForReturn.items?.forEach(item => {
       const retQty = returnQuantities[item.product.id] || 0;
       sum += retQty * item.product.price;
     });
     
-    // မူရင်း ဘောက်ချာမှာ လျှော့ဈေးပါက လျှော့ဈေးအချိုးပါ အလိုအလျောက် ခုနှိမ်တွက်ချက်ခြင်း
     if (selectedSaleForReturn.discountPercent) {
       sum = sum - (sum * selectedSaleForReturn.discountPercent) / 100;
     }
@@ -194,7 +186,7 @@ export const Sales: React.FC<SalesProps> = ({
     if (!selectedSaleForReturn || !onReturnSale) return;
     
     const returnedItemsList: { product: FinishedGoodItem; quantity: number }[] = [];
-    selectedSaleForReturn.items.forEach(item => {
+    selectedSaleForReturn.items?.forEach(item => {
       const qty = returnQuantities[item.product.id] || 0;
       if (qty > 0) {
         returnedItemsList.push({ product: item.product, quantity: qty });
@@ -277,18 +269,18 @@ export const Sales: React.FC<SalesProps> = ({
             </div>
             <div className="flex-1 bg-white p-2 md:p-6 rounded-xl md:rounded-[2rem] shadow-xl border border-slate-200 flex flex-col h-full sticky top-1 md:top-4">
               <div className="flex justify-between items-center border-b pb-1.5 md:pb-4 mb-2 md:mb-4">
-                 <h3 className="text-sm md:text-xl font-black text-slate-800">🛒 Сာရင်း</h3>
+                 <h3 className="text-sm md:text-xl font-black text-slate-800">🛒 စာရင်း</h3>
                  <span className="text-[10px] md:text-sm font-bold text-slate-400">{cart.length} မျိုး</span>
               </div>
               <div className="flex-1 overflow-y-auto mb-2 md:mb-6 space-y-1.5 md:space-y-3 min-h-[150px] md:min-h-[300px]">
                 {cart.map((item, idx) => (
                   <div key={idx} className="flex flex-col bg-slate-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-slate-200">
                     <div className="flex justify-between items-center mb-1 md:mb-2 border-b border-slate-200/50 pb-1 md:pb-2">
-                      <span className="font-bold text-slate-800 text-[9px] md:text-sm truncate mr-1.5">{item.product.category} ({item.product.taste}) {item.product.gram}g</span>
+                      <span className="font-bold text-slate-800 text-[9px] md:text-sm truncate mr-1.5">{item.product?.category} ({item.product?.taste}) {item.product?.gram}g</span>
                       <button onClick={() => removeFromCart(item.product.id)} className="text-slate-400 hover:text-red-500 font-bold text-[10px] md:text-base">✕</button>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-amber-700 font-black text-[10px] md:text-base">{item.product.price.toLocaleString()} Ks</span>
+                      <span className="text-amber-700 font-black text-[10px] md:text-base">{item.product?.price?.toLocaleString()} Ks</span>
                       <div className="flex items-center gap-0.5 md:gap-1 bg-white border border-slate-200 rounded-md md:rounded-lg px-1 md:px-2 py-0.5 md:py-1 shadow-sm">
                         <button onClick={() => handleUpdateCartQty(item.product.id, (item.quantity - 1).toString())} className="w-4 md:w-6 font-black text-slate-600 hover:text-amber-600">-</button>
                         <input type="number" value={item.quantity || ''} onChange={(e) => handleUpdateCartQty(item.product.id, e.target.value)} className="w-6 md:w-10 text-center font-black outline-none bg-transparent text-[10px] md:text-base" />
@@ -375,7 +367,7 @@ export const Sales: React.FC<SalesProps> = ({
                     )}
                   </div>
                 )}
-                <div className="bg-slate-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-slate-200 flex justify-between items-center"><span className="font-bold text-slate-600 text-[10px] md:text-base">ကျသင့်ငွေ:</span><span className="text-lg md:text-3xl font-black text-slate-800">{finalAmount.toLocaleString()} Ks</span></div>
+                <div className="bg-slate-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-slate-200 flex justify-between items-center"><span className="font-bold text-slate-600 text-[10px] md:text-base">ကျသင့်ငွေ:</span><span className="text-lg md:text-3xl font-black text-slate-800">{finalAmount?.toLocaleString()} Ks</span></div>
               </div>
               <div className="p-2 md:p-4 bg-white border-t flex gap-1.5 md:gap-3 shrink-0">
                 <button onClick={() => setIsCheckoutModalOpen(false)} className="flex-1 py-1.5 md:py-3 rounded-lg md:rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-xs md:text-base">Cancel</button>
@@ -385,7 +377,7 @@ export const Sales: React.FC<SalesProps> = ({
           </div>
         )}
 
-        {/* Records */}
+        {/* 🌟 Records Tab 🌟 */}
         {activeTab === 'records' && (
           <div className="space-y-2 md:space-y-6">
              <div className="relative w-full md:max-w-sm"><span className="absolute left-2.5 top-1.5 md:top-3 text-slate-400 text-xs md:text-base">🔍</span><input type="text" className="w-full pl-7 pr-3 py-1.5 md:py-3 bg-white border border-slate-200 rounded-lg md:rounded-xl shadow-sm outline-none focus:border-amber-500 text-[10px] md:text-base" placeholder="ဘောက်ချာ / အမည် ရှာရန်..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
@@ -412,14 +404,13 @@ export const Sales: React.FC<SalesProps> = ({
                               <span className="text-[8px] md:text-xs font-black bg-yellow-500 text-white px-1 md:px-1.5 py-0.5 rounded animate-pulse">📌 ရွေးချယ်ထားသည်</span>
                             )}
 
-                            {/* 🌟 Return Status Badge 🌟 */}
                             {isReturned && (
                               <span className="text-[8px] md:text-xs font-black bg-rose-600 text-white px-1 md:px-1.5 py-0.5 rounded">⚠️ ပစ္စည်းပြန်အပ်ထားသည်</span>
                             )}
 
                             <span className={`text-[8px] md:text-xs font-black px-1 md:px-1.5 py-0.5 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid ? `✅ ${sale.paymentMethod}` : `⏳ အကြွေး (${sale.creditTerms})`}</span>
                           </div>
-                          <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount.toLocaleString()} Ks</div>
+                          <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount?.toLocaleString()} Ks</div>
                         </div>
                         <h3 className="text-xs md:text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-[9px] md:text-sm font-medium text-slate-500">({sale.phone})</span></h3>
                         <div className="text-[9px] md:text-xs text-slate-500 font-bold mt-0.5 md:mt-1 leading-relaxed">
@@ -427,9 +418,8 @@ export const Sales: React.FC<SalesProps> = ({
                         </div>
                       </div>
                       <div className="text-right w-full md:w-auto border-t border-slate-100 md:border-0 pt-1.5 md:pt-0 mt-1 md:mt-0 flex justify-between md:flex-col items-center md:items-end">
-                        <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount.toLocaleString()} Ks</div>
+                        <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount?.toLocaleString()} Ks</div>
                         <div className="flex flex-wrap gap-1 md:gap-2 justify-end w-full md:w-auto">
-                           {/* 🌟 (အသစ်) ပစ္စည်းပြန်အပ်ရန် ခလုတ် (ပြန်မအပ်ရသေးသော Voucher များသာ အပ်ခွင့်ပေးပါမည်) 🌟 */}
                            {!isReturned && (
                              <button onClick={() => openReturnModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-rose-200 transition-colors flex items-center gap-1">🔄 ပြန်အပ်/လဲမည်</button>
                            )}
@@ -441,17 +431,16 @@ export const Sales: React.FC<SalesProps> = ({
                       </div>
                     </div>
 
-                    {/* 🌟 (အသစ်) ပစ္စည်းပြန်အပ်ထားသော Log အသေးစိတ်အား အောက်တွင် ပြသပေးခြင်း 🌟 */}
                     {isReturned && sale.returnDetails && (
                       <div className="mt-3 bg-rose-50/70 border border-rose-100 rounded-xl p-3 text-[10px] md:text-xs text-rose-900 font-medium">
                         <div className="flex justify-between font-black border-b border-rose-200/50 pb-1 mb-1.5 text-rose-800">
-                          <span>📝 ပြန်အပ်မှတ်တမ်း စာရင်းညှိချက် ({sale.returnDetails.type === 'refund' ? 'ငွေပြန်အမ်းစနစ်' : 'အခြားပစ္စည်းနှင့်အလဲအလှယ်'})</span>
-                          <span>📅 {sale.returnDetails.date}</span>
+                          <span>📝 ပြန်အပ်မှတ်တမ်း စာရင်းညှိချက် ({sale.returnDetails?.type === 'refund' ? 'ငွေပြန်အမ်းစနစ်' : 'အခြားပစ္စည်းနှင့်အလဲအလှယ်'})</span>
+                          <span>📅 {sale.returnDetails?.date}</span>
                         </div>
-                        <div className="mb-1"><strong>ပြန်အပ်သွားသော ပစ္စည်းများ:</strong> {sale.returnDetails.items.map((i, index) => `${i.category} (${i.taste}) - ${i.quantity} ထုပ်`).join(', ')}</div>
-                        <div className="mb-1"><strong>အကြောင်းအရင်း / မှတ်ချက်:</strong> {sale.returnDetails.note}</div>
-                        {sale.returnDetails.type === 'refund' && (
-                          <div className="font-black text-rose-700 text-xs md:text-sm mt-1">💰 စုစုပေါင်း ပြန်အမ်းငွေ: {sale.returnDetails.totalRefund.toLocaleString()} Ks (Finance စာရင်းထဲသို့ အော်တိုခုနှိမ်ပြီး)</div>
+                        <div className="mb-1"><strong>ပြန်အပ်သွားသော ပစ္စည်းများ:</strong> {sale.returnDetails?.items?.map(i => `${i.category} (${i.taste}) - ${i.quantity} ထုပ်`).join(', ')}</div>
+                        <div className="mb-1"><strong>အကြောင်းအရင်း / မှတ်ချက်:</strong> {sale.returnDetails?.note}</div>
+                        {sale.returnDetails?.type === 'refund' && (
+                          <div className="font-black text-rose-700 text-xs md:text-sm mt-1">💰 စုစုပေါင်း ပြန်အမ်းငွေ: {sale.returnDetails?.totalRefund?.toLocaleString()} Ks (Finance စာရင်းထဲသို့ အော်တိုခုနှိမ်ပြီး)</div>
                         )}
                       </div>
                     )}
@@ -463,7 +452,6 @@ export const Sales: React.FC<SalesProps> = ({
         )}
       </div>
 
-      {/* 🌟 (အသစ်) Return & Exchange Management Modal UI 🌟 */}
       {isReturnModalOpen && selectedSaleForReturn && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -476,11 +464,11 @@ export const Sales: React.FC<SalesProps> = ({
               <div>
                 <p className="text-xs font-bold text-slate-500 mb-2 uppercase">၁။ အပ်နှံမည့် ပစ္စည်းအရေအတွက် ရွေးချယ်ပါ</p>
                 <div className="space-y-2">
-                  {selectedSaleForReturn.items.map((item) => (
+                  {selectedSaleForReturn.items?.map((item) => (
                     <div key={item.product.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border">
                       <div>
                         <span className="font-bold text-slate-800 text-xs md:text-sm">{item.product.category} ({item.product.taste})</span>
-                        <span className="text-[10px] text-slate-400 block font-bold">ဝယ်ယူခဲ့သည့် အရေအတွက်: {item.quantity} ထုပ် (ဈေးနှုန်း - {item.product.price.toLocaleString()} Ks)</span>
+                        <span className="text-[10px] text-slate-400 block font-bold">ဝယ်ယူခဲ့သည့် အရေအတွက်: {item.quantity} ထုပ် (ဈေးနှုန်း - {item.product.price?.toLocaleString()} Ks)</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-500">အပ်မည့်ဦးရေ:</span>
@@ -515,7 +503,7 @@ export const Sales: React.FC<SalesProps> = ({
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">၃။ တွက်ချက်ပြီး အမ်းငွေစုစုပေါင်း</label>
                     <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl font-black text-rose-700 text-sm md:text-base text-right">
-                      {calculatedRefundTotal.toLocaleString()} Ks
+                      {calculatedRefundTotal?.toLocaleString()} Ks
                     </div>
                   </div>
                 )}
@@ -541,7 +529,6 @@ export const Sales: React.FC<SalesProps> = ({
         </div>
       )}
 
-      {/* Options Modal */}
       {selectedSaleForPrint && (
         <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
@@ -556,7 +543,7 @@ export const Sales: React.FC<SalesProps> = ({
                </div>
                <div className="flex justify-between items-end border-t-2 border-dashed border-slate-300 pt-4 mt-4">
                  <span className="text-slate-600 font-bold text-lg">Total Amount:</span>
-                 <span className="text-3xl font-black text-emerald-600">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
+                 <span className="text-3xl font-black text-emerald-600">{selectedSaleForPrint.finalAmount?.toLocaleString()} Ks</span>
                </div>
             </div>
             <div className="p-4 bg-white border-t grid grid-cols-2 gap-2">
@@ -569,7 +556,6 @@ export const Sales: React.FC<SalesProps> = ({
         </div>
       )}
 
-      {/* iOS & Mac Image Save Overlay */}
       {generatedImageURL && (
         <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[99999] bg-slate-900/95 flex flex-col items-center justify-start print:hidden backdrop-blur-md">
           <div className="w-full bg-slate-800 p-4 md:p-6 flex items-center justify-between shadow-xl shrink-0 border-b border-slate-700">
@@ -589,14 +575,11 @@ export const Sales: React.FC<SalesProps> = ({
         </div>
       )}
 
-      {/* 🌟 PRINT TEMPLATES 🌟 */}
       {selectedSaleForPrint && (
         <div className={`bg-white text-black ${printType === 'IMAGE' ? 'fixed top-0 left-[9999px] w-[800px] -z-50' : 'hidden print:block print:w-full print:absolute print:top-0 print:left-0 z-[9000]'}`}>
           
-          {/* ----- A4 & IMAGE TEMPLATE ----- */}
           {(printType === 'A4' || printType === 'IMAGE') && (
             <div ref={printType === 'IMAGE' ? receiptRef : null} className={`p-10 mx-auto bg-white ${printType === 'IMAGE' ? 'w-[800px]' : 'max-w-[800px]'}`} style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
-              
               <div className="flex justify-between items-start border-b-2 border-slate-800 pb-6 mb-6">
                 <div className="flex items-center gap-5 w-[55%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
@@ -605,44 +588,23 @@ export const Sales: React.FC<SalesProps> = ({
                     <p className="text-base font-bold text-slate-600 mt-4" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စားသောက်ကုန်လုပ်ငန်း</p>
                     <p className="text-sm text-slate-500 mt-2 leading-relaxed" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
                       အမှတ် (၄၃/၃၂)၊ (၅၄) ဘီ လမ်း၊ <br/>
-                      ၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား Mom၊ <br/>
+                      ၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား၊ <br/>
                       မန္တလေးမြို့။
                     </p>
                     <p className="text-sm font-bold text-slate-700 mt-2">Ph: 09-455557980</p>
                   </div>
                 </div>
-                
                 <div className="w-[45%] flex justify-end">
                   <div className="w-full max-w-[280px]">
                     <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest mb-3 text-right">Invoice</h2>
                     <table className="w-full text-sm font-bold text-slate-700">
                       <tbody>
-                        <tr>
-                          <td className="py-1 text-slate-500 w-24">No.</td>
-                          <td className="py-1 w-4 text-center">:</td>
-                          <td className="py-1 text-slate-900">#{selectedSaleForPrint.id}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-1 text-slate-500">Date</td>
-                          <td className="py-1 text-center">:</td>
-                          <td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ')[0]}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-1 text-slate-500">Time</td>
-                          <td className="py-1 text-center">:</td>
-                          <td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td>
-                        </tr>
-                        <tr>
-                          <td className="py-1 text-slate-500">Method</td>
-                          <td className="py-1 text-center">:</td>
-                          <td className="py-1 text-slate-900 uppercase">{selectedSaleForPrint.paymentMethod}</td>
-                        </tr>
+                        <tr><td className="py-1 text-slate-500 w-24">No.</td><td className="py-1 w-4 text-center">:</td><td className="py-1 text-slate-900">#{selectedSaleForPrint.id}</td></tr>
+                        <tr><td className="py-1 text-slate-500">Date</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ')[0]}</td></tr>
+                        <tr><td className="py-1 text-slate-500">Time</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td></tr>
+                        <tr><td className="py-1 text-slate-500">Method</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900 uppercase">{selectedSaleForPrint.paymentMethod}</td></tr>
                         {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
-                          <tr>
-                            <td className="py-1 text-rose-500">Due Date</td>
-                            <td className="py-1 text-center text-rose-500">:</td>
-                            <td className="py-1 text-rose-600 font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</td>
-                          </tr>
+                          <tr><td className="py-1 text-rose-500">Due Date</td><td className="py-1 text-center text-rose-500">:</td><td className="py-1 text-rose-600 font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -680,16 +642,16 @@ export const Sales: React.FC<SalesProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {selectedSaleForPrint.items.map((item, idx) => (
+                    {selectedSaleForPrint.items?.map((item, idx) => (
                       <tr key={idx} className="border-b border-slate-200">
                         <td className="py-3 px-2 text-center font-bold text-slate-600 text-sm align-middle">{idx + 1}</td>
                         <td className="py-3 px-2 align-middle">
-                           <span className="font-bold text-slate-800 text-sm block leading-tight">{item.product.category}</span> 
-                           <span className="text-xs font-bold text-slate-500 block leading-tight mt-0.5">({item.product.taste}, {item.product.gram}g)</span>
+                           <span className="font-bold text-slate-800 text-sm block leading-tight">{item.product?.category}</span> 
+                           <span className="text-xs font-bold text-slate-500 block leading-tight mt-0.5">({item.product?.taste}, {item.product?.gram}g)</span>
                         </td>
                         <td className="py-3 px-2 text-center font-black text-slate-700 text-sm align-middle">{item.quantity}</td>
-                        <td className="py-3 px-2 text-right font-bold text-slate-600 text-sm align-middle">{item.product.price.toLocaleString()}</td>
-                        <td className="py-3 px-2 text-right font-black text-slate-800 text-sm align-middle">{item.subtotal.toLocaleString()}</td>
+                        <td className="py-3 px-2 text-right font-bold text-slate-600 text-sm align-middle">{item.product?.price?.toLocaleString()}</td>
+                        <td className="py-3 px-2 text-right font-black text-slate-800 text-sm align-middle">{item.subtotal?.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -700,7 +662,7 @@ export const Sales: React.FC<SalesProps> = ({
                 <div className="w-80">
                   <div className="flex justify-between py-1.5 text-sm font-bold text-slate-600">
                     <span>Subtotal:</span>
-                    <span>{selectedSaleForPrint.totalAmount.toLocaleString()} Ks</span>
+                    <span>{selectedSaleForPrint.totalAmount?.toLocaleString()} Ks</span>
                   </div>
                   {Number(selectedSaleForPrint.discountPercent) > 0 && (
                      <div className="flex justify-between py-1.5 text-sm font-bold text-rose-600 border-t border-slate-100">
@@ -716,7 +678,7 @@ export const Sales: React.FC<SalesProps> = ({
                   )}
                   <div className="flex justify-between py-3 mt-2 border-t-2 border-slate-800 text-lg">
                     <span className="font-black text-slate-800">Total:</span>
-                    <span className="font-black text-emerald-600">{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
+                    <span className="font-black text-emerald-600">{selectedSaleForPrint.finalAmount?.toLocaleString()} Ks</span>
                   </div>
                 </div>
               </div>
@@ -728,7 +690,6 @@ export const Sales: React.FC<SalesProps> = ({
             </div>
           )}
 
-          {/* ----- THERMAL 58mm/80mm TEMPLATE ----- */}
           {printType === 'THERMAL' && (
             <div className="w-full print:w-[80mm] print:m-0 mx-auto p-2 bg-white text-black font-sans text-[14px]" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
               <div className="text-center mb-3 border-b-2 border-dashed border-black pb-3">
@@ -747,34 +708,13 @@ export const Sales: React.FC<SalesProps> = ({
               <div className="mb-3 text-xs font-bold space-y-1 border-b-2 border-dashed border-black pb-3">
                 <table className="w-full">
                   <tbody>
-                    <tr>
-                      <td className="py-0.5 text-left w-12">Inv</td>
-                      <td className="py-0.5 text-center w-2">:</td>
-                      <td className="py-0.5 text-right">#{selectedSaleForPrint.id}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5 text-left">Date</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ')[0]}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5 text-left">Time</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5 text-left">Cust</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5 text-right uppercase truncate max-w-[140px]">{selectedSaleForPrint.customerName}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-0.5 text-left">Pay</td>
-                      <td className="py-0.5 text-center">:</td>
-                      <td className="py-0.5 text-right uppercase">{selectedSaleForPrint.paymentMethod}</td>
-                    </tr>
+                    <tr><td className="py-0.5 text-left w-12">Inv</td><td className="py-0.5 text-center w-2">:</td><td className="py-0.5 text-right">#{selectedSaleForPrint.id}</td></tr>
+                    <tr><td className="py-0.5 text-left">Date</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ')[0]}</td></tr>
+                    <tr><td className="py-0.5 text-left">Time</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td></tr>
+                    <tr><td className="py-0.5 text-left">Cust</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right uppercase truncate max-w-[140px]">{selectedSaleForPrint.customerName}</td></tr>
+                    <tr><td className="py-0.5 text-left">Pay</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right uppercase">{selectedSaleForPrint.paymentMethod}</td></tr>
                   </tbody>
                 </table>
-                
                 {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
                   <div className="text-black border border-black p-1.5 mt-2 text-center font-black">
                     DUE: {calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}
@@ -787,19 +727,19 @@ export const Sales: React.FC<SalesProps> = ({
                   <span className="w-2/3">Item</span>
                   <span className="w-1/3 text-right">Amt</span>
                 </div>
-                {selectedSaleForPrint.items.map((item, idx) => (
+                {selectedSaleForPrint.items?.map((item, idx) => (
                   <div key={idx} className="mb-2 text-xs">
-                    <div className="font-bold truncate leading-tight mb-1">{item.product.category} ({item.product.gram}g)</div>
+                    <div className="font-bold truncate leading-tight mb-1">{item.product?.category} ({item.product?.gram}g)</div>
                     <div className="flex justify-between text-[11px]">
-                      <span>{item.quantity} x {item.product.price}</span>
-                      <span className="font-black text-sm">{item.subtotal.toLocaleString()}</span>
+                      <span>{item.quantity} x {item.product?.price}</span>
+                      <span className="font-black text-sm">{item.subtotal?.toLocaleString()}</span>
                     </div>
                   </div>
                 ))}
               </div>
 
               <div className="space-y-1 text-xs font-bold border-b-2 border-dashed border-black pb-3 mb-3">
-                <div className="flex justify-between"><span>Subtotal:</span> <span>{selectedSaleForPrint.totalAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>Subtotal:</span> <span>{selectedSaleForPrint.totalAmount?.toLocaleString()}</span></div>
                 {Number(selectedSaleForPrint.discountPercent) > 0 && (
                   <div className="flex justify-between"><span>Disc ({selectedSaleForPrint.discountPercent}%):</span> <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()}</span></div>
                 )}
@@ -807,7 +747,7 @@ export const Sales: React.FC<SalesProps> = ({
                   <div className="flex justify-between"><span>Tax ({selectedSaleForPrint.taxPercent}%):</span> <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()}</span></div>
                 )}
                 <div className="flex justify-between text-base font-black pt-1 mt-1 border-t border-black">
-                  <span>TOTAL:</span> <span>{selectedSaleForPrint.finalAmount.toLocaleString()} Ks</span>
+                  <span>TOTAL:</span> <span>{selectedSaleForPrint.finalAmount?.toLocaleString()} Ks</span>
                 </div>
               </div>
 
