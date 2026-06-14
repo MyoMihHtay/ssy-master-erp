@@ -14,8 +14,6 @@ import { Procurement } from './components/Procurement';
 import { HR } from './components/HR'; 
 import { Dashboard } from './components/Dashboard';
 import { Workspace } from './components/Workspace';
-
-// 🌟 Reports Component အား အသစ် Import လုပ်ခြင်း 🌟
 import { Reports } from './components/Reports';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
@@ -48,6 +46,9 @@ export interface SaleRecord {
   items: SaleItem[]; totalAmount: number; finalAmount: number; 
   discountPercent?: number; taxPercent?: number; 
   paymentMethod: string; creditTerms?: string; isPaid: boolean; 
+  // 🌟 Return & Exchange မှတ်တမ်း သိမ်းရန် field များ 🌟
+  status?: 'Normal' | 'Returned';
+  returnDetails?: { type: 'refund' | 'exchange'; totalRefund: number; note: string; date: string; items: { category: string; taste: string; quantity: number; }[] };
 }
 
 export interface Customer { id: string; name: string; phone: string; shopType: string; address: string; gpsLocation: string; }
@@ -136,7 +137,6 @@ export default function App() {
   const [recipes, setRecipes, recLoading] = useSupabaseTable<Recipe>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes, pkgRecLoading] = useSupabaseTable<PackageRecipe>('ssy_pkg_recipes', []);
 
-  // HR Cloud Database ချိတ်ဆက်မှုများ
   const [employees, setEmployees, empLoading] = useSupabaseTable<Employee>('ssy_employees', []);
   const [attendance, setAttendance, attLoading] = useSupabaseTable<Attendance>('ssy_attendance', []);
   const [advances, setAdvances, advLoading] = useSupabaseTable<Advance>('ssy_advances', []);
@@ -144,10 +144,7 @@ export default function App() {
   const [hrSettings, setHrSettings, hrsLoading] = useSupabaseTable<HRSetting>('ssy_hr_settings', []);
 
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
-  
   const [activeTab, setActiveTab] = useState<string>('dashboard');
-
-  // 🌟 (အသစ်) Alarms မှ ဘောက်ချာကို နှိပ်လျှင် မှတ်သားထားမည့် State 🌟
   const [highlightSaleId, setHighlightSaleId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -260,31 +257,16 @@ export default function App() {
         }
 
         if (existingIdx >= 0) {
-          newItems[existingIdx] = {
-            ...newItems[existingIdx],
-            inStock: newItems[existingIdx].inStock + (prItem.requestedQty || 0),
-            lastPurchasePrice: exactUnitPrice
-          };
+          newItems[existingIdx] = { ...newItems[existingIdx], inStock: newItems[existingIdx].inStock + (prItem.requestedQty || 0), lastPurchasePrice: exactUnitPrice };
         } else {
-          newItems.push({
-            id: Date.now() + Math.random(),
-            code: `NEW-${Date.now().toString().slice(-4)}`,
-            name: prItem.itemName,
-            category: prItem.targetWarehouse === 'RM' ? 'Raw Materials' : prItem.targetWarehouse === 'SFG' ? 'Semi-Finished Goods' : 'Packaging',
-            unit: prItem.unit || 'ခု',
-            inStock: prItem.requestedQty || 0,
-            warehouse: prItem.targetWarehouse as 'RM' | 'SFG' | 'PKG',
-            lastPurchasePrice: exactUnitPrice
-          });
+          newItems.push({ id: Date.now() + Math.random(), code: `NEW-${Date.now().toString().slice(-4)}`, name: prItem.itemName, category: prItem.targetWarehouse === 'RM' ? 'Raw Materials' : prItem.targetWarehouse === 'SFG' ? 'Semi-Finished Goods' : 'Packaging', unit: prItem.unit || 'ခု', inStock: prItem.requestedQty || 0, warehouse: prItem.targetWarehouse as 'RM' | 'SFG' | 'PKG', lastPurchasePrice: exactUnitPrice });
         }
       });
       return newItems;
     });
 
     if (pr.paymentMethod !== 'CREDIT (အကြွေး)') {
-      setExpenses(prev => [{
-        id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူမှု', description: `Auto-Sync: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name}) - ${pr.paymentMethod || 'CASH'}`, amount: totalCost, voucherNo: `PR-${pr.id}`, type: 'expense'
-      }, ...prev]);
+      setExpenses(prev => [{ id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူမှု', description: `Auto-Sync: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name}) - ${pr.paymentMethod || 'CASH'}`, amount: totalCost, voucherNo: `PR-${pr.id}`, type: 'expense' }, ...prev]);
       alert(`✅ ဂိုထောင်စာရင်းထဲသို့ ပစ္စည်းများရောက်ရှိသွားပြီး၊ ငွေကျပ် ${totalCost.toLocaleString()} အား ဘဏ္ဍာရေးစာရင်းသို့ (အော်တို) သွင်းပေးလိုက်ပါပြီ။`);
     } else {
       alert(`📌 အကြွေးဝယ်ယူမှုဖြစ်သဖြင့် Finance စာရင်းထဲသို့ ထွက်ငွေ (Auto-Sync) မဝင်ပါ။ \nအကြွေးဆပ်သည့်အခါမှသာ MD အကောင့်ဖြင့် Finance ထဲသို့ သွင်းပေးနိုင်ပါသည်။`);
@@ -296,13 +278,7 @@ export default function App() {
     if (!selectedSupplier) return;
 
     setExpenses(prev => [{
-      id: Date.now(), 
-      date: new Date().toLocaleDateString('en-GB'), 
-      category: 'ကုန်ကြမ်းဝယ်ယူမှု (အကြွေးဆပ်)', 
-      description: `Credit Payment: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name})`, 
-      amount: selectedSupplier.price || 0, 
-      voucherNo: `PR-${pr.id}`, 
-      type: 'expense'
+      id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူမှု (အကြွေးဆပ်)', description: `Credit Payment: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name})`, amount: selectedSupplier.price || 0, voucherNo: `PR-${pr.id}`, type: 'expense'
     }, ...prev]);
 
     setPurchaseRequests(prev => prev.map(r => r.id === pr.id ? { ...r, isCreditPaid: true } : r));
@@ -319,21 +295,13 @@ export default function App() {
     });
 
     if (newSale.isPaid) {
-      setExpenses(prev => [...prev, {
-        id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income'
-      }]);
+      setExpenses(prev => [...prev, { id: Date.now(), date: newSale.date, category: 'အရောင်းဝင်ငွေ', description: `Invoice: #${newSale.id} - ${newSale.customerName}`, amount: newSale.finalAmount, type: 'income' }]);
     }
 
     setCustomers(prev => {
       const existingIdx = prev.findIndex(c => c.name.toLowerCase() === newSale.customerName.toLowerCase());
-      const customerData: Customer = {
-        id: existingIdx !== -1 ? prev[existingIdx].id : `CUST-${Date.now()}`,
-        name: newSale.customerName, phone: newSale.phone || '', shopType: newSale.shopType || '',
-        address: newSale.address || '', gpsLocation: newSale.gps || ''
-      };
-      if (existingIdx !== -1) {
-        const updated = [...prev]; updated[existingIdx] = customerData; return updated;
-      } else return [...prev, customerData];
+      const customerData: Customer = { id: existingIdx !== -1 ? prev[existingIdx].id : `CUST-${Date.now()}`, name: newSale.customerName, phone: newSale.phone || '', shopType: newSale.shopType || '', address: newSale.address || '', gpsLocation: newSale.gps || '' };
+      if (existingIdx !== -1) { const updated = [...prev]; updated[existingIdx] = customerData; return updated; } else return [...prev, customerData];
     });
 
     setSalesRecords([newSale, ...salesRecords]);
@@ -343,11 +311,54 @@ export default function App() {
     const saleToUpdate = salesRecords.find(s => s.id === saleId);
     if (saleToUpdate && !saleToUpdate.isPaid) {
       setSalesRecords(salesRecords.map(s => s.id === saleId ? { ...s, isPaid: true } : s));
-      setExpenses(prev => [...prev, {
-        id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income'
-      }]);
-      alert("✅ ငွေလက်ခံရရှိကြောင်း အတည်ပြုပြီး Finance စာရင်းသို့ ဝင်ငွေပေါင်းထည့်ပြီးပါပြီ။");
+      setExpenses(prev => [...prev, { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income' }]);
+      alert("✅ Ngwe လက်ခံရရှိကြောင်း အတည်ပြုပြီး Finance စာရင်းသို့ ဝင်ငွေပေါင်းထည့်ပြီးပါပြီ။");
     }
+  };
+
+  // 🌟 (အသစ်) ပစ္စည်းပြန်အပ်/အလဲအလှယ် စနစ်အတွက် အဓိက စာရင်းညှိနှိုင်းပေးမည့် Function 🌟
+  const handleReturnSale = (saleId: string, returnedItems: { product: FinishedGoodItem; quantity: number }[], returnType: 'refund' | 'exchange', note: string, totalRefund: number) => {
+    // ၁။ ကုန်ချောစတော့ကို ပြန်တိုးပေးခြင်း
+    setFinishedGoods(prev => {
+      let updated = [...prev];
+      returnedItems.forEach(item => {
+        const idx = updated.findIndex(fg => fg.id === item.product.id);
+        if (idx !== -1) {
+          updated[idx] = { ...updated[idx], stockQty: updated[idx].stockQty + item.quantity };
+        }
+      });
+      return updated;
+    });
+
+    // ၂။ အမ်းငွေရှိပါက ဘဏ္ဍာရေးစာရင်းထဲ ထွက်ငွေ (Expense) အဖြစ် (Auto-Sync) သွင်းပေးခြင်း
+    if (totalRefund > 0) {
+      setExpenses(prev => [{
+        id: Date.now(),
+        date: new Date().toLocaleDateString('en-GB'),
+        category: returnType === 'refund' ? 'အရောင်းပြန်အမ်းငွေ' : 'အလဲအလှယ်ညှိနှိုင်းငွေ',
+        description: `Voucher #${saleId} အတွက် ပစ္စည်းပြန်အပ်အမ်းငွေ - ${note}`,
+        amount: totalRefund,
+        type: 'expense'
+      }, ...prev]);
+    }
+
+    // ၃။ အရောင်းမှတ်တမ်း (Invoice) ထဲမှာ Status ကို ပြောင်းလဲသိမ်းဆည်းခြင်း
+    setSalesRecords(prev => prev.map(s => {
+      if (s.id === saleId) {
+        return {
+          ...s,
+          status: 'Returned',
+          returnDetails: {
+            type: returnType,
+            totalRefund,
+            note,
+            date: new Date().toLocaleDateString('en-GB'),
+            items: returnedItems.map(i => ({ category: i.product.category, taste: i.product.taste, quantity: i.quantity }))
+          }
+        };
+      }
+      return s;
+    }));
   };
 
   if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
@@ -365,7 +376,6 @@ export default function App() {
 
   return (
     <div className="flex w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative">
-      
       <div className="md:hidden fixed top-0 left-0 w-full bg-gray-900 text-white z-50 p-4 flex justify-between items-center shadow-md print:hidden">
         <h1 className="font-black text-xl tracking-wider">SSY <span className="text-emerald-400">ERP</span></h1>
         <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">☰</button>
@@ -398,11 +408,9 @@ export default function App() {
       )}
       
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
-        
         {activeTab === 'dashboard' && <Dashboard sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
         {activeTab === 'workspace' && <Workspace userName={user.name} userRole={user.role} />}
         
-        {/* 🌟 Reports Component တွင် props များ အပြည့်အစုံ Pass လုပ်ပေးထားပါသည် 🌟 */}
         {activeTab === 'reports' && (
            <Reports 
              sales={salesRecords} 
@@ -413,11 +421,11 @@ export default function App() {
              recipes={recipes}
              packageRecipes={packageRecipes}
              setActiveTab={setActiveTab} 
-             setHighlightSaleId={setHighlightSaleId} // 🌟 အသစ်ဖြည့်စွက်သည်
+             setHighlightSaleId={setHighlightSaleId}
            />
         )}
 
-        {/* 🌟 Sales တွင် highlightSaleId ကို Pass လုပ်ပေးထားပါသည် 🌟 */}
+        {/* 🌟 Sales Component သို့ handleReturnSale ခေါ်ယူမှုကို ပို့ပေးထားပါသည် 🌟 */}
         {activeTab === 'sales' && (
           <Sales 
             userRole={user.role} 
@@ -428,8 +436,9 @@ export default function App() {
             onCheckout={handleCheckoutSale} 
             onMarkAsPaid={handleMarkAsPaid} 
             onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} 
-            highlightSaleId={highlightSaleId} // 🌟 အသစ်ဖြည့်စွက်သည်
-            setHighlightSaleId={setHighlightSaleId} // 🌟 အသစ်ဖြည့်စွက်သည်
+            highlightSaleId={highlightSaleId} 
+            setHighlightSaleId={setHighlightSaleId} 
+            onReturnSale={handleReturnSale} 
           />
         )}
 
@@ -437,7 +446,7 @@ export default function App() {
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'packaging' && <Packaging userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
-        {activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
+        {finishedGoods && activeTab === 'finished_goods' && <FinishedGoods userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         
         {activeTab === 'hr' && (

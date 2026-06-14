@@ -13,9 +13,18 @@ interface SalesProps {
   onMarkAsPaid: (saleId: string) => void;
   onDeleteSale: (saleId: string) => void;
   
-  // 🌟 (အသစ်) Highlight လုပ်ရန် လိုအပ်သော Props များ 🌟
+  // Highlight လုပ်ရန် လိုအပ်သော Props များ
   highlightSaleId?: string | null;
   setHighlightSaleId?: (id: string | null) => void;
+
+  // 🌟 (အသစ်) ပစ္စည်းပြန်အပ်/အလဲအလှယ်အတွက် Handler Props 🌟
+  onReturnSale?: (
+    saleId: string, 
+    returnedItems: { product: FinishedGoodItem; quantity: number }[], 
+    returnType: 'refund' | 'exchange', 
+    note: string, 
+    totalRefund: number
+  ) => void;
 }
 
 const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
@@ -39,7 +48,7 @@ const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
 };
 
 export const Sales: React.FC<SalesProps> = ({ 
-  userRole, userName, finishedGoods, sales, customers, onCheckout, onMarkAsPaid, onDeleteSale, highlightSaleId, setHighlightSaleId 
+  userRole, userName, finishedGoods, sales, customers, onCheckout, onMarkAsPaid, onDeleteSale, highlightSaleId, setHighlightSaleId, onReturnSale 
 }) => {
   const [activeTab, setActiveTab] = useState<'pos' | 'records'>('pos');
   const [cart, setCart] = useState<SaleItem[]>([]);
@@ -63,19 +72,24 @@ export const Sales: React.FC<SalesProps> = ({
   const [printType, setPrintType] = useState<'A4' | 'THERMAL' | 'IMAGE'>('A4');
   const [generatedImageURL, setGeneratedImageURL] = useState<string | null>(null);
 
+  // 🌟 (အသစ်) Return & Exchange အတွက် လိုအပ်သော States များ 🌟
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [selectedSaleForReturn, setSelectedSaleForReturn] = useState<SaleRecord | null>(null);
+  const [returnQuantities, setReturnQuantities] = useState<Record<number, number>>({});
+  const [returnType, setReturnType] = useState<'refund' | 'exchange'>('refund');
+  const [returnNote, setReturnNote] = useState('');
+
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const isManager = userRole === 'manager' || userRole === 'md';
   const isMDOnly = userRole === 'md';
 
-  // 🌟 (အသစ်) Highlight ပါလာလျှင် အလိုအလျောက် Records (မှတ်တမ်းများ) သို့ သွားရန် 🌟
   useEffect(() => {
     if (highlightSaleId) {
       setActiveTab('records');
     }
   }, [highlightSaleId]);
 
-  // Highlight ကို ရှင်းလင်းရန် Function
   const clearHighlight = () => {
     if (setHighlightSaleId) setHighlightSaleId(null);
   };
@@ -130,12 +144,83 @@ export const Sales: React.FC<SalesProps> = ({
       id: `INV-${Date.now().toString().slice(-6)}`, date: dateTimeStr,
       customerName, phone, salespersonName: userName, shopType, address, gps: gpsLocation,
       items: cart, totalAmount, finalAmount, discountPercent: Number(discountPercent || 0), taxPercent: Number(taxPercent || 0),
-      paymentMethod, creditTerms: finalCreditTerms, isPaid: paymentMethod !== 'CREDIT'
+      paymentMethod, creditTerms: finalCreditTerms, isPaid: paymentMethod !== 'CREDIT',
+      status: 'Normal'
     };
     onCheckout(newSale); setCart([]); setIsCheckoutModalOpen(false);
     setCustomerName(''); setPhone(''); setAddress(''); setGpsLocation('');
     alert('✅ အရောင်းစာရင်း အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
     setActiveTab('records');
+  };
+
+  // 🌟 (အသစ်) ပစ္စည်းပြန်အပ်ခြင်း တွက်ချက်မှုနှင့် တင်သွင်းခြင်းစနစ် 🌟
+  const openReturnModal = (sale: SaleRecord) => {
+    setSelectedSaleForReturn(sale);
+    const initialQtys: Record<number, number> = {};
+    sale.items.forEach(item => {
+      initialQtys[item.product.id] = 0;
+    });
+    setReturnQuantities(initialQtys);
+    setReturnType('refund');
+    setReturnNote('');
+    setIsReturnModalOpen(true);
+  };
+
+  const handleReturnQtyChange = (productId: number, val: string, maxQty: number) => {
+    const qty = Math.min(maxQty, Math.max(0, parseInt(val) || 0));
+    setReturnQuantities(prev => ({ ...prev, [productId]: qty }));
+  };
+
+  // အော်တို အမ်းငွေတွက်ချက်ပေးသည့်စနစ် (Proportional Discount ပါ စနစ်တကျ နှုတ်ပေးပါသည်)
+  const calculatedRefundTotal = useMemo(() => {
+    if (!selectedSaleForReturn) return 0;
+    let sum = 0;
+    selectedSaleForReturn.items.forEach(item => {
+      const retQty = returnQuantities[item.product.id] || 0;
+      sum += retQty * item.product.price;
+    });
+    
+    // မူရင်း ဘောက်ချာမှာ လျှော့ဈေးပါက လျှော့ဈေးအချိုးပါ အလိုအလျောက် ခုနှိမ်တွက်ချက်ခြင်း
+    if (selectedSaleForReturn.discountPercent) {
+      sum = sum - (sum * selectedSaleForReturn.discountPercent) / 100;
+    }
+    if (selectedSaleForReturn.taxPercent) {
+      sum = sum + (sum * selectedSaleForReturn.taxPercent) / 100;
+    }
+    return Math.round(sum);
+  }, [selectedSaleForReturn, returnQuantities]);
+
+  const handleReturnSubmit = () => {
+    if (!selectedSaleForReturn || !onReturnSale) return;
+    
+    const returnedItemsList: { product: FinishedGoodItem; quantity: number }[] = [];
+    selectedSaleForReturn.items.forEach(item => {
+      const qty = returnQuantities[item.product.id] || 0;
+      if (qty > 0) {
+        returnedItemsList.push({ product: item.product, quantity: qty });
+      }
+    });
+
+    if (returnedItemsList.length === 0) {
+      return alert("⚠️ ကျေးဇူးပြု၍ ပြန်အပ်မည့် ပစ္စည်းအရေအတွက် အနည်းဆုံး ၁ ခု ရွေးချယ်ပေးပါဗျာ။");
+    }
+    if (!returnNote.trim()) {
+      return alert("⚠️ ကျေးဇူးပြု၍ အမှားအယွင်းမရှိစေရန် အပ်ရသည့် အကြောင်းအရင်း (မှတ်ချက်) ရေးပေးပါ ခင်ဗျာ။");
+    }
+
+    const finalRefundAmount = returnType === 'refund' ? calculatedRefundTotal : 0;
+
+    onReturnSale(
+      selectedSaleForReturn.id,
+      returnedItemsList,
+      returnType,
+      returnNote,
+      finalRefundAmount
+    );
+
+    setIsReturnModalOpen(false);
+    setSelectedSaleForReturn(null);
+    alert("✅ ပစ္စည်းပြန်အပ်/လဲလှယ်မှုစနစ် အောင်မြင်စွာ မှတ်တမ်းတင်ပြီး စတော့နှင့် ဘဏ္ဍာရေးစာရင်း ချိန်ညှိပြီးပါပြီ။");
   };
 
   const openPrintModal = (sale: SaleRecord) => {
@@ -192,7 +277,7 @@ export const Sales: React.FC<SalesProps> = ({
             </div>
             <div className="flex-1 bg-white p-2 md:p-6 rounded-xl md:rounded-[2rem] shadow-xl border border-slate-200 flex flex-col h-full sticky top-1 md:top-4">
               <div className="flex justify-between items-center border-b pb-1.5 md:pb-4 mb-2 md:mb-4">
-                 <h3 className="text-sm md:text-xl font-black text-slate-800">🛒 စာရင်း</h3>
+                 <h3 className="text-sm md:text-xl font-black text-slate-800">🛒 Сာရင်း</h3>
                  <span className="text-[10px] md:text-sm font-bold text-slate-400">{cart.length} မျိုး</span>
               </div>
               <div className="flex-1 overflow-y-auto mb-2 md:mb-6 space-y-1.5 md:space-y-3 min-h-[150px] md:min-h-[300px]">
@@ -300,52 +385,76 @@ export const Sales: React.FC<SalesProps> = ({
           </div>
         )}
 
-        {/* 🌟 Records Tab 🌟 */}
+        {/* Records */}
         {activeTab === 'records' && (
           <div className="space-y-2 md:space-y-6">
              <div className="relative w-full md:max-w-sm"><span className="absolute left-2.5 top-1.5 md:top-3 text-slate-400 text-xs md:text-base">🔍</span><input type="text" className="w-full pl-7 pr-3 py-1.5 md:py-3 bg-white border border-slate-200 rounded-lg md:rounded-xl shadow-sm outline-none focus:border-amber-500 text-[10px] md:text-base" placeholder="ဘောက်ချာ / အမည် ရှာရန်..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
              <div className="grid gap-2 md:gap-4">
               {visibleSalesToRender.map(sale => {
-                // 🌟 Highlight ဖြစ်နေသော ဘောက်ချာဖြစ်ပါက စစ်ဆေးရန် 🌟
                 const isHighlighted = sale.id === highlightSaleId;
+                const isReturned = sale.status === 'Returned';
 
                 return (
                   <div 
                     key={sale.id} 
                     onClick={isHighlighted ? clearHighlight : undefined} 
-                    className={`p-2 md:p-5 rounded-lg md:rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-1.5 md:gap-4 transition-all duration-500 
+                    className={`p-2 md:p-5 rounded-lg md:rounded-2xl shadow-sm flex flex-col transition-all duration-500 
                       ${isHighlighted ? 'bg-yellow-50 border-2 border-yellow-400 scale-[1.01] shadow-lg cursor-pointer' : 'bg-white border border-slate-200 hover:shadow-md'}
                     `}
                   >
-                    <div className="w-full md:w-auto">
-                      <div className="flex justify-between md:justify-start gap-1.5 items-center mb-0.5 md:mb-1">
-                        <div className="flex gap-1.5 items-center">
-                          <span className="text-[8px] md:text-xs font-black bg-slate-100 px-1 md:px-1.5 py-0.5 rounded text-slate-600">
-                            #{sale.id}
-                          </span>
-                          {/* 🌟 Highlight ပြထားသည့် အမှတ်အသား 🌟 */}
-                          {isHighlighted && (
-                            <span className="text-[8px] md:text-xs font-black bg-yellow-500 text-white px-1 md:px-1.5 py-0.5 rounded animate-pulse">
-                              📌 ရွေးချယ်ထားသည်
-                            </span>
-                          )}
-                          <span className={`text-[8px] md:text-xs font-black px-1 md:px-1.5 py-0.5 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid ? `✅ ${sale.paymentMethod}` : `⏳ အကြွေး (${sale.creditTerms})`}</span>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-1.5 md:gap-4">
+                      <div className="w-full md:w-auto">
+                        <div className="flex justify-between md:justify-start gap-1.5 items-center mb-0.5 md:mb-1">
+                          <div className="flex flex-wrap gap-1.5 items-center">
+                            <span className="text-[8px] md:text-xs font-black bg-slate-100 px-1 md:px-1.5 py-0.5 rounded text-slate-600">#{sale.id}</span>
+                            
+                            {isHighlighted && (
+                              <span className="text-[8px] md:text-xs font-black bg-yellow-500 text-white px-1 md:px-1.5 py-0.5 rounded animate-pulse">📌 ရွေးချယ်ထားသည်</span>
+                            )}
+
+                            {/* 🌟 Return Status Badge 🌟 */}
+                            {isReturned && (
+                              <span className="text-[8px] md:text-xs font-black bg-rose-600 text-white px-1 md:px-1.5 py-0.5 rounded">⚠️ ပစ္စည်းပြန်အပ်ထားသည်</span>
+                            )}
+
+                            <span className={`text-[8px] md:text-xs font-black px-1 md:px-1.5 py-0.5 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid ? `✅ ${sale.paymentMethod}` : `⏳ အကြွေး (${sale.creditTerms})`}</span>
+                          </div>
+                          <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount.toLocaleString()} Ks</div>
                         </div>
-                        <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount.toLocaleString()} Ks</div>
+                        <h3 className="text-xs md:text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-[9px] md:text-sm font-medium text-slate-500">({sale.phone})</span></h3>
+                        <div className="text-[9px] md:text-xs text-slate-500 font-bold mt-0.5 md:mt-1 leading-relaxed">
+                          📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
+                        </div>
                       </div>
-                      <h3 className="text-xs md:text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-[9px] md:text-sm font-medium text-slate-500">({sale.phone})</span></h3>
-                      <div className="text-[9px] md:text-xs text-slate-500 font-bold mt-0.5 md:mt-1 leading-relaxed">
-                        📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
+                      <div className="text-right w-full md:w-auto border-t border-slate-100 md:border-0 pt-1.5 md:pt-0 mt-1 md:mt-0 flex justify-between md:flex-col items-center md:items-end">
+                        <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount.toLocaleString()} Ks</div>
+                        <div className="flex flex-wrap gap-1 md:gap-2 justify-end w-full md:w-auto">
+                           {/* 🌟 (အသစ်) ပစ္စည်းပြန်အပ်ရန် ခလုတ် (ပြန်မအပ်ရသေးသော Voucher များသာ အပ်ခွင့်ပေးပါမည်) 🌟 */}
+                           {!isReturned && (
+                             <button onClick={() => openReturnModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-rose-200 transition-colors flex items-center gap-1">🔄 ပြန်အပ်/လဲမည်</button>
+                           )}
+                           
+                           {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
+                           <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ ဘောက်ချာထုတ်မည်</button>
+                           {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
+                        </div>
                       </div>
                     </div>
-                    <div className="text-right w-full md:w-auto border-t border-slate-100 md:border-0 pt-1.5 md:pt-0 mt-1 md:mt-0 flex justify-between md:flex-col items-center md:items-end">
-                      <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount.toLocaleString()} Ks</div>
-                      <div className="flex gap-1 md:gap-2 justify-end w-full md:w-auto">
-                         {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
-                         <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ ဘောက်ချာထုတ်မည်</button>
-                         {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
+
+                    {/* 🌟 (အသစ်) ပစ္စည်းပြန်အပ်ထားသော Log အသေးစိတ်အား အောက်တွင် ပြသပေးခြင်း 🌟 */}
+                    {isReturned && sale.returnDetails && (
+                      <div className="mt-3 bg-rose-50/70 border border-rose-100 rounded-xl p-3 text-[10px] md:text-xs text-rose-900 font-medium">
+                        <div className="flex justify-between font-black border-b border-rose-200/50 pb-1 mb-1.5 text-rose-800">
+                          <span>📝 ပြန်အပ်မှတ်တမ်း စာရင်းညှိချက် ({sale.returnDetails.type === 'refund' ? 'ငွေပြန်အမ်းစနစ်' : 'အခြားပစ္စည်းနှင့်အလဲအလှယ်'})</span>
+                          <span>📅 {sale.returnDetails.date}</span>
+                        </div>
+                        <div className="mb-1"><strong>ပြန်အပ်သွားသော ပစ္စည်းများ:</strong> {sale.returnDetails.items.map((i, index) => `${i.category} (${i.taste}) - ${i.quantity} ထုပ်`).join(', ')}</div>
+                        <div className="mb-1"><strong>အကြောင်းအရင်း / မှတ်ချက်:</strong> {sale.returnDetails.note}</div>
+                        {sale.returnDetails.type === 'refund' && (
+                          <div className="font-black text-rose-700 text-xs md:text-sm mt-1">💰 စုစုပေါင်း ပြန်အမ်းငွေ: {sale.returnDetails.totalRefund.toLocaleString()} Ks (Finance စာရင်းထဲသို့ အော်တိုခုနှိမ်ပြီး)</div>
+                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -353,6 +462,84 @@ export const Sales: React.FC<SalesProps> = ({
           </div>
         )}
       </div>
+
+      {/* 🌟 (အသစ်) Return & Exchange Management Modal UI 🌟 */}
+      {isReturnModalOpen && selectedSaleForReturn && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-rose-700 p-4 flex justify-between items-center text-white">
+              <h3 className="font-black text-sm md:text-lg flex items-center gap-2">🔄 Return & Exchange စနစ် (Voucher: #{selectedSaleForReturn.id})</h3>
+              <button onClick={() => setIsReturnModalOpen(false)} className="text-white hover:text-gray-200 font-bold text-lg">✕</button>
+            </div>
+            
+            <div className="p-4 md:p-6 overflow-y-auto space-y-4">
+              <div>
+                <p className="text-xs font-bold text-slate-500 mb-2 uppercase">၁။ အပ်နှံမည့် ပစ္စည်းအရေအတွက် ရွေးချယ်ပါ</p>
+                <div className="space-y-2">
+                  {selectedSaleForReturn.items.map((item) => (
+                    <div key={item.product.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border">
+                      <div>
+                        <span className="font-bold text-slate-800 text-xs md:text-sm">{item.product.category} ({item.product.taste})</span>
+                        <span className="text-[10px] text-slate-400 block font-bold">ဝယ်ယူခဲ့သည့် အရေအတွက်: {item.quantity} ထုပ် (ဈေးနှုန်း - {item.product.price.toLocaleString()} Ks)</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-slate-500">အပ်မည့်ဦးရေ:</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max={item.quantity} 
+                          value={returnQuantities[item.product.id] || 0} 
+                          onChange={(e) => handleReturnQtyChange(item.product.id, e.target.value, item.quantity)}
+                          className="w-16 p-1.5 border border-rose-300 rounded-lg text-center font-black text-rose-700 bg-white focus:ring-2 focus:ring-rose-500/20 outline-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">၂။ အလဲအလှယ် အမျိုးအစား</label>
+                  <select 
+                    value={returnType} 
+                    onChange={e => setReturnType(e.target.value as any)}
+                    className="w-full p-2.5 rounded-xl border font-bold text-sm bg-slate-50 outline-none focus:border-rose-500"
+                  >
+                    <option value="refund">Refund (ငွေပြန်အမ်းမည်)</option>
+                    <option value="exchange">Exchange (အခြားပစ္စည်းနှင့်လဲမည်)</option>
+                  </select>
+                </div>
+
+                {returnType === 'refund' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">၃။ တွက်ချက်ပြီး အမ်းငွေစုစုပေါင်း</label>
+                    <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl font-black text-rose-700 text-sm md:text-base text-right">
+                      {calculatedRefundTotal.toLocaleString()} Ks
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">၄။ အပ်ရသည့် အကြောင်းအရင်း / မှတ်ချက် *</label>
+                <textarea 
+                  rows={2} 
+                  value={returnNote}
+                  onChange={e => setReturnNote(e.target.value)}
+                  placeholder="ဥပမာ - ကုန်ပစ္စည်း လေဝင်နေသဖြင့် ငွေပြန်အမ်းပေးခဲ့ရပါသည်..."
+                  className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-rose-500 text-xs md:text-sm font-medium"
+                />
+              </div>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t flex gap-3">
+              <button onClick={() => setIsReturnModalOpen(false)} className="flex-1 py-2.5 bg-slate-200 font-bold rounded-xl text-slate-600 hover:bg-slate-300 text-sm">မလုပ်တော့ပါ</button>
+              <button onClick={handleReturnSubmit} className="flex-[2] py-2.5 bg-rose-600 font-black rounded-xl text-white hover:bg-rose-700 shadow-md text-sm">စာရင်းသွင်း သိမ်းဆည်းမည်</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Options Modal */}
       {selectedSaleForPrint && (
@@ -414,12 +601,11 @@ export const Sales: React.FC<SalesProps> = ({
                 <div className="flex items-center gap-5 w-[55%]">
                   <img src="/logo.png" alt="Logo" className="w-24 h-24 object-contain" />
                   <div>
-                    {/* 🌟 အကွာအဝေး (mt-4) နှင့် letter-spacing (tracking) အားလုံးဖြုတ်၍ ပြင်ဆင်ထားသည် 🌟 */}
                     <h1 className="text-4xl font-black text-slate-800" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စက်စက်ယို</h1>
                     <p className="text-base font-bold text-slate-600 mt-4" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>စားသောက်ကုန်လုပ်ငန်း</p>
                     <p className="text-sm text-slate-500 mt-2 leading-relaxed" style={{ fontFamily: '"Pyidaungsu", "Myanmar Text", sans-serif' }}>
                       အမှတ် (၄၃/၃၂)၊ (၅၄) ဘီ လမ်း၊ <br/>
-                      ၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား၊ <br/>
+                      ၁၂၄ လမ်း နှင့် ၁၂၅ လမ်းကြား Mom၊ <br/>
                       မန္တလေးမြို့။
                     </p>
                     <p className="text-sm font-bold text-slate-700 mt-2">Ph: 09-455557980</p>
