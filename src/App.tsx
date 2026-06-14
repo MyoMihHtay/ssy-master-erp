@@ -14,6 +14,8 @@ import { Procurement } from './components/Procurement';
 import { HR } from './components/HR'; 
 import { Dashboard } from './components/Dashboard';
 import { Workspace } from './components/Workspace';
+
+// 🌟 Reports Component အား အသစ် Import လုပ်ခြင်း 🌟
 import { Reports } from './components/Reports';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
@@ -144,6 +146,9 @@ export default function App() {
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
   
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // 🌟 (အသစ်) Alarms မှ ဘောက်ချာကို နှိပ်လျှင် မှတ်သားထားမည့် State 🌟
+  const [highlightSaleId, setHighlightSaleId] = useState<string | null>(null);
 
   useEffect(() => {
     const testSupabaseConnection = async () => {
@@ -408,10 +413,26 @@ export default function App() {
              recipes={recipes}
              packageRecipes={packageRecipes}
              setActiveTab={setActiveTab} 
+             setHighlightSaleId={setHighlightSaleId} // 🌟 အသစ်ဖြည့်စွက်သည်
            />
         )}
 
-        {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
+        {/* 🌟 Sales တွင် highlightSaleId ကို Pass လုပ်ပေးထားပါသည် 🌟 */}
+        {activeTab === 'sales' && (
+          <Sales 
+            userRole={user.role} 
+            userName={user.name} 
+            finishedGoods={finishedGoods} 
+            sales={salesRecords} 
+            customers={customers} 
+            onCheckout={handleCheckoutSale} 
+            onMarkAsPaid={handleMarkAsPaid} 
+            onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} 
+            highlightSaleId={highlightSaleId} // 🌟 အသစ်ဖြည့်စွက်သည်
+            setHighlightSaleId={setHighlightSaleId} // 🌟 အသစ်ဖြည့်စွက်သည်
+          />
+        )}
+
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} onCreditPayment={handleCreditPayment} />}
         {activeTab === 'inventory' && <Inventory userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
         {activeTab === 'production' && <Production userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}

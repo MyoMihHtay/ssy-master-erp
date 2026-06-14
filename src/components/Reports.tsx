@@ -8,9 +8,11 @@ interface ReportsProps {
   finishedGoods: FinishedGoodItem[];
   expenses: ExpenseItem[];
   purchaseRequests: PurchaseRequest[];
-  recipes: Recipe[]; // 🌟 အသစ်တိုးထားသည်
-  packageRecipes: PackageRecipe[]; // 🌟 အသစ်တိုးထားသည်
-  setActiveTab: (tab: string) => void; // 🌟 Action link များနှိပ်လျှင် သွားရန်
+  recipes: Recipe[];
+  packageRecipes: PackageRecipe[];
+  setActiveTab: (tab: string) => void;
+  // 🌟 (အသစ်) Sales မှတ်တမ်းသို့ လှမ်းပြီး Highlight လုပ်ရန် 🌟
+  setHighlightSaleId?: (id: string | null) => void; 
 }
 
 const formatKyat = (amount: number) => amount?.toLocaleString() + ' Ks';
@@ -23,10 +25,9 @@ const parseDate = (dStr: string) => {
 };
 
 export const Reports: React.FC<ReportsProps> = ({ 
-  sales = [], inventory = [], finishedGoods = [], expenses = [], purchaseRequests = [], recipes = [], packageRecipes = [], setActiveTab 
+  sales = [], inventory = [], finishedGoods = [], expenses = [], purchaseRequests = [], recipes = [], packageRecipes = [], setActiveTab, setHighlightSaleId 
 }) => {
   
-  // 🌟 'production' Tab အသစ် ထပ်တိုးထားသည် 🌟
   const [activeTab, setReportTab] = useState<'sales' | 'inventory' | 'procurement' | 'production' | 'finance' | 'alarms'>('sales');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
   const [startDate, setStartDate] = useState('');
@@ -231,7 +232,6 @@ export const Reports: React.FC<ReportsProps> = ({
               {activeTab === 'finance' && (
                 <tr><th className="p-3">ရက်စွဲ</th><th className="p-3">ခေါင်းစဉ်</th><th className="p-3">အကြောင်းအရာ</th><th className="p-3 text-center">အမျိုးအစား</th><th className="p-3 text-right">ပမာဏ</th></tr>
               )}
-              {/* 🌟 ထုတ်လုပ်မှု Tab Header 🌟 */}
               {activeTab === 'production' && (
                 <tr><th className="p-3">ထုတ်လုပ်မှု အမျိုးအစား</th><th className="p-3">ကုန်ပစ္စည်း အမည်</th><th className="p-3 text-center">ထွက်ရှိမည့် ပမာဏ</th><th className="p-3">လိုအပ်သော ပါဝင်ပစ္စည်းများ (BOM)</th></tr>
               )}
@@ -284,7 +284,6 @@ export const Reports: React.FC<ReportsProps> = ({
                 </tr>
               ))}
 
-              {/* 🌟 ထုတ်လုပ်မှု Recipes Data Render 🌟 */}
               {activeTab === 'production' && (
                 <>
                   {recipes.map(r => (
@@ -316,7 +315,7 @@ export const Reports: React.FC<ReportsProps> = ({
                 </tr>
               ))}
 
-              {/* 🚨 Alarms Actions တိုက်ရိုက်သွားမည့်စနစ် 🚨 */}
+              {/* 🚨 Alarms Actions (setHighlightSaleId အပါအဝင်) 🚨 */}
               {activeTab === 'alarms' && (
                 <>
                   {lowStockRM.map(i => (
@@ -349,7 +348,13 @@ export const Reports: React.FC<ReportsProps> = ({
                       <td className="p-3 font-bold text-slate-800">{s.customerName}</td>
                       <td className="p-3 text-rose-700 font-bold">ပမာဏ: {formatKyat(s.finalAmount)}</td>
                       <td className="p-3 text-center">
-                        <button onClick={() => setActiveTab('sales')} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all bg-white px-3 py-1 rounded shadow-sm border border-blue-200">
+                        <button 
+                          onClick={() => { 
+                            if (setHighlightSaleId) setHighlightSaleId(s.id); 
+                            setActiveTab('sales'); 
+                          }} 
+                          className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all bg-white px-3 py-1 rounded shadow-sm border border-blue-200"
+                        >
                           အရောင်းစာရင်း စစ်မည်
                         </button>
                       </td>

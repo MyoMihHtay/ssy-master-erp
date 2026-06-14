@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import html2canvas from 'html2canvas'; 
 import Barcode from 'react-barcode'; 
 import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
@@ -12,6 +12,10 @@ interface SalesProps {
   onCheckout: (sale: SaleRecord) => void;
   onMarkAsPaid: (saleId: string) => void;
   onDeleteSale: (saleId: string) => void;
+  
+  // 🌟 (အသစ်) Highlight လုပ်ရန် လိုအပ်သော Props များ 🌟
+  highlightSaleId?: string | null;
+  setHighlightSaleId?: (id: string | null) => void;
 }
 
 const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
@@ -34,7 +38,9 @@ const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
   return date.toLocaleDateString('en-GB');
 };
 
-export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods, sales, customers, onCheckout, onMarkAsPaid, onDeleteSale }) => {
+export const Sales: React.FC<SalesProps> = ({ 
+  userRole, userName, finishedGoods, sales, customers, onCheckout, onMarkAsPaid, onDeleteSale, highlightSaleId, setHighlightSaleId 
+}) => {
   const [activeTab, setActiveTab] = useState<'pos' | 'records'>('pos');
   const [cart, setCart] = useState<SaleItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,6 +67,18 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
 
   const isManager = userRole === 'manager' || userRole === 'md';
   const isMDOnly = userRole === 'md';
+
+  // 🌟 (အသစ်) Highlight ပါလာလျှင် အလိုအလျောက် Records (မှတ်တမ်းများ) သို့ သွားရန် 🌟
+  useEffect(() => {
+    if (highlightSaleId) {
+      setActiveTab('records');
+    }
+  }, [highlightSaleId]);
+
+  // Highlight ကို ရှင်းလင်းရန် Function
+  const clearHighlight = () => {
+    if (setHighlightSaleId) setHighlightSaleId(null);
+  };
 
   const handleAddToCart = (product: FinishedGoodItem) => {
     if (product.stockQty <= 0) return alert('❌ ဤကုန်ချော လက်ကျန် ပြတ်နေပါသည်။');
@@ -152,7 +170,7 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 md:mb-6 border-b-2 pb-2 md:pb-4 border-amber-200 gap-2 md:gap-4">
           <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> အရောင်းပိုင်း (POS)</h2>
           <div className="flex gap-1.5 md:gap-2 bg-white p-1 rounded-lg md:rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
-            <button onClick={() => setActiveTab('pos')} className={`flex-1 md:flex-none px-3 py-1.5 md:px-6 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] md:text-base ${activeTab === 'pos' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>🛒 ဘောက်ချာဖြတ်မည်</button>
+            <button onClick={() => { setActiveTab('pos'); clearHighlight(); }} className={`flex-1 md:flex-none px-3 py-1.5 md:px-6 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] md:text-base ${activeTab === 'pos' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>🛒 ဘောက်ချာဖြတ်မည်</button>
             <button onClick={() => setActiveTab('records')} className={`flex-1 md:flex-none px-3 py-1.5 md:px-6 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] md:text-base ${activeTab === 'records' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>📜 မှတ်တမ်းများ</button>
           </div>
         </div>
@@ -282,36 +300,55 @@ export const Sales: React.FC<SalesProps> = ({ userRole, userName, finishedGoods,
           </div>
         )}
 
-        {/* Records */}
+        {/* 🌟 Records Tab 🌟 */}
         {activeTab === 'records' && (
           <div className="space-y-2 md:space-y-6">
              <div className="relative w-full md:max-w-sm"><span className="absolute left-2.5 top-1.5 md:top-3 text-slate-400 text-xs md:text-base">🔍</span><input type="text" className="w-full pl-7 pr-3 py-1.5 md:py-3 bg-white border border-slate-200 rounded-lg md:rounded-xl shadow-sm outline-none focus:border-amber-500 text-[10px] md:text-base" placeholder="ဘောက်ချာ / အမည် ရှာရန်..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
              <div className="grid gap-2 md:gap-4">
-              {visibleSalesToRender.map(sale => (
-                <div key={sale.id} className="bg-white p-2 md:p-5 rounded-lg md:rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-1.5 md:gap-4 hover:shadow-md transition-shadow">
-                  <div className="w-full md:w-auto">
-                    <div className="flex justify-between md:justify-start gap-1.5 items-center mb-0.5 md:mb-1">
-                      <div className="flex gap-1.5 items-center">
-                        <span className="text-[8px] md:text-xs font-black bg-slate-100 px-1 md:px-1.5 py-0.5 rounded text-slate-600">#{sale.id}</span>
-                        <span className={`text-[8px] md:text-xs font-black px-1 md:px-1.5 py-0.5 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid ? `✅ ${sale.paymentMethod}` : `⏳ အကြွေး (${sale.creditTerms})`}</span>
+              {visibleSalesToRender.map(sale => {
+                // 🌟 Highlight ဖြစ်နေသော ဘောက်ချာဖြစ်ပါက စစ်ဆေးရန် 🌟
+                const isHighlighted = sale.id === highlightSaleId;
+
+                return (
+                  <div 
+                    key={sale.id} 
+                    onClick={isHighlighted ? clearHighlight : undefined} 
+                    className={`p-2 md:p-5 rounded-lg md:rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-1.5 md:gap-4 transition-all duration-500 
+                      ${isHighlighted ? 'bg-yellow-50 border-2 border-yellow-400 scale-[1.01] shadow-lg cursor-pointer' : 'bg-white border border-slate-200 hover:shadow-md'}
+                    `}
+                  >
+                    <div className="w-full md:w-auto">
+                      <div className="flex justify-between md:justify-start gap-1.5 items-center mb-0.5 md:mb-1">
+                        <div className="flex gap-1.5 items-center">
+                          <span className="text-[8px] md:text-xs font-black bg-slate-100 px-1 md:px-1.5 py-0.5 rounded text-slate-600">
+                            #{sale.id}
+                          </span>
+                          {/* 🌟 Highlight ပြထားသည့် အမှတ်အသား 🌟 */}
+                          {isHighlighted && (
+                            <span className="text-[8px] md:text-xs font-black bg-yellow-500 text-white px-1 md:px-1.5 py-0.5 rounded animate-pulse">
+                              📌 ရွေးချယ်ထားသည်
+                            </span>
+                          )}
+                          <span className={`text-[8px] md:text-xs font-black px-1 md:px-1.5 py-0.5 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid ? `✅ ${sale.paymentMethod}` : `⏳ အကြွေး (${sale.creditTerms})`}</span>
+                        </div>
+                        <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount.toLocaleString()} Ks</div>
                       </div>
-                      <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount.toLocaleString()} Ks</div>
+                      <h3 className="text-xs md:text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-[9px] md:text-sm font-medium text-slate-500">({sale.phone})</span></h3>
+                      <div className="text-[9px] md:text-xs text-slate-500 font-bold mt-0.5 md:mt-1 leading-relaxed">
+                        📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
+                      </div>
                     </div>
-                    <h3 className="text-xs md:text-lg font-black text-slate-800">👤 {sale.customerName} <span className="text-[9px] md:text-sm font-medium text-slate-500">({sale.phone})</span></h3>
-                    <div className="text-[9px] md:text-xs text-slate-500 font-bold mt-0.5 md:mt-1 leading-relaxed">
-                      📅 {sale.date} | 🏷️ {sale.salespersonName} <br/>🏢 {sale.shopType} {sale.address ? `| 🏠 ${sale.address}` : ''}
+                    <div className="text-right w-full md:w-auto border-t border-slate-100 md:border-0 pt-1.5 md:pt-0 mt-1 md:mt-0 flex justify-between md:flex-col items-center md:items-end">
+                      <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount.toLocaleString()} Ks</div>
+                      <div className="flex gap-1 md:gap-2 justify-end w-full md:w-auto">
+                         {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
+                         <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ ဘောက်ချာထုတ်မည်</button>
+                         {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right w-full md:w-auto border-t border-slate-100 md:border-0 pt-1.5 md:pt-0 mt-1 md:mt-0 flex justify-between md:flex-col items-center md:items-end">
-                    <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount.toLocaleString()} Ks</div>
-                    <div className="flex gap-1 md:gap-2 justify-end w-full md:w-auto">
-                       {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
-                       <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ ဘောက်ချာထုတ်မည်</button>
-                       {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
