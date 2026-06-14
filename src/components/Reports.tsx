@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import type { SaleRecord, InventoryItem, FinishedGoodItem, ExpenseItem, PurchaseRequest } from '../App';
-import { Download, Printer, BarChart3, Package, Settings, ShoppingCart, DollarSign, AlertTriangle, Filter, Calendar } from 'lucide-react';
+import type { SaleRecord, InventoryItem, FinishedGoodItem, ExpenseItem, PurchaseRequest, Recipe, PackageRecipe } from '../App';
+import { Download, Printer, BarChart3, Package, ShoppingCart, DollarSign, AlertTriangle, Filter, ClipboardList } from 'lucide-react';
 
 interface ReportsProps {
   sales: SaleRecord[];
@@ -8,6 +8,9 @@ interface ReportsProps {
   finishedGoods: FinishedGoodItem[];
   expenses: ExpenseItem[];
   purchaseRequests: PurchaseRequest[];
+  recipes: Recipe[]; // 🌟 အသစ်တိုးထားသည်
+  packageRecipes: PackageRecipe[]; // 🌟 အသစ်တိုးထားသည်
+  setActiveTab: (tab: string) => void; // 🌟 Action link များနှိပ်လျှင် သွားရန်
 }
 
 const formatKyat = (amount: number) => amount?.toLocaleString() + ' Ks';
@@ -19,14 +22,16 @@ const parseDate = (dStr: string) => {
   return new Date(dStr);
 };
 
-export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], finishedGoods = [], expenses = [], purchaseRequests = [] }) => {
+export const Reports: React.FC<ReportsProps> = ({ 
+  sales = [], inventory = [], finishedGoods = [], expenses = [], purchaseRequests = [], recipes = [], packageRecipes = [], setActiveTab 
+}) => {
   
-  const [activeTab, setActiveTab] = useState<'sales' | 'inventory' | 'procurement' | 'finance' | 'alarms'>('sales');
+  // 🌟 'production' Tab အသစ် ထပ်တိုးထားသည် 🌟
+  const [activeTab, setReportTab] = useState<'sales' | 'inventory' | 'procurement' | 'production' | 'finance' | 'alarms'>('sales');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // 🌟 Date Filter Logic 🌟
   const isDateInRange = (dateStr: string) => {
     if (dateFilter === 'all') return true;
     
@@ -54,18 +59,15 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
     return itemDate >= start && itemDate <= end;
   };
 
-  // 🌟 Filtered Data 🌟
   const filteredSales = useMemo(() => sales.filter(s => isDateInRange(s.date)), [sales, dateFilter, startDate, endDate]);
   const filteredExpenses = useMemo(() => expenses.filter(e => isDateInRange(e.date)), [expenses, dateFilter, startDate, endDate]);
   const filteredPRs = useMemo(() => purchaseRequests.filter(pr => isDateInRange(pr.date)), [purchaseRequests, dateFilter, startDate, endDate]);
 
-  // 🌟 Alarms Logic 🌟
   const lowStockRM = inventory.filter(i => i.inStock <= 50);
   const lowStockFG = finishedGoods.filter(fg => fg.stockQty <= 100);
   const unpaidSales = sales.filter(s => !s.isPaid);
   const unpaidPRs = purchaseRequests.filter(pr => pr.paymentMethod === 'CREDIT (အကြွေး)' && !pr.isCreditPaid && pr.status === 'Completed');
 
-  // 🌟 Finance Logic 🌟
   const totalIncome = filteredExpenses.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
   const totalExpense = filteredExpenses.filter(e => e.type === 'expense' || !e.type).reduce((sum, e) => sum + e.amount, 0);
   const netProfit = totalIncome - totalExpense;
@@ -101,6 +103,12 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
         'Status': pr.status
       }));
       fileName = 'ERP_Procurement_Report';
+    } else if (activeTab === 'production') {
+      data = [
+        ...recipes.map(r => ({ 'ထုတ်လုပ်မှု အမျိုးအစား': 'ကုန်ကြမ်းမှ ကုန်ပိုင်း (SFG)', 'အမည်': r.name, 'ထွက်ရှိမှု': `${r.outputQtyPerBatch} ${r.outputUnit}`, 'ပါဝင်ပစ္စည်းများ': r.ingredients.map(i => `${i.itemName} (${i.requiredQty})`).join(' + ') })),
+        ...packageRecipes.map(pr => ({ 'ထုတ်လုပ်မှု အမျိုးအစား': 'ထုပ်ပိုးမှု (FG)', 'အမည်': pr.skuName, 'ထွက်ရှိမှု': '၁ ထုပ်', 'ပါဝင်ပစ္စည်းများ': pr.ingredients.map(i => `${i.itemName} (${i.requiredQty})`).join(' + ') }))
+      ];
+      fileName = 'ERP_Production_Recipes_Report';
     } else if (activeTab === 'finance') {
       data = filteredExpenses.map(e => ({
         'ရက်စွဲ': e.date,
@@ -169,7 +177,6 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
         </div>
       </div>
 
-      {/* 🌟 Date Filter Box 🌟 */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6 flex flex-wrap items-center gap-4 no-print">
         <div className="flex items-center gap-2 w-full md:w-auto">
           <Filter size={18} className="text-indigo-500" />
@@ -190,18 +197,17 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
         </div>
       </div>
 
-      {/* 🌟 Tab ခလုတ်များ 🌟 */}
       <div className="flex flex-wrap gap-2 mb-4 bg-slate-200 p-1 rounded-xl w-fit no-print">
-        <TabBtn active={activeTab === 'sales'} onClick={() => setActiveTab('sales')} label="အရောင်း (Sales)" icon={<BarChart3 size={14}/>} />
-        <TabBtn active={activeTab === 'inventory'} onClick={() => setActiveTab('inventory')} label="ကုန်လှောင်ရုံ (Inventory)" icon={<Package size={14}/>} />
-        <TabBtn active={activeTab === 'procurement'} onClick={() => setActiveTab('procurement')} label="ဝယ်ယူရေး (Procurement)" icon={<ShoppingCart size={14}/>} />
-        <TabBtn active={activeTab === 'finance'} onClick={() => setActiveTab('finance')} label="ဘဏ္ဍာရေး (Finance)" icon={<DollarSign size={14}/>} />
-        <TabBtn active={activeTab === 'alarms'} onClick={() => setActiveTab('alarms')} label="သတိပေးချက် (Alarms)" icon={<AlertTriangle size={14} className={activeTab === 'alarms' ? 'text-red-500' : ''}/>} />
+        <TabBtn active={activeTab === 'sales'} onClick={() => setReportTab('sales')} label="အရောင်း (Sales)" icon={<BarChart3 size={14}/>} />
+        <TabBtn active={activeTab === 'inventory'} onClick={() => setReportTab('inventory')} label="ကုန်လှောင်ရုံ (Inventory)" icon={<Package size={14}/>} />
+        <TabBtn active={activeTab === 'procurement'} onClick={() => setReportTab('procurement')} label="ဝယ်ယူရေး (Procurement)" icon={<ShoppingCart size={14}/>} />
+        <TabBtn active={activeTab === 'production'} onClick={() => setReportTab('production')} label="ထုတ်လုပ်မှု (Production)" icon={<ClipboardList size={14}/>} />
+        <TabBtn active={activeTab === 'finance'} onClick={() => setReportTab('finance')} label="ဘဏ္ဍာရေး (Finance)" icon={<DollarSign size={14}/>} />
+        <TabBtn active={activeTab === 'alarms'} onClick={() => setReportTab('alarms')} label="သတိပေးချက် (Alarms)" icon={<AlertTriangle size={14} className={activeTab === 'alarms' ? 'text-red-500' : ''}/>} />
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden print:overflow-visible print:border-none">
         
-        {/* 🌟 Finance Summary Cards (Finance Tab ရွေးထားချိန်သာပေါ်မည်) 🌟 */}
         {activeTab === 'finance' && (
            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-b bg-slate-50 no-print">
               <div className="bg-white p-4 rounded-xl border-l-4 border-l-emerald-500 shadow-sm"><p className="text-[10px] font-bold text-slate-500 uppercase">စုစုပေါင်း ဝင်ငွေ (Income)</p><p className="text-xl font-black text-emerald-600">{formatKyat(totalIncome)}</p></div>
@@ -213,27 +219,25 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
         <div className="overflow-x-auto print:overflow-visible flex-1 p-0">
           <table className="w-full text-left report-table whitespace-nowrap md:whitespace-normal">
             <thead className="bg-slate-800 text-white sticky top-0">
-              
               {activeTab === 'sales' && (
                 <tr><th className="p-3">ရက်စွဲ</th><th className="p-3">ဝယ်သူအမည်</th><th className="p-3">အရောင်းဝန်ထမ်း</th><th className="p-3">ကုန်ပစ္စည်းများ</th><th className="p-3 text-center">Status</th><th className="p-3 text-right">ကျသင့်ငွေ</th></tr>
               )}
-              
               {activeTab === 'inventory' && (
                 <tr><th className="p-3">အမျိုးအစား</th><th className="p-3">ပစ္စည်းအမည်</th><th className="p-3 text-right">လက်ကျန်</th><th className="p-3 text-right">တန်ဖိုး (ခန့်မှန်း)</th></tr>
               )}
-
               {activeTab === 'procurement' && (
                 <tr><th className="p-3">PR No.</th><th className="p-3">ရက်စွဲ</th><th className="p-3">ပစ္စည်းအမည်</th><th className="p-3 text-center">အရေအတွက်</th><th className="p-3 text-center">ငွေချေစနစ်</th><th className="p-3 text-right">Status</th></tr>
               )}
-
               {activeTab === 'finance' && (
                 <tr><th className="p-3">ရက်စွဲ</th><th className="p-3">ခေါင်းစဉ်</th><th className="p-3">အကြောင်းအရာ</th><th className="p-3 text-center">အမျိုးအစား</th><th className="p-3 text-right">ပမာဏ</th></tr>
               )}
-
+              {/* 🌟 ထုတ်လုပ်မှု Tab Header 🌟 */}
+              {activeTab === 'production' && (
+                <tr><th className="p-3">ထုတ်လုပ်မှု အမျိုးအစား</th><th className="p-3">ကုန်ပစ္စည်း အမည်</th><th className="p-3 text-center">ထွက်ရှိမည့် ပမာဏ</th><th className="p-3">လိုအပ်သော ပါဝင်ပစ္စည်းများ (BOM)</th></tr>
+              )}
               {activeTab === 'alarms' && (
                 <tr><th className="p-3">သတိပေးချက် အမျိုးအစား</th><th className="p-3">အကြောင်းအရာ</th><th className="p-3">မှတ်ချက် / အခြေအနေ</th><th className="p-3 text-center">Action</th></tr>
               )}
-
             </thead>
             <tbody className="divide-y divide-slate-100">
               
@@ -280,6 +284,28 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
                 </tr>
               ))}
 
+              {/* 🌟 ထုတ်လုပ်မှု Recipes Data Render 🌟 */}
+              {activeTab === 'production' && (
+                <>
+                  {recipes.map(r => (
+                    <tr key={`r-${r.id}`} className="text-sm hover:bg-slate-50">
+                      <td className="p-3 text-xs font-bold text-emerald-600 bg-emerald-50/50 uppercase">ချက်ပြုတ်မှု (RM ➡ SFG)</td>
+                      <td className="p-3 font-bold text-slate-800">{r.name}</td>
+                      <td className="p-3 text-center font-black text-emerald-700">{r.outputQtyPerBatch} {r.outputUnit}</td>
+                      <td className="p-3 text-xs text-slate-600 font-medium">{r.ingredients.map(i => `${i.itemName} (${i.requiredQty} ${i.unit})`).join(' + ')}</td>
+                    </tr>
+                  ))}
+                  {packageRecipes.map(pr => (
+                    <tr key={`pr-${pr.id}`} className="text-sm hover:bg-slate-50">
+                      <td className="p-3 text-xs font-bold text-blue-600 bg-blue-50/50 uppercase">ထုပ်ပိုးမှု (SFG + PKG ➡ FG)</td>
+                      <td className="p-3 font-bold text-slate-800">{pr.skuName}</td>
+                      <td className="p-3 text-center font-black text-blue-700">၁ ထုပ်</td>
+                      <td className="p-3 text-xs text-slate-600 font-medium">{pr.ingredients.map(i => `${i.itemName} (${i.requiredQty} ${i.unit})`).join(' + ')}</td>
+                    </tr>
+                  ))}
+                </>
+              )}
+
               {activeTab === 'finance' && filteredExpenses.map(e => (
                 <tr key={e.id} className="text-sm hover:bg-slate-50">
                   <td className="p-3">{e.date}</td>
@@ -290,7 +316,7 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
                 </tr>
               ))}
 
-              {/* 🚨 Alarms (သတိပေးချက်များ) Data Render 🚨 */}
+              {/* 🚨 Alarms Actions တိုက်ရိုက်သွားမည့်စနစ် 🚨 */}
               {activeTab === 'alarms' && (
                 <>
                   {lowStockRM.map(i => (
@@ -298,7 +324,11 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
                       <td className="p-3 font-black text-amber-600 flex items-center gap-2"><AlertTriangle size={16}/> ကုန်ကြမ်း ပြတ်လုနီးပါး</td>
                       <td className="p-3 font-bold text-slate-800">{i.name}</td>
                       <td className="p-3 text-amber-700 font-bold">လက်ကျန်: {i.inStock} {i.unit} သာ ကျန်ပါတော့သည်</td>
-                      <td className="p-3 text-center"><span className="text-xs font-bold text-blue-600 underline cursor-pointer">ဝယ်ယူရန် (PR) တင်မည်</span></td>
+                      <td className="p-3 text-center">
+                        <button onClick={() => setActiveTab('procurement')} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all bg-white px-3 py-1 rounded shadow-sm border border-blue-200">
+                          ဝယ်ယူရန် (PR) တင်မည်
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {lowStockFG.map(f => (
@@ -306,7 +336,11 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
                       <td className="p-3 font-black text-orange-600 flex items-center gap-2"><Package size={16}/> ကုန်ချော ပြတ်လုနီးပါး</td>
                       <td className="p-3 font-bold text-slate-800">{f.category} ({f.gram}g)</td>
                       <td className="p-3 text-orange-700 font-bold">လက်ကျန်: {f.stockQty} ထုပ် သာ ကျန်ပါတော့သည်</td>
-                      <td className="p-3 text-center"><span className="text-xs font-bold text-blue-600 underline cursor-pointer">ထုပ်ပိုးမှု ပြုလုပ်မည်</span></td>
+                      <td className="p-3 text-center">
+                        <button onClick={() => setActiveTab('packaging')} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all bg-white px-3 py-1 rounded shadow-sm border border-blue-200">
+                          ထုပ်ပိုးမှု ပြုလုပ်မည်
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {unpaidSales.map(s => (
@@ -314,7 +348,11 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
                       <td className="p-3 font-black text-rose-600 flex items-center gap-2"><DollarSign size={16}/> ရစရာရှိသော အကြွေး</td>
                       <td className="p-3 font-bold text-slate-800">{s.customerName}</td>
                       <td className="p-3 text-rose-700 font-bold">ပမာဏ: {formatKyat(s.finalAmount)}</td>
-                      <td className="p-3 text-center"><span className="text-xs font-bold text-blue-600 underline cursor-pointer">မှတ်တမ်းစစ်မည်</span></td>
+                      <td className="p-3 text-center">
+                        <button onClick={() => setActiveTab('sales')} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all bg-white px-3 py-1 rounded shadow-sm border border-blue-200">
+                          အရောင်းစာရင်း စစ်မည်
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {unpaidPRs.map(p => (
@@ -322,7 +360,11 @@ export const Reports: React.FC<ReportsProps> = ({ sales = [], inventory = [], fi
                       <td className="p-3 font-black text-rose-600 flex items-center gap-2"><ShoppingCart size={16}/> ပေးရန်ရှိသော အကြွေး</td>
                       <td className="p-3 font-bold text-slate-800">PR-{p.id}</td>
                       <td className="p-3 text-rose-700 font-bold">Supplier အား ငွေချေရန် ကျန်ရှိနေပါသည်</td>
-                      <td className="p-3 text-center"><span className="text-xs font-bold text-blue-600 underline cursor-pointer">ငွေချေမည်</span></td>
+                      <td className="p-3 text-center">
+                        <button onClick={() => setActiveTab('procurement')} className="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline transition-all bg-white px-3 py-1 rounded shadow-sm border border-blue-200">
+                          ဝယ်ယူရေး စစ်ဆေးမည်
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   

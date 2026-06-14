@@ -14,8 +14,6 @@ import { Procurement } from './components/Procurement';
 import { HR } from './components/HR'; 
 import { Dashboard } from './components/Dashboard';
 import { Workspace } from './components/Workspace';
-
-// 🌟 Reports Component အား အသစ် Import လုပ်ခြင်း 🌟
 import { Reports } from './components/Reports';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
@@ -399,8 +397,19 @@ export default function App() {
         {activeTab === 'dashboard' && <Dashboard sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
         {activeTab === 'workspace' && <Workspace userName={user.name} userRole={user.role} />}
         
-        {/* 🌟 Reports Component ကို Render လုပ်ခြင်း 🌟 */}
-        {activeTab === 'reports' && <Reports sales={salesRecords} inventory={inventoryItems} finishedGoods={finishedGoods} expenses={expenses} purchaseRequests={purchaseRequests} />}
+        {/* 🌟 Reports Component တွင် props များ အပြည့်အစုံ Pass လုပ်ပေးထားပါသည် 🌟 */}
+        {activeTab === 'reports' && (
+           <Reports 
+             sales={salesRecords} 
+             inventory={inventoryItems} 
+             finishedGoods={finishedGoods} 
+             expenses={expenses} 
+             purchaseRequests={purchaseRequests}
+             recipes={recipes}
+             packageRecipes={packageRecipes}
+             setActiveTab={setActiveTab} 
+           />
+        )}
 
         {activeTab === 'sales' && <Sales userRole={user.role} userName={user.name} finishedGoods={finishedGoods} sales={salesRecords} customers={customers} onCheckout={handleCheckoutSale} onMarkAsPaid={handleMarkAsPaid} onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} />}
         {activeTab === 'procurement' && <Procurement userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} onCreditPayment={handleCreditPayment} />}
