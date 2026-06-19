@@ -459,7 +459,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         <button onClick={() => setActiveSubTab('attendance')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'attendance' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📍 GPS Attendance</button>
         {isAdminOrHR && (
           <>
-            <button onClick={() => setActiveSubTab('history')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'history' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📊 ရုံးတက်/ဒဏ်ကြေး ရီပို့</button>
+            <button onClick={() => setActiveSubTab('history')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'history' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📊 ရုံးတက်/ဒဏ်ကြေး Report</button>
             <button onClick={() => setActiveSubTab('leaves')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'leaves' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📝 ခွင့်တိုင်ကြားမှု</button>
             <button onClick={() => setActiveSubTab('employees')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'employees' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>👩‍💼 ဝန်ထမ်းစာရင်း</button>
             <button onClick={() => setActiveSubTab('advances')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'advances' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💸 ကြိုတင်ငွေ</button>
@@ -489,7 +489,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                  <div className="space-y-2 text-sm font-bold text-gray-500"><p>ရုံးတက်ချိန်: <span className="text-emerald-600">{todayAtt.checkInTime}</span></p><p>ရုံးဆင်းချိန်: <span className="text-rose-600">{todayAtt.checkOutTime}</span></p></div>
               </div>
            )}
-           {currentLoc && (<div className="mt-8 text-[11px] font-black text-slate-500 bg-slate-100 px-4 py-2 rounded-xl border">🏢 ရုံးဂိုဒေါင်နှင့်အကွာအဝေး: {Math.round(getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude))} မီတာ (တိကျမှု: {Math.round(currentLoc.accuracy)}m)</div>)}
+           {currentLoc && (<div className="mt-8 text-[11px] font-black text-slate-500 bg-slate-100 px-4 py-2 rounded-xl border">🏢 SSY Office နှင့် အကွာအဝေး: {Math.round(getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude))} မီတာ (တိကျမှု: {Math.round(currentLoc.accuracy)}m)</div>)}
         </div>
       )}
 
@@ -519,7 +519,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                      <Download size={14}/> Excel သိမ်းမည်
                   </button>
                   <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1 shadow">
-                     <Printer size={14}/> Print ရီပို့ထုတ်မည်
+                     <Printer size={14}/> Print Report ထုတ်မည်
                   </button>
                </div>
             </div>
