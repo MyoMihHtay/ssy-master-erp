@@ -21,12 +21,14 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
   const [newRole, setNewRole] = useState('staff');
   const [visiblePasswords, setVisiblePasswords] = useState<{ [key: number]: boolean }>({});
 
-  // MD ဟုတ်/မဟုတ် တိတိကျကျ စစ်ဆေးခြင်း
   const isMD = currentUserRole === 'md';
 
   const handleAddAccount = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUsername || !newPassword || !newDisplayName) return;
+    if (!newUsername || !newPassword || !newDisplayName || !newRole) {
+      alert('ကျေးဇူးပြု၍ အချက်အလက်များကို ပြည့်စုံစွာ ထည့်ပါ။');
+      return;
+    }
 
     if (accounts.some(acc => acc.username === newUsername)) {
       alert('ဤ Username ကို အသုံးပြုထားပြီးဖြစ်ပါသည်။ အခြား Username ပြောင်းပေးပါ။');
@@ -37,17 +39,17 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
       id: Date.now(),
       username: newUsername,
       password: newPassword,
-      role: newRole,
+      // 🌟 အသစ်ထည့်လိုက်သော ရာထူးအားလုံးကို အလွယ်တကူ စစ်ဆေးနိုင်ရန် lowercase ပြောင်းသိမ်းပါသည် 🌟
+      role: newRole.toLowerCase(), 
       displayName: newDisplayName
     };
 
     setAccounts([...accounts, newAccount]);
-    setNewDisplayName(''); setNewUsername(''); setNewPassword('');
+    setNewDisplayName(''); setNewUsername(''); setNewPassword(''); setNewRole('');
     alert('✅ အကောင့်သစ် အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။');
   };
 
   const handleDelete = (id: number, role: string) => {
-    // MD အကောင့်ကို မည်သည့်အကြောင်းနှင့်မျှ ဖျက်ခွင့်မပေးပါ
     if (role === 'md') {
       alert('⚠️ MD (Managing Director) အကောင့်ကို ဖျက်ခွင့်မရှိပါ။');
       return;
@@ -75,11 +77,11 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
       case 'storekeeper': return 'Store Keeper';
       case 'maintenance': return 'Maintenance';
       case 'staff': return 'Staff (ဝန်ထမ်း)';
-      default: return role;
+      // 🌟 ရာထူးအသစ်များအတွက် သူရိုက်ထည့်ထားသည့်အတိုင်း ပြန်ပြပါမည် 🌟
+      default: return role.toUpperCase(); 
     }
   };
 
-  // MD မဟုတ်ပါက လုံးဝ ဝင်ခွင့်ပိတ်မည့် မျက်နှာပြင် (Strict Block)
   if (!isMD) {
     return (
       <div className="p-6 max-w-4xl mx-auto mt-10 text-center">
@@ -94,7 +96,6 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
     );
   }
 
-  // MD ဝင်လာပါက မြင်ရမည့် မျက်နှာပြင်
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold text-red-700 border-b-2 border-red-200 pb-3 flex items-center gap-3">
@@ -104,9 +105,19 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
       <div className="bg-white shadow-xl p-6 rounded-2xl border-t-4 border-red-500">
         <h3 className="text-lg font-bold text-gray-800 mb-4">+ အကောင့်အသစ် ထပ်ထည့်ရန်</h3>
         <form onSubmit={handleAddAccount} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          <div>
+          
+          {/* 🌟 ရာထူးကို စိတ်ကြိုက် ရိုက်ထည့်နိုင်ရန် <datalist> အသုံးပြုထားပါသည် 🌟 */}
+          <div className="relative">
             <label className="block text-sm font-bold text-gray-700 mb-1">ရာထူး (Role)</label>
-            <select value={newRole} onChange={e => setNewRole(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full bg-gray-50 focus:border-red-500 focus:ring-0 font-semibold text-gray-700">
+            <input 
+               list="role-options" 
+               value={newRole} 
+               onChange={e => setNewRole(e.target.value)} 
+               placeholder="ရွေးချယ်ပါ သို့မဟုတ် ရိုက်ထည့်ပါ" 
+               className="border-2 border-gray-200 p-2.5 rounded-xl w-full bg-gray-50 focus:border-red-500 focus:ring-0 font-bold text-gray-800 outline-none" 
+               required
+            />
+            <datalist id="role-options">
               <option value="md">Managing Director (MD)</option>
               <option value="manager">စက်ရုံမှူး (Manager)</option>
               <option value="finance">Finance Manager</option>
@@ -115,19 +126,23 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
               <option value="storekeeper">Store Keeper</option>
               <option value="maintenance">Maintenance</option>
               <option value="staff">Staff (ဝန်ထမ်း)</option>
-            </select>
+              <option value="driver">Driver (ယာဉ်မောင်း)</option>
+              <option value="security">Security (လုံခြုံရေး)</option>
+              <option value="electrician">Electrician (လျှပ်စစ်)</option>
+            </datalist>
           </div>
+
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">အမည်ရင်း (Display Name)</label>
-            <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0" required placeholder="ဥပမာ - ဦးမျိုးမင်းဌေး" />
+            <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder="ဥပမာ - ဦးမျိုးမင်းဌေး" />
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Username (အကောင့်)</label>
-            <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0" required placeholder="ဥပမာ - md_myo" />
+            <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder="ဥပမာ - md_myo" />
           </div>
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-1">Password</label>
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0" required placeholder="လျှို့ဝှက်နံပါတ်" />
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder="လျှို့ဝှက်နံပါတ်" />
           </div>
           <button type="submit" className="bg-red-600 text-white p-2.5 rounded-xl font-bold shadow-md hover:bg-red-700 transition-colors w-full h-12">
             အကောင့်ဖန်တီးမည်

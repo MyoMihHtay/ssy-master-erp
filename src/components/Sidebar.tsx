@@ -11,13 +11,9 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userName, userRole, onLogout }) => {
   const role = (userRole || '').toLowerCase();
 
-  // 🌟 Menu စာရင်းနှင့် ရာထူး (Role) အလိုက် ဝင်ရောက်ခွင့် သတ်မှတ်ချက်များ 🌟
   const navItems = [
     { id: 'dashboard', label: 'လုပ်ငန်းအကျဉ်းချုပ်', icon: '📊', roles: ['md', 'manager'] },
-    
-    // 🌟 Workspace စာသားကို နှစ်ကြောင်းခွဲပြီး ဘယ်ဘက်ကပ်ရန် \n ကို အသုံးပြုထားပါသည် 🌟
     { id: 'workspace', label: 'လုပ်ငန်းခွင်\nဆက်သွယ်ရေး', icon: '💬', roles: ['md', 'manager', 'sales', 'finance', 'purchasing', 'qc', 'storekeeper', 'production', 'hr'] },
-    
     { id: 'sales', label: 'အရောင်း (Sales)', icon: '💰', roles: ['md', 'manager', 'sales', 'finance'] },
     { id: 'procurement', label: 'ဝယ်ယူရေး', icon: '🛒', roles: ['md', 'manager', 'purchasing', 'qc', 'finance', 'storekeeper'] },
     { id: 'inventory', label: 'ကုန်လှောင်ရုံ', icon: '📦', roles: ['md', 'manager', 'storekeeper', 'qc', 'production'] },
@@ -25,13 +21,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
     { id: 'packaging', label: 'ထုပ်ပိုးမှု', icon: '🏷️', roles: ['md', 'manager', 'production'] },
     { id: 'finished_goods', label: 'ကုန်ချော', icon: '🛍️', roles: ['md', 'manager', 'storekeeper', 'sales', 'qc'] },
     { id: 'expenses', label: 'ဘဏ္ဍာရေး/စာရင်း', icon: '💸', roles: ['md', 'manager', 'finance'] },
-    
-    // 🌟 Reports အပိုင်းသစ် ထပ်တိုးထားပါသည် 🌟
     { id: 'reports', label: 'အစီရင်ခံစာ\n(Reports)', icon: '📑', roles: ['md', 'manager', 'finance'] },
     
-    { id: 'hr', label: 'ဝန်ထမ်းရေးရာ/HR', icon: '👥', roles: ['md', 'manager', 'hr'] },
+    // 🌟 HR ကို 'all' လို့ ပေးထားလိုက်သဖြင့် ရာထူးအသစ်များ အပါအဝင် မည်သူမဆို ရုံးတက်ရန် ဝင်ခွင့်ရှိသွားပါပြီ 🌟
+    { id: 'hr', label: 'ဝန်ထမ်းရေးရာ/HR', icon: '👥', roles: ['all'] },
+    
     { id: 'accounts', label: 'အကောင့်များ', icon: '⚙️', roles: ['md'] },
   ];
+
+  // 🌟 Menu များကို Role အလိုက် စစ်ထုတ်ခြင်း 🌟
+  const filteredNavItems = navItems.filter(item => 
+    role === 'md' || item.roles.includes('all') || item.roles.includes(role)
+  );
 
   return (
     <div className="flex flex-col h-full text-white bg-slate-900 shadow-2xl">
@@ -48,26 +49,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userN
 
       <nav className="flex-1 overflow-y-auto py-6 custom-scrollbar">
         <ul className="space-y-2 px-4">
-          {navItems.map(item => {
-            if (!item.roles.includes(role) && role !== 'md') return null;
-            
-            return (
-              <li key={item.id}>
-                <button
-                  onClick={() => setActiveTab(item.id)}
-                  className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl font-bold transition-all duration-200 ${
-                    activeTab === item.id 
-                      ? 'bg-blue-600 text-white shadow-lg scale-[1.02]' 
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                  }`}
-                >
-                  <span className="text-xl shrink-0">{item.icon}</span>
-                  {/* 🌟 text-left, leading-tight နှင့် whitespace-pre-line များကို အသုံးပြုထားပါသည် 🌟 */}
-                  <span className="tracking-wide text-left leading-tight whitespace-pre-line">{item.label}</span>
-                </button>
-              </li>
-            );
-          })}
+          {filteredNavItems.map(item => (
+            <li key={item.id}>
+              <button
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl font-bold transition-all duration-200 ${
+                  activeTab === item.id 
+                    ? 'bg-blue-600 text-white shadow-lg scale-[1.02]' 
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                }`}
+              >
+                <span className="text-xl shrink-0">{item.icon}</span>
+                <span className="tracking-wide text-left leading-tight whitespace-pre-line">{item.label}</span>
+              </button>
+            </li>
+          ))}
         </ul>
       </nav>
 
