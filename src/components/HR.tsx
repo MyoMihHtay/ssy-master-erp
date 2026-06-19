@@ -42,7 +42,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const [lvEmpId, setLvEmpId] = useState(''); const [lvStart, setLvStart] = useState(''); const [lvEnd, setLvEnd] = useState(''); 
   const [lvType, setLvType] = useState('Sick Leave (နေမကောင်းခွင့်)'); const [lvReason, setLvReason] = useState('');
 
-  // 🌟 Action Modal State for Leave 🌟
   const [actionLeave, setActionLeave] = useState<Leave | null>(null);
   const [leaveRemark, setLeaveRemark] = useState('');
 
@@ -78,14 +77,22 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const currentEmployee = employees.find(e => e.name.toLowerCase() === userName.toLowerCase() || e.id === userName);
   const today = new Date().toLocaleDateString('en-GB');
 
+  // 🌟 Android အတွက် GPS ပိုမိုတိကျစေရန် 🌟
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.watchPosition(
-        (pos) => { setCurrentLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }); setLocError(''); },
-        (err) => { setLocError('GPS ဖွင့်ရန် သို့မဟုတ် Location ခွင့်ပြုချက် (Allow) ပေးရန် လိုအပ်ပါသည်။'); },
-        { enableHighAccuracy: true }
+        (pos) => { 
+          setCurrentLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy }); 
+          setLocError(''); 
+        },
+        (err) => { 
+          setLocError('GPS ဖွင့်ရန် သို့မဟုတ် Location ခွင့်ပြုချက် (Allow) ပေးရန် လိုအပ်ပါသည်။'); 
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 } // Add maximumAge & timeout for Android
       );
-    } else { setLocError('သင်၏ ဖုန်းသည် GPS စနစ်ကို အထောက်အပံ့မပေးပါ။'); }
+    } else { 
+      setLocError('သင်၏ ဖုန်းသည် GPS စနစ်ကို အထောက်အပံ့မပေးပါ။'); 
+    }
   }, []);
 
   const resetEmpForm = () => { setEditingEmpId(null); setEmpName(''); setEmpPos(''); setEmpDept(''); setEmpSalary(''); setEmpPhone(''); };
@@ -95,7 +102,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
 
   const handleAddAdvance = (e: React.FormEvent) => { e.preventDefault(); if (!advEmpId || !advAmount) return; setAdvances([{ id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false }, ...advances]); setAdvEmpId(''); setAdvAmount(''); setAdvReason(''); alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။'); };
   
-  // 🌟 ခွင့်တိုင်ကြားမှု အသစ် 🌟
   const handleAddLeave = (e: React.FormEvent) => {
     e.preventDefault(); if (!lvEmpId || !lvStart || !lvEnd) return;
     setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Pending' }, ...leaves]);
@@ -103,7 +109,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
     alert('✅ ခွင့်တိုင်ကြားခြင်း မှတ်တမ်းတင်ပြီးပါပြီ။ MD/HR မှ အတည်ပြုပေးရန် စောင့်ဆိုင်းပါ။');
   };
 
-  // 🌟 Leave Approve/Reject Action 🌟
   const handleLeaveAction = (status: 'Approved' | 'Rejected') => {
     if (!actionLeave) return;
     setLeaves(leaves.map(l => l.id === actionLeave.id ? { ...l, status, reason: `${l.reason} | 👨‍💼 HR မှတ်ချက်: ${leaveRemark || '-'}` } : l));
@@ -119,7 +124,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const calculatePayroll = (emp: Employee) => {
     const empAtt = attendance.filter(a => a.employeeId === emp.id);
     const empAdvances = advances.filter(a => a.employeeId === emp.id && !a.deducted);
-    // Get Approved Leaves only
     const empLeaves = leaves.filter(l => l.employeeId === emp.id && l.status === 'Approved');
 
     const totalAdvance = empAdvances.reduce((sum, a) => sum + a.amount, 0);
@@ -129,7 +133,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
     let isPerfectAttendance = true; 
     let isPunctual = true;
 
-    // Check if there's any leave, if so, NO perfect attendance.
     if (empLeaves.length > 0) isPerfectAttendance = false;
 
     const startMinutes = parseTimeToMinutes(defaultSetting.officeStartTime);
@@ -166,7 +169,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
     alert(`✅ ${emp.name} အတွက် လစာငွေ ထုတ်ပေးပြီး Finance Expense သို့ အော်တိုသွင်းပေးလိုက်ပါပြီ။`);
   };
 
-  // 🌟 Thermal Print Function 🌟
   const handleThermalPrint = () => {
     const printWindow = window.open('', '', 'width=300,height=600');
     if (!printWindow || !payslipData) return;
@@ -225,7 +227,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   return (
     <div className="p-2 md:p-6 max-w-7xl mx-auto space-y-6 print:p-0">
       
-      {/* 🌟 Leave Action Modal 🌟 */}
       {actionLeave && (
          <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm print:hidden">
             <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
@@ -249,7 +250,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
          </div>
       )}
 
-      {/* 🌟 PAYSLIP MODAL (PDF & Thermal Print) 🌟 */}
       {payslipData && (
         <div className="fixed inset-0 bg-gray-900/80 z-[200] flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:z-auto backdrop-blur-sm">
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:rounded-none">
@@ -303,10 +303,8 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
 
             <div className="p-4 bg-gray-50 border-t flex flex-wrap justify-end gap-2 print:hidden">
               <button onClick={() => setPayslipData(null)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:bg-gray-200 rounded-lg">ပိတ်မည်</button>
-              {/* 🌟 PDF & Thermal Print Buttons 🌟 */}
               <button onClick={() => window.print()} className="px-4 py-2 text-sm font-bold bg-blue-600 text-white rounded-lg shadow-sm hover:bg-blue-700">A4 PDF ထုတ်မည်</button>
               <button onClick={handleThermalPrint} className="px-4 py-2 text-sm font-bold bg-slate-800 text-white rounded-lg shadow-sm hover:bg-slate-900">🖨️ Thermal (58/80mm) ထုတ်မည်</button>
-              
               <button onClick={confirmPayment} className="px-4 py-2 text-sm font-black bg-emerald-600 text-white rounded-lg shadow-md hover:bg-emerald-700">✅ Finance သွင်းမည်</button>
             </div>
           </div>
@@ -331,7 +329,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         )}
       </div>
 
-      {/* 📍 GPS Attendance Tab */}
       {activeSubTab === 'attendance' && (
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col items-center justify-center py-12">
            <h3 className="text-2xl font-black text-gray-800 mb-2">မင်္ဂလာပါ, {userName}</h3>
@@ -355,7 +352,6 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
         </div>
       )}
 
-      {/* 📅 History Tab */}
       {activeSubTab === 'history' && isAdminOrHR && (
          <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
             <div className="p-4 border-b bg-gray-50 flex justify-between items-center"><h3 className="font-bold text-gray-700">နေ့စဉ် တက်ရောက်မှု မှတ်တမ်း</h3></div>
@@ -383,133 +379,141 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
          </div>
       )}
 
-      {/* 📝 Leaves Tab */}
       {activeSubTab === 'leaves' && isAdminOrHR && (
          <div className="space-y-6">
             <form onSubmit={handleAddLeave} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-               <div>
-                  <label className="text-xs font-bold text-gray-500">ဝန်ထမ်းရွေးချယ်ရန်</label>
-                  <select required value={lvEmpId} onChange={e=>setLvEmpId(e.target.value)} className="w-full border p-2.5 rounded-lg bg-white">
+               <div className="col-span-1 md:col-span-2">
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">ဝန်ထမ်းရွေးချယ်ရန်</label>
+                  <select required value={lvEmpId} onChange={e=>setLvEmpId(e.target.value)} className="w-full border p-3 text-sm rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500">
                      <option value="">-- ရွေးချယ်ပါ --</option>
                      {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
                </div>
-               <div><label className="text-xs font-bold text-gray-500">စတင်မည့်ရက် (From)</label><input type="date" required value={lvStart} onChange={e=>setLvStart(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <div><label className="text-xs font-bold text-gray-500">ပြီးဆုံးမည့်ရက် (To)</label><input type="date" required value={lvEnd} onChange={e=>setLvEnd(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <div>
-                  <label className="text-xs font-bold text-gray-500">ခွင့်အမျိုးအစား</label>
-                  <select value={lvType} onChange={e=>setLvType(e.target.value)} className="w-full border p-2.5 rounded-lg bg-white">
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">စတင်မည့်ရက်</label><input type="date" required value={lvStart} onChange={e=>setLvStart(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ပြီးဆုံးမည့်ရက်</label><input type="date" required value={lvEnd} onChange={e=>setLvEnd(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div className="col-span-1 md:col-span-2">
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">ခွင့်အမျိုးအစား</label>
+                  <select value={lvType} onChange={e=>setLvType(e.target.value)} className="w-full border p-3 text-sm rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500">
                      <option value="Sick Leave (နေမကောင်းခွင့်)">Sick Leave (နေမကောင်းခွင့်)</option>
                      <option value="Casual Leave (ကိစ္စရှိ၍ခွင့်)">Casual Leave (ကိစ္စရှိ၍ခွင့်)</option>
                   </select>
                </div>
-               <div className="col-span-1"><label className="text-xs font-bold text-gray-500">အကြောင်းရင်း</label><input required value={lvReason} onChange={e=>setLvReason(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 shadow-sm">➕ ခွင့်တင်မည်</button>
+               <div className="col-span-1 md:col-span-4"><label className="text-xs font-bold text-gray-500 mb-1 block">အကြောင်းရင်း</label><input required value={lvReason} onChange={e=>setLvReason(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div className="col-span-1 md:col-span-2"><button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 text-sm rounded-xl hover:bg-indigo-700 shadow-sm">➕ ခွင့်တင်မည်</button></div>
             </form>
 
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-               <table className="w-full text-left text-sm">
-                 <thead className="bg-gray-50 text-gray-600 font-bold border-b">
-                   <tr><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ခွင့်ရက်စွဲ (From - To)</th><th className="p-4">ခွင့်အမျိုးအစား & အကြောင်းရင်း</th><th className="p-4">Status</th><th className="p-4 text-right">Action</th></tr>
-                 </thead>
-                 <tbody>
-                    {leaves.map(l => {
-                       const emp = employees.find(e => e.id === l.employeeId);
-                       return (
-                         <tr key={l.id} className="border-b hover:bg-gray-50">
-                           <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
-                           <td className="p-4 font-bold text-gray-600">{l.startDate} <span className="text-xs font-normal">မှ</span> {l.endDate}</td>
-                           <td className="p-4 text-gray-500">{l.leaveType} <br/><span className="text-xs text-gray-400">{l.reason}</span></td>
-                           <td className="p-4">
-                              {l.status === 'Pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-amber-200">⏳ စောင့်ဆိုင်းဆဲ</span>}
-                              {l.status === 'Approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">✅ ခွင့်ပြုပြီး</span>}
-                              {l.status === 'Rejected' && <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">❌ ပယ်ချသည်</span>}
-                           </td>
-                           <td className="p-4 text-right">
-                              {l.status === 'Pending' && <button onClick={() => setActionLeave(l)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-blue-200">စီမံမည်</button>}
-                           </td>
-                         </tr>
-                       )
-                    })}
-                 </tbody>
-               </table>
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left text-sm whitespace-nowrap">
+                   <thead className="bg-gray-50 text-gray-600 font-bold border-b">
+                     <tr><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ခွင့်ရက်စွဲ (From - To)</th><th className="p-4">ခွင့်အမျိုးအစား & အကြောင်းရင်း</th><th className="p-4">Status</th><th className="p-4 text-right">Action</th></tr>
+                   </thead>
+                   <tbody>
+                      {leaves.map(l => {
+                         const emp = employees.find(e => e.id === l.employeeId);
+                         return (
+                           <tr key={l.id} className="border-b hover:bg-gray-50">
+                             <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
+                             <td className="p-4 font-bold text-gray-600">{l.startDate} <span className="text-xs font-normal">မှ</span> {l.endDate}</td>
+                             <td className="p-4 text-gray-500 whitespace-normal min-w-[200px]">{l.leaveType} <br/><span className="text-xs text-gray-400">{l.reason}</span></td>
+                             <td className="p-4">
+                                {l.status === 'Pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-amber-200">⏳ စောင့်ဆိုင်းဆဲ</span>}
+                                {l.status === 'Approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">✅ ခွင့်ပြုပြီး</span>}
+                                {l.status === 'Rejected' && <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">❌ ပယ်ချသည်</span>}
+                             </td>
+                             <td className="p-4 text-right">
+                                {l.status === 'Pending' && <button onClick={() => setActionLeave(l)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-blue-200">စီမံမည်</button>}
+                             </td>
+                           </tr>
+                         )
+                      })}
+                   </tbody>
+                 </table>
+               </div>
             </div>
          </div>
       )}
 
-      {/* 👩‍💼 Employees Tab */}
+      {/* 🌟 👩‍💼 Employees Tab (Android Responsive အပြည့်အဝပြင်ဆင်ပြီး) 🌟 */}
       {activeSubTab === 'employees' && isAdminOrHR && (
          <div className="space-y-6">
-            <form onSubmit={handleSaveEmployee} className={`bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-6 gap-4 items-end ${editingEmpId ? 'border-yellow-400 bg-yellow-50' : ''}`}>
-               <div><label className="text-xs font-bold text-gray-500">အမည်</label><input required value={empName} onChange={e=>setEmpName(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <div><label className="text-xs font-bold text-gray-500">ရာထူး</label><input required value={empPos} onChange={e=>setEmpPos(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <div><label className="text-xs font-bold text-gray-500">ဌာန</label><input required value={empDept} onChange={e=>setEmpDept(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <div><label className="text-xs font-bold text-gray-500">အခြေခံလစာ</label><input type="number" required value={empSalary} onChange={e=>setEmpSalary(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <div className="col-span-2 flex gap-2">
-                 <button type="submit" className={`flex-1 text-white font-bold py-2.5 rounded-lg ${editingEmpId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{editingEmpId ? '💾 ပြင်ဆင်မည်' : '➕ ဝန်ထမ်းထည့်မည်'}</button>
-                 {editingEmpId && <button type="button" onClick={resetEmpForm} className="bg-gray-200 text-gray-700 font-bold py-2.5 px-4 rounded-lg hover:bg-gray-300">✕ Cancel</button>}
+            <form onSubmit={handleSaveEmployee} className={`bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 items-end ${editingEmpId ? 'border-yellow-400 bg-yellow-50' : ''}`}>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">အမည်</label><input required value={empName} onChange={e=>setEmpName(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ရာထူး</label><input required value={empPos} onChange={e=>setEmpPos(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ဌာန</label><input required value={empDept} onChange={e=>setEmpDept(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">အခြေခံလစာ (Ks)</label><input type="number" required value={empSalary} onChange={e=>setEmpSalary(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div className="col-span-1 sm:col-span-2 flex gap-2">
+                 <button type="submit" className={`flex-1 text-white text-sm font-bold py-3 rounded-xl ${editingEmpId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{editingEmpId ? '💾 ပြင်ဆင်မည်' : '➕ ဝန်ထမ်းထည့်မည်'}</button>
+                 {editingEmpId && <button type="button" onClick={resetEmpForm} className="bg-gray-200 text-gray-700 text-sm font-bold py-3 px-4 rounded-xl hover:bg-gray-300">✕ Cancel</button>}
                </div>
             </form>
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-               <table className="w-full text-left text-sm">
-                 <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ID</th><th className="p-4">အမည်</th><th className="p-4">ရာထူး</th><th className="p-4">လစာ</th><th className="p-4">Status</th>{isMD && <th className="p-4 text-right">Action</th>}</tr></thead>
-                 <tbody>
-                    {employees.map(e => (
-                       <tr key={e.id} className="border-b"><td className="p-4 text-xs text-gray-400">{e.id}</td><td className="p-4 font-bold">{e.name}</td><td className="p-4">{e.position} ({e.department})</td><td className="p-4 font-bold text-emerald-600">{e.basicSalary.toLocaleString()} Ks</td><td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{e.status}</span></td>
-                       {isMD && (
-                          <td className="p-4 text-right space-x-2">
-                             <button onClick={() => handleEditEmployee(e)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-yellow-200">ပြင်မည်</button>
-                             <button onClick={() => handleDeleteEmployee(e.id)} className="bg-red-100 text-red-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-red-200">ဖျက်မည်</button>
-                          </td>
-                       )}
-                       </tr>
-                    ))}
-                 </tbody>
-               </table>
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left text-sm whitespace-nowrap">
+                   <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ID</th><th className="p-4">အမည်</th><th className="p-4">ရာထူး / ဌာန</th><th className="p-4 text-right">လစာ</th><th className="p-4 text-center">Status</th>{isMD && <th className="p-4 text-right">Action</th>}</tr></thead>
+                   <tbody>
+                      {employees.map(e => (
+                         <tr key={e.id} className="border-b hover:bg-gray-50">
+                            <td className="p-4 text-xs text-gray-400">{e.id}</td>
+                            <td className="p-4 font-bold text-gray-800">{e.name}</td>
+                            <td className="p-4 text-gray-600">{e.position} <span className="text-xs text-gray-400">({e.department})</span></td>
+                            <td className="p-4 font-bold text-emerald-600 text-right">{e.basicSalary.toLocaleString()} Ks</td>
+                            <td className="p-4 text-center"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{e.status}</span></td>
+                         {isMD && (
+                            <td className="p-4 text-right space-x-2">
+                               <button onClick={() => handleEditEmployee(e)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-yellow-200">ပြင်မည်</button>
+                               <button onClick={() => handleDeleteEmployee(e.id)} className="bg-red-100 text-red-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-red-200">ဖျက်မည်</button>
+                            </td>
+                         )}
+                         </tr>
+                      ))}
+                   </tbody>
+                 </table>
+               </div>
             </div>
          </div>
       )}
 
-      {/* 💸 Advances Tab */}
       {activeSubTab === 'advances' && isAdminOrHR && (
          <div className="space-y-6">
-            <form onSubmit={handleAddAdvance} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-               <div>
-                  <label className="text-xs font-bold text-gray-500">ဝန်ထမ်းရွေးချယ်ရန်</label>
-                  <select required value={advEmpId} onChange={e=>setAdvEmpId(e.target.value)} className="w-full border p-2.5 rounded-lg bg-white">
+            <form onSubmit={handleAddAdvance} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+               <div className="col-span-1 sm:col-span-2">
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">ဝန်ထမ်းရွေးချယ်ရန်</label>
+                  <select required value={advEmpId} onChange={e=>setAdvEmpId(e.target.value)} className="w-full border p-3 text-sm rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500">
                      <option value="">-- ရွေးချယ်ပါ --</option>
                      {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.position})</option>)}
                   </select>
                </div>
-               <div><label className="text-xs font-bold text-gray-500">ကြိုတင်ငွေပမာဏ (Ks)</label><input type="number" required value={advAmount} onChange={e=>setAdvAmount(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-               <div><label className="text-xs font-bold text-gray-500">အကြောင်းရင်း</label><input required value={advReason} onChange={e=>setAdvReason(e.target.value)} className="w-full border p-2.5 rounded-lg" placeholder="ဥပမာ - ဆေးဖိုး..." /></div>
-               <button type="submit" className="bg-indigo-600 text-white font-bold py-2.5 rounded-lg hover:bg-indigo-700 shadow-sm">➕ ထည့်မည်</button>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ကြိုတင်ငွေပမာဏ (Ks)</label><input type="number" required value={advAmount} onChange={e=>setAdvAmount(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div className="col-span-1 sm:col-span-3"><label className="text-xs font-bold text-gray-500 mb-1 block">အကြောင်းရင်း</label><input required value={advReason} onChange={e=>setAdvReason(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ဥပမာ - ဆေးဖိုး..." /></div>
+               <div className="col-span-1"><button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 text-sm rounded-xl hover:bg-indigo-700 shadow-sm">➕ ထည့်မည်</button></div>
             </form>
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
-               <table className="w-full text-left text-sm">
-                 <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ရက်စွဲ</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">အကြောင်းရင်း</th><th className="p-4">ပမာဏ</th><th className="p-4">Status</th></tr></thead>
-                 <tbody>
-                    {advances.map(a => {
-                       const emp = employees.find(e => e.id === a.employeeId);
-                       return (
-                         <tr key={a.id} className="border-b hover:bg-gray-50">
-                           <td className="p-4 font-bold text-gray-500">{a.date}</td>
-                           <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
-                           <td className="p-4 text-gray-600">{a.reason}</td>
-                           <td className="p-4 font-bold text-rose-600">{a.amount.toLocaleString()} Ks</td>
-                           <td className="p-4">{a.deducted ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase border">လစာမှနုတ်ပြီး</span> : <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-yellow-200">နုတ်ရန်ကျန်</span>}</td>
-                         </tr>
-                       )
-                    })}
-                 </tbody>
-               </table>
+               <div className="overflow-x-auto">
+                 <table className="w-full text-left text-sm whitespace-nowrap">
+                   <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ရက်စွဲ</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">အကြောင်းရင်း</th><th className="p-4 text-right">ပမာဏ</th><th className="p-4 text-center">Status</th></tr></thead>
+                   <tbody>
+                      {advances.map(a => {
+                         const emp = employees.find(e => e.id === a.employeeId);
+                         return (
+                           <tr key={a.id} className="border-b hover:bg-gray-50">
+                             <td className="p-4 font-bold text-gray-500">{a.date}</td>
+                             <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
+                             <td className="p-4 text-gray-600">{a.reason}</td>
+                             <td className="p-4 font-bold text-rose-600 text-right">{a.amount.toLocaleString()} Ks</td>
+                             <td className="p-4 text-center">{a.deducted ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase border">လစာမှနုတ်ပြီး</span> : <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-yellow-200">နုတ်ရန်ကျန်</span>}</td>
+                           </tr>
+                         )
+                      })}
+                   </tbody>
+                 </table>
+               </div>
             </div>
          </div>
       )}
 
-      {/* 💰 Payroll Tab */}
       {activeSubTab === 'payroll' && isAdminOrHR && (
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {employees.map(emp => {
                const pData = calculatePayroll(emp);
                return (
@@ -527,11 +531,11 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                         
                         <div className="flex justify-between items-center mt-2">
                            <span>Bonus အပိုဆု:</span>
-                           <input type="number" value={pData.extra.bonus || ''} onChange={(e) => setExtraPays({...extraPays, [emp.id]: {...pData.extra, bonus: Number(e.target.value)}})} placeholder="0" className="w-24 text-right border rounded p-1 text-xs" />
+                           <input type="number" value={pData.extra.bonus || ''} onChange={(e) => setExtraPays({...extraPays, [emp.id]: {...pData.extra, bonus: Number(e.target.value)}})} placeholder="0" className="w-24 text-right border rounded p-2 text-xs outline-none focus:ring-1 focus:ring-emerald-500" />
                         </div>
                         <div className="flex justify-between items-center mt-1">
                            <span>Commission:</span>
-                           <input type="number" value={pData.extra.commission || ''} onChange={(e) => setExtraPays({...extraPays, [emp.id]: {...pData.extra, commission: Number(e.target.value)}})} placeholder="0" className="w-24 text-right border rounded p-1 text-xs" />
+                           <input type="number" value={pData.extra.commission || ''} onChange={(e) => setExtraPays({...extraPays, [emp.id]: {...pData.extra, commission: Number(e.target.value)}})} placeholder="0" className="w-24 text-right border rounded p-2 text-xs outline-none focus:ring-1 focus:ring-emerald-500" />
                         </div>
 
                         <div className="border-t border-gray-200 my-2 pt-2 text-[10px] text-gray-400 uppercase">ဖြတ်တောက်ငွေများ (Deductions)</div>
@@ -540,73 +544,72 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                      </div>
                      
                      <div className="flex justify-between items-center mt-4 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                        <span className="font-black text-indigo-900 text-sm">အသားတင်ရငွေ (Net Pay)</span>
-                        <span className="text-2xl font-black text-indigo-600">{pData.netPay.toLocaleString()} Ks</span>
+                        <span className="font-black text-indigo-900 text-sm">အသားတင်ရငွေ</span>
+                        <span className="text-xl font-black text-indigo-700">{pData.netPay.toLocaleString()} Ks</span>
                      </div>
-                     <button onClick={() => setPayslipData({ emp, data: pData })} className="mt-4 w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-black shadow-md">🖨️ လစာထုတ်ပေးမည် / PDF ကြည့်မည်</button>
+                     <button onClick={() => setPayslipData({ emp, data: pData })} className="mt-4 w-full bg-gray-900 text-white font-bold py-3 text-sm rounded-xl hover:bg-black shadow-md">🖨️ လစာထုတ်မည် / PDF ကြည့်မည်</button>
                   </div>
                )
             })}
          </div>
       )}
 
-      {/* ⚙️ Settings Tab */}
       {activeSubTab === 'settings' && isMD && (
          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xl border border-gray-200 max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center gap-3 border-b-2 border-indigo-100 pb-4"><h3 className="font-black text-2xl text-indigo-900">⚙️ လုပ်ငန်းခွင် မူဝါဒနှင့် ဒဏ်ကြေးသတ်မှတ်ချက်များ</h3></div>
+            <div className="flex items-center gap-3 border-b-2 border-indigo-100 pb-4"><h3 className="font-black text-xl md:text-2xl text-indigo-900">⚙️ လုပ်ငန်းခွင် မူဝါဒနှင့် ဒဏ်ကြေးသတ်မှတ်ချက်များ</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
                   <h4 className="font-bold text-gray-700 border-b pb-2">⏰ ရုံးချိန် & တည်နေရာ (GPS)</h4>
                   <div className="grid grid-cols-2 gap-4">
-                     <div><label className="text-xs font-bold text-gray-500">ရုံးတက်ချိန်</label><input type="time" value={setStartTime} onChange={e=>setSetStartTime(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-                     <div><label className="text-xs font-bold text-gray-500">ရုံးဆင်းချိန်</label><input type="time" value={setEndTime} onChange={e=>setSetEndTime(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+                     <div><label className="text-xs font-bold text-gray-500 block mb-1">ရုံးတက်ချိန်</label><input type="time" value={setStartTime} onChange={e=>setSetStartTime(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                     <div><label className="text-xs font-bold text-gray-500 block mb-1">ရုံးဆင်းချိန်</label><input type="time" value={setEndTime} onChange={e=>setSetEndTime(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
                   </div>
                   <div className="pt-2 border-t mt-2">
-                     <div className="flex justify-between items-end gap-2 mb-2">
-                        <div className="flex-1"><label className="text-xs font-bold text-gray-500">Latitude</label><input value={setLat} onChange={e=>setSetLat(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
-                        <div className="flex-1"><label className="text-xs font-bold text-gray-500">Longitude</label><input value={setLon} onChange={e=>setSetLon(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+                     <div className="flex justify-between items-end gap-2 mb-3">
+                        <div className="flex-1"><label className="text-xs font-bold text-gray-500 block mb-1">Latitude</label><input value={setLat} onChange={e=>setSetLat(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                        <div className="flex-1"><label className="text-xs font-bold text-gray-500 block mb-1">Longitude</label><input value={setLon} onChange={e=>setSetLon(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
                      </div>
-                     <button type="button" onClick={handleAutoGetGPS} className="w-full bg-blue-600 text-white font-bold py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"><span>📍</span> လက်ရှိနေရာကို (Auto) ရယူမည်</button>
+                     <button type="button" onClick={handleAutoGetGPS} className="w-full bg-blue-600 text-white font-bold py-3 text-sm rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"><span>📍</span> လက်ရှိနေရာကို (Auto) ရယူမည်</button>
                   </div>
-                  <div><label className="text-xs font-bold text-gray-500">GPS ခွင့်ပြုမည့်အကွာအဝေး (မီတာ)</label><input type="number" value={setRad} onChange={e=>setSetRad(e.target.value)} className="w-full border p-2.5 rounded-lg" /></div>
+                  <div><label className="text-xs font-bold text-gray-500 block mb-1">GPS ခွင့်ပြုမည့်အကွာအဝေး (မီတာ)</label><input type="number" value={setRad} onChange={e=>setSetRad(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
                </div>
 
                <div className="space-y-4 bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
                   <h4 className="font-bold text-emerald-800 border-b border-emerald-200 pb-2">💰 အားပေးဆုငွေများ (Bonuses)</h4>
-                  <div><label className="text-xs font-bold text-emerald-600">ရက်မှန်ကြေး (Perfect Attendance)</label><input type="number" value={setPerfect} onChange={e=>setSetPerfect(e.target.value)} className="w-full border-emerald-200 p-2.5 rounded-lg" /></div>
-                  <div><label className="text-xs font-bold text-emerald-600">အချိန်မှန်ကြေး (Punctuality Bonus)</label><input type="number" value={setPunctuality} onChange={e=>setSetPunctuality(e.target.value)} className="w-full border-emerald-200 p-2.5 rounded-lg" /></div>
+                  <div><label className="text-xs font-bold text-emerald-600 block mb-1">ရက်မှန်ကြေး (Perfect Attendance)</label><input type="number" value={setPerfect} onChange={e=>setSetPerfect(e.target.value)} className="w-full border border-emerald-200 p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" /></div>
+                  <div><label className="text-xs font-bold text-emerald-600 block mb-1">အချိန်မှန်ကြေး (Punctuality Bonus)</label><input type="number" value={setPunctuality} onChange={e=>setSetPunctuality(e.target.value)} className="w-full border border-emerald-200 p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" /></div>
                   <p className="text-[10px] text-emerald-600 font-bold">မှတ်ချက်: လစာထုတ်ချိန်တွင် အလိုအလျောက် ပေါင်းထည့်ပေးမည်ဖြစ်သည်။</p>
                </div>
             </div>
 
             <div className="bg-rose-50 p-5 md:p-6 rounded-2xl border border-rose-100">
                <h4 className="font-bold text-rose-800 border-b border-rose-200 pb-2 mb-4 flex justify-between items-center">
-                  <span>📉 နောက်ကျဒဏ်ကြေး မူဝါဒများ (Dynamic Rules)</span>
-                  <button onClick={() => setSetRules([...setRules, {id: Date.now(), startMin: 0, endMin: 0, deduction: 0, type: 'amount'}])} className="bg-rose-200 text-rose-800 text-xs px-3 py-1 rounded font-bold hover:bg-rose-300">+ ထပ်ထည့်မည်</button>
+                  <span>📉 နောက်ကျဒဏ်ကြေး မူဝါဒများ</span>
+                  <button onClick={() => setSetRules([...setRules, {id: Date.now(), startMin: 0, endMin: 0, deduction: 0, type: 'amount'}])} className="bg-rose-200 text-rose-800 text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-rose-300 shadow-sm">+ ထပ်ထည့်မည်</button>
                </h4>
                <div className="space-y-3">
                   {setRules.map((rule, index) => (
-                     <div key={rule.id} className="flex flex-wrap md:flex-nowrap gap-3 items-center bg-white p-3 rounded-xl border border-rose-100 shadow-sm">
-                        <span className="text-xs font-bold text-gray-500 w-16">မိနစ်:</span>
-                        <input type="number" value={rule.startMin} onChange={(e) => { const newR = [...setRules]; newR[index].startMin = Number(e.target.value); setSetRules(newR); }} className="w-16 border rounded p-2 text-sm text-center" />
+                     <div key={rule.id} className="flex flex-wrap items-center bg-white p-3 rounded-xl border border-rose-100 shadow-sm gap-2">
+                        <span className="text-xs font-bold text-gray-500">မိနစ်:</span>
+                        <input type="number" value={rule.startMin} onChange={(e) => { const newR = [...setRules]; newR[index].startMin = Number(e.target.value); setSetRules(newR); }} className="w-16 border rounded-lg p-2 text-sm text-center outline-none focus:border-rose-400" />
                         <span className="text-xs font-bold text-gray-500">မှ</span>
-                        <input type="number" value={rule.endMin} onChange={(e) => { const newR = [...setRules]; newR[index].endMin = Number(e.target.value); setSetRules(newR); }} className="w-16 border rounded p-2 text-sm text-center" />
-                        <span className="text-xs font-bold text-gray-500 w-16">အထိ =</span>
-                        <select value={rule.type} onChange={(e) => { const newR = [...setRules]; newR[index].type = e.target.value as any; setSetRules(newR); }} className="w-32 border rounded p-2 text-sm bg-gray-50 font-bold text-rose-600 outline-none">
+                        <input type="number" value={rule.endMin} onChange={(e) => { const newR = [...setRules]; newR[index].endMin = Number(e.target.value); setSetRules(newR); }} className="w-16 border rounded-lg p-2 text-sm text-center outline-none focus:border-rose-400" />
+                        <span className="text-xs font-bold text-gray-500">အထိ =</span>
+                        <select value={rule.type} onChange={(e) => { const newR = [...setRules]; newR[index].type = e.target.value as any; setSetRules(newR); }} className="flex-1 border rounded-lg p-2 text-sm bg-gray-50 font-bold text-rose-600 outline-none focus:border-rose-400">
                            <option value="amount">ငွေသားဖြတ်မည်</option>
                            <option value="half_day">နေ့ဝက် (Half-Day)</option>
                            <option value="full_day">ရက်ပျက် (Full-Day)</option>
                         </select>
                         {rule.type === 'amount' && (
-                           <input type="number" value={rule.deduction} onChange={(e) => { const newR = [...setRules]; newR[index].deduction = Number(e.target.value); setSetRules(newR); }} placeholder="ဖြတ်မည့်ငွေ" className="w-24 border rounded p-2 text-sm text-right" />
+                           <input type="number" value={rule.deduction} onChange={(e) => { const newR = [...setRules]; newR[index].deduction = Number(e.target.value); setSetRules(newR); }} placeholder="ဖြတ်မည့်ငွေ" className="w-24 border rounded-lg p-2 text-sm text-right outline-none focus:border-rose-400" />
                         )}
-                        <button onClick={() => setSetRules(setRules.filter(r => r.id !== rule.id))} className="ml-auto text-red-500 font-bold px-2 hover:bg-red-50 rounded">✕</button>
+                        <button onClick={() => setSetRules(setRules.filter(r => r.id !== rule.id))} className="text-red-500 font-bold px-2 hover:bg-red-50 rounded-lg text-lg">✕</button>
                      </div>
                   ))}
                </div>
                <p className="text-[10px] text-rose-600 font-bold mt-4">မှတ်ချက်: လစာတွက်ချက်ရာတွင် ဤစည်းမျဉ်းများကို ကြည့်၍ အော်တို ဖြတ်တောက်မည်ဖြစ်သည်။</p>
             </div>
-            <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-black py-4 rounded-xl shadow-lg hover:from-indigo-700 hover:to-indigo-900 text-lg transition-transform active:scale-95">💾 မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည်</button>
+            <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-black py-4 text-sm rounded-xl shadow-lg hover:from-indigo-700 hover:to-indigo-900 transition-transform active:scale-95">💾 မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည်</button>
          </div>
       )}
     </div>
