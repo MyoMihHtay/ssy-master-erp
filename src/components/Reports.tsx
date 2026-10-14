@@ -94,52 +94,98 @@ export const Reports: React.FC<ReportsProps> = ({
 
     if (activeTab === 'sales') {
       data = filteredSales.map(s => ({
-        'ရက်စွဲ': s.date,
-        'ဝယ်သူအမည်': s.customerName,
-        'အရောင်းဝန်ထမ်း': s.salespersonName,
-        'ကုန်ပစ္စည်းများ': s.items.map(i => `${i.product.category} (${i.quantity})`).join(', '),
-        'ငွေချေစနစ်': s.paymentMethod,
-        'ကျသင့်ငွေ': s.finalAmount,
-        'Status': s.isPaid ? 'Paid' : 'Unpaid'
+        [tr(language, 'reportsDate')]: s.date,
+        [tr(language, 'reportsCustomer')]: s.customerName,
+        [tr(language, 'reportsSalesperson')]: s.salespersonName,
+        [tr(language, 'reportsProducts')]: s.items.map(i => `${i.product.category} (${i.quantity})`).join(', '),
+        [tr(language, 'reportsPaymentMethod')]: s.paymentMethod,
+        [tr(language, 'reportsTotalAmount')]: s.finalAmount,
+        [tr(language, 'reportsStatus')]: s.isPaid
+          ? tr(language, 'reportsPaid')
+          : (language === 'my' ? 'မပေးချေရသေး' : 'Unpaid')
       }));
       fileName = 'ERP_Sales_Report';
     } else if (activeTab === 'inventory') {
       data = [
-        ...inventory.map(i => ({ 'အမျိုးအစား': 'ကုန်ကြမ်း/ထုပ်ပိုး (RM/PKG)', 'ပစ္စည်းအမည်': i.name, 'လက်ကျန်': `${i.inStock} ${i.unit}`, 'တန်ဖိုး': (i.inStock * (i.lastPurchasePrice || 0)) })),
-        ...finishedGoods.map(fg => ({ 'အမျိုးအစား': 'ကုန်ချော (FG)', 'ပစ္စည်းအမည်': `${fg.category} - ${fg.taste} (${fg.gram}g)`, 'လက်ကျန်': `${fg.stockQty} ထုပ်`, 'တန်ဖိုး': (fg.stockQty * fg.price) }))
+        ...inventory.map(i => ({
+          [tr(language, 'reportsType')]: language === 'my'
+            ? 'ကုန်ကြမ်း/ထုပ်ပိုး (RM/PKG)'
+            : 'Raw Material / Packaging (RM/PKG)',
+          [tr(language, 'reportsItemName')]: i.name,
+          [tr(language, 'reportsStock')]: `${i.inStock} ${i.unit}`,
+          [tr(language, 'reportsEstimatedValue')]: (i.inStock * (i.lastPurchasePrice || 0))
+        })),
+        ...finishedGoods.map(fg => ({
+          [tr(language, 'reportsType')]: `${tr(language, 'reportsFinishedGoods')} (FG)`,
+          [tr(language, 'reportsItemName')]: `${fg.category} - ${fg.taste} (${fg.gram}g)`,
+          [tr(language, 'reportsStock')]: `${fg.stockQty} ${tr(language, 'reportsPacks')}`,
+          [tr(language, 'reportsEstimatedValue')]: (fg.stockQty * fg.price)
+        }))
       ];
       fileName = 'ERP_Inventory_Report';
     } else if (activeTab === 'procurement') {
       data = filteredPRs.map(pr => ({
         'PR No.': `PR-${pr.id}`,
-        'ရက်စွဲ': pr.date,
-        'ပစ္စည်းအမည်': pr.itemName || pr.items?.map(i => i.itemName).join(', '),
-        'အရေအတွက်': pr.requestedQty || pr.items?.reduce((acc, i) => acc + i.requestedQty, 0),
-        'ပေးချေမှု': pr.paymentMethod,
-        'Status': pr.status
+        [tr(language, 'reportsDate')]: pr.date,
+        [tr(language, 'reportsItemName')]: pr.itemName || pr.items?.map(i => i.itemName).join(', '),
+        [tr(language, 'reportsQuantity')]: pr.requestedQty || pr.items?.reduce((acc, i) => acc + i.requestedQty, 0),
+        [tr(language, 'reportsPaymentMethod')]: pr.paymentMethod,
+        [tr(language, 'reportsStatus')]: pr.status
       }));
       fileName = 'ERP_Procurement_Report';
     } else if (activeTab === 'production') {
       data = [
-        ...recipes.map(r => ({ 'ထုတ်လုပ်မှု အမျိုးအစား': 'ကုန်ကြမ်းမှ ကုန်ပိုင်း (SFG)', 'အမည်': r.name, 'ထွက်ရှိမှု': `${r.outputQtyPerBatch} ${r.outputUnit}`, 'ပါဝင်ပစ္စည်းများ': r.ingredients.map(i => `${i.itemName} (${i.requiredQty})`).join(' + ') })),
-        ...packageRecipes.map(pr => ({ 'ထုတ်လုပ်မှု အမျိုးအစား': 'ထုပ်ပိုးမှု (FG)', 'အမည်': pr.skuName, 'ထွက်ရှိမှု': '၁ ထုပ်', 'ပါဝင်ပစ္စည်းများ': pr.ingredients.map(i => `${i.itemName} (${i.requiredQty})`).join(' + ') }))
+        ...recipes.map(r => ({
+          [tr(language, 'reportsProductionType')]: language === 'my'
+            ? 'ကုန်ကြမ်းမှ ကုန်ပိုင်း (SFG)'
+            : 'Raw Material to Semi-Finished Goods (SFG)',
+          [tr(language, 'reportsProductName')]: r.name,
+          [tr(language, 'reportsOutputQty')]: `${r.outputQtyPerBatch} ${r.outputUnit}`,
+          [tr(language, 'reportsRequiredBom')]: r.ingredients.map(i => `${i.itemName} (${i.requiredQty})`).join(' + ')
+        })),
+        ...packageRecipes.map(pr => ({
+          [tr(language, 'reportsProductionType')]: language === 'my'
+            ? 'ထုပ်ပိုးမှု (FG)'
+            : 'Packaging (FG)',
+          [tr(language, 'reportsProductName')]: pr.skuName,
+          [tr(language, 'reportsOutputQty')]: language === 'my' ? '၁ ထုပ်' : '1 Pack',
+          [tr(language, 'reportsRequiredBom')]: pr.ingredients.map(i => `${i.itemName} (${i.requiredQty})`).join(' + ')
+        }))
       ];
       fileName = 'ERP_Production_Recipes_Report';
     } else if (activeTab === 'finance') {
       data = filteredExpenses.map(e => ({
-        'ရက်စွဲ': e.date,
-        'ခေါင်းစဉ်': e.category,
-        'အကြောင်းအရာ': e.description,
-        'အမျိုးအစား': e.type === 'income' ? 'ဝင်ငွေ' : 'ထွက်ငွေ',
-        'ပမာဏ': e.amount
+        [tr(language, 'reportsDate')]: e.date,
+        [tr(language, 'reportsCategory')]: e.category,
+        [tr(language, 'reportsDescription')]: e.description,
+        [tr(language, 'reportsType')]: e.type === 'income'
+          ? tr(language, 'reportsIncome')
+          : tr(language, 'reportsExpense'),
+        [tr(language, 'reportsAmount')]: e.amount
       }));
       fileName = 'ERP_Finance_Report';
     } else if (activeTab === 'alarms') {
       data = [
-        ...lowStockRM.map(i => ({ 'အမျိုးအစား': 'ကုန်ကြမ်း ပြတ်လုနီးပါး', 'အကြောင်းအရာ': i.name, 'မှတ်ချက်': `လက်ကျန်: ${i.inStock} ${i.unit}` })),
-        ...lowStockFG.map(f => ({ 'အမျိုးအစား': 'ကုန်ချော ပြတ်လုနီးပါး', 'အကြောင်းအရာ': `${f.category} (${f.gram}g)`, 'မှတ်ချက်': `လက်ကျန်: ${f.stockQty} ထုပ်` })),
-        ...unpaidSales.map(s => ({ 'အမျိုးအစား': 'ရစရာရှိသော အကြွေး', 'အကြောင်းအရာ': `${s.customerName} (${s.id})`, 'မှတ်ချက်': `ပမာဏ: ${s.finalAmount} Ks` })),
-        ...unpaidPRs.map(p => ({ 'အမျိုးအစား': 'ပေးရန်ရှိသော အကြွေး', 'အကြောင်းအရာ': `PR-${p.id}`, 'မှတ်ချက်': `Supplier အား ပေးရန်ကျန်` }))
+        ...lowStockRM.map(i => ({
+          [tr(language, 'reportsAlarmType')]: tr(language, 'reportsLowStockRM'),
+          [tr(language, 'reportsDescription')]: i.name,
+          [tr(language, 'reportsNotesStatus')]: `${tr(language, 'reportsStockRemaining')}: ${i.inStock} ${i.unit}`
+        })),
+        ...lowStockFG.map(f => ({
+          [tr(language, 'reportsAlarmType')]: tr(language, 'reportsLowStockFG'),
+          [tr(language, 'reportsDescription')]: `${f.category} (${f.gram}g)`,
+          [tr(language, 'reportsNotesStatus')]: `${tr(language, 'reportsStockRemaining')}: ${f.stockQty} ${tr(language, 'reportsPacks')}`
+        })),
+        ...unpaidSales.map(s => ({
+          [tr(language, 'reportsAlarmType')]: tr(language, 'reportsReceivable'),
+          [tr(language, 'reportsDescription')]: `${s.customerName} (${s.id})`,
+          [tr(language, 'reportsNotesStatus')]: `${tr(language, 'reportsAmountLabel')}: ${s.finalAmount} Ks`
+        })),
+        ...unpaidPRs.map(p => ({
+          [tr(language, 'reportsAlarmType')]: tr(language, 'reportsPayable'),
+          [tr(language, 'reportsDescription')]: `PR-${p.id}`,
+          [tr(language, 'reportsNotesStatus')]: tr(language, 'reportsSupplierOutstanding')
+        }))
       ];
       fileName = 'ERP_Alarms_Report';
     }
