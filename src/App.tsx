@@ -374,7 +374,11 @@ export default function App() {
     return (
       <div className="flex w-full h-screen items-center justify-center bg-gray-50 flex-col gap-4">
          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-         <p className="font-bold text-slate-500">Cloud Data ချိတ်ဆက်နေပါသည်...</p>
+         <p className="font-bold text-slate-500">
+            {language === 'my'
+              ? 'Cloud Data ချိတ်ဆက်နေပါသည်...'
+              : 'Connecting to cloud data...'}
+          </p>
       </div>
     );
   }
@@ -398,11 +402,17 @@ export default function App() {
          <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
            {isCloudConnected ? (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-emerald-400 bg-emerald-400/10 py-2 rounded-lg border border-emerald-400/20">
-               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>☁️ Cloud ချိတ်ဆက်ထားသည်
+               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                {language === 'my'
+                  ? '☁️ Cloud ချိတ်ဆက်ထားသည်'
+                  : '☁️ Cloud Connected'}
              </div>
            ) : (
              <div className="flex items-center justify-center gap-2 text-xs font-bold text-amber-500 bg-amber-500/10 py-2 rounded-lg border border-amber-500/20">
-               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...
+               <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                {language === 'my'
+                  ? 'ချိတ်ဆက်မှု စစ်ဆေးနေပါသည်...'
+                  : 'Checking connection...'}
              </div>
            )}
          </div>
