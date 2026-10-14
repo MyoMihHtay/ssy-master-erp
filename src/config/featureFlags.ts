@@ -1,5 +1,5 @@
 export const featureFlags = {
-  bilingualUi: false,
+  bilingualUi: true,
   factoryModuleRegistry: false,
   secureAuth: false,
   inventoryLedger: false,

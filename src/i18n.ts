@@ -24,6 +24,8 @@ export const translations = {
     language: 'ဘာသာစကား',
     myanmar: 'မြန်မာ',
     english: 'English',
+    currentUser: 'လက်ရှိအသုံးပြုသူ',
+    logout: 'အကောင့်ထွက်မည်',
   },
   en: {
     dashboard: 'Dashboard',
@@ -45,6 +47,8 @@ export const translations = {
     language: 'Language',
     myanmar: 'Myanmar',
     english: 'English',
+    currentUser: 'Current User',
+    logout: 'Log Out',
   },
 } as const;
 

@@ -15,6 +15,7 @@ import { HR } from './components/HR';
 import { Dashboard } from './components/Dashboard';
 import { Workspace } from './components/Workspace';
 import { Reports } from './components/Reports';
+import { LANGUAGE_STORAGE_KEY, type AppLanguage } from './i18n';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; }
@@ -144,6 +145,10 @@ export default function App() {
   const [hrSettings, setHrSettings, hrsLoading] = useSupabaseTable<HRSetting>('ssy_hr_settings', []);
 
   const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
+  const [language, setLanguage] = useLocalStorage<AppLanguage>(
+    LANGUAGE_STORAGE_KEY,
+    'my'
+  );
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [highlightSaleId, setHighlightSaleId] = useState<string | null>(null);
 
@@ -387,7 +392,7 @@ export default function App() {
          </div>
          <div className="flex-1 overflow-y-auto">
            <div onClick={() => setIsMobileMenuOpen(false)}>
-             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} />
+             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} language={language} setLanguage={setLanguage} />
            </div>
          </div>
          <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
