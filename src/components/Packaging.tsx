@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import type { InventoryItem, PackageRecipe, RecipeIngredient, BOMResult, FinishedGoodItem } from '../App';
+import { tr, type AppLanguage } from '../i18n';
 
-interface PackagingProps { userRole: string; inventoryItems: InventoryItem[]; packageRecipes: PackageRecipe[]; setPackageRecipes: React.Dispatch<React.SetStateAction<PackageRecipe[]>>; onPackagingConfirm: (recipe: PackageRecipe, packQty: number, totalCost: number, consumedSFG: BOMResult[], consumedPKG: BOMResult[]) => void; }
+interface PackagingProps { userRole: string; inventoryItems: InventoryItem[]; packageRecipes: PackageRecipe[]; setPackageRecipes: React.Dispatch<React.SetStateAction<PackageRecipe[]>>; onPackagingConfirm: (recipe: PackageRecipe, packQty: number, totalCost: number, consumedSFG: BOMResult[], consumedPKG: BOMResult[]) => void; language: AppLanguage; }
 
-export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, packageRecipes, setPackageRecipes, onPackagingConfirm }) => {
+export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, packageRecipes, setPackageRecipes, onPackagingConfirm, language }) => {
   const [activeTab, setActiveTab] = useState<'pack' | 'recipes'>('pack');
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   
@@ -60,10 +61,14 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
 
   const handleConfirmPackaging = () => {
     if (!selectedRecipe || !bomDetails) return;
-    if (!bomDetails.allStockEnough) return alert("❌ ပါဝင်ပစ္စည်း (SFG/PKG) လက်ကျန် မလုံလောက်ပါ။");
-    if (!isManager) return alert("❌ Manager/MD သာလျှင် အတည်ပြုခွင့် ရှိပါသည်။");
+    if (!bomDetails.allStockEnough) return alert(tr(language, 'packagingStockAlert'));
+    if (!isManager) return alert(tr(language, 'packagingManagerOnly'));
 
-    if (window.confirm(`⚠️ ${packQty} ထုပ် (Finished Goods) ထုပ်ပိုးပြီး SFG & PKG ဂိုထောင်များမှ ပါဝင်ပစ္စည်းများအား နှုတ်ရန် သေချာပါသလား?`)) {
+    if (window.confirm(
+      language === 'my'
+        ? `⚠️ ${packQty} ထုပ် (Finished Goods) ထုပ်ပိုးပြီး SFG & PKG ဂိုထောင်များမှ ပါဝင်ပစ္စည်းများအား နှုတ်ရန် သေချာပါသလား?`
+        : `⚠️ Confirm packaging of ${packQty} finished-goods packs and deduct the required SFG and PKG materials?`
+    )) {
        onPackagingConfirm(selectedRecipe, packQty, bomDetails.totalCost, bomDetails.consumedSFG, bomDetails.consumedPKG);
        setSelectedRecipe(null);
        setPackQty(100);
@@ -77,7 +82,7 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
     setIsRecipeModalOpen(true);
   };
   const handleSaveRecipe = () => {
-    if (!taste || !gram || !price || ingredients.length === 0) return alert('အချက်အလက်ပြည့်စုံစွာ ဖြည့်ပါ။');
+    if (!taste || !gram || !price || ingredients.length === 0) return alert(tr(language, 'packagingRequiredInfo'));
     const skuName = `${category} (${taste}) - ${gram}g`;
     const newRecipe: PackageRecipe = { id: editingRecipe?.id || Date.now().toString(), skuName, category, taste, gram: Number(gram), price: Number(price), ingredients };
     if (editingRecipe) setPackageRecipes(packageRecipes.map(r => r.id === editingRecipe.id ? newRecipe : r));
@@ -88,10 +93,10 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
   return (
     <div className="p-2 md:p-6 max-w-7xl mx-auto relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-3 tracking-tight border-b-2 border-purple-200 pb-4">
-         <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-2"><span>🏷️</span> ကုန်ချော ထုပ်ပိုးခြင်း (Packaging)</h2>
+         <h2 className="text-2xl md:text-3xl font-black text-slate-800 flex items-center gap-2"><span>🏷️</span> {tr(language, 'packagingTitle')}</h2>
          <div className="flex gap-2 bg-white p-1 rounded-xl shadow-sm border border-gray-200 w-full md:w-auto">
-            <button onClick={() => setActiveTab('pack')} className={`flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm ${activeTab === 'pack' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-gray-100'}`}>📦 ထုပ်ပိုးမည်</button>
-            <button onClick={() => setActiveTab('recipes')} className={`flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm ${activeTab === 'recipes' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-gray-100'}`}>📋 SKU (ကုန်ချော) စီမံမည်</button>
+            <button onClick={() => setActiveTab('pack')} className={`flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm ${activeTab === 'pack' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-gray-100'}`}>{tr(language, 'packagingPackTab')}</button>
+            <button onClick={() => setActiveTab('recipes')} className={`flex-1 md:flex-none px-5 py-2 rounded-lg font-bold text-sm ${activeTab === 'recipes' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-gray-100'}`}>{tr(language, 'packagingSkuTab')}</button>
          </div>
       </div>
 
@@ -99,23 +104,23 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
            {/* SKU Selection Area */}
            <div className="bg-white p-5 md:p-6 rounded-2xl shadow-lg border border-gray-100">
-             <h3 className="font-bold text-gray-700 mb-4 pb-2 border-b">၁။ ထုပ်ပိုးမည့် SKU ရွေးပါ</h3>
+             <h3 className="font-bold text-gray-700 mb-4 pb-2 border-b">{tr(language, 'packagingSelectSku')}</h3>
              <div className="space-y-3">
                {packageRecipes.map(r => (
                  <div key={r.id} onClick={() => setSelectedRecipe(r)} className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:border-purple-300 flex justify-between items-center ${selectedRecipe?.id === r.id ? 'border-purple-500 bg-purple-50' : 'border-gray-100 bg-gray-50'}`}>
                     <div>
                       <h4 className="font-extrabold text-purple-900 text-lg">{r.skuName}</h4>
-                      <p className="text-sm font-bold text-purple-700">Price: {r.price.toLocaleString()} Ks</p>
+                      <p className="text-sm font-bold text-purple-700">{tr(language, 'packagingPrice')}: {r.price.toLocaleString()} Ks</p>
                     </div>
                     {selectedRecipe?.id === r.id && <span className="text-2xl">✅</span>}
                  </div>
                ))}
-               {packageRecipes.length === 0 && <div className="text-center text-gray-400 py-6 md:col-span-2">SKU မရှိသေးပါ။ (SKU စီမံမည်) တွင်အရင်ထည့်ပါ။</div>}
+               {packageRecipes.length === 0 && <div className="text-center text-gray-400 py-6 md:col-span-2">{tr(language, 'packagingNoSku')}</div>}
              </div>
              
              {selectedRecipe && (
                <div className="mt-6 border-t pt-4">
-                 <label className="block text-sm font-bold text-gray-600 mb-1.5">၂။ ထုပ်ပိုးမည့် ထုပ်အရေအတွက် (Packs)</label>
+                 <label className="block text-sm font-bold text-gray-600 mb-1.5">{tr(language, 'packagingPackQty')} ({tr(language, 'packagingPacks')})</label>
                  <input type="number" min="1" step="10" value={packQty} onChange={(e) => setPackQty(Number(e.target.value))} className="w-full md:w-40 p-3 border-2 border-purple-200 rounded-lg outline-none focus:border-purple-500 font-black text-xl text-purple-900" />
                </div>
              )}
@@ -125,14 +130,14 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
            {selectedRecipe && bomDetails && (
              <div className="bg-white p-5 md:p-6 rounded-2xl shadow-xl border border-purple-100 flex flex-col h-full sticky top-4">
                <div className="flex justify-between items-center border-b pb-4 mb-4">
-                 <h3 className="text-lg font-bold text-purple-950 flex items-center gap-2"><span>BOM:</span> {packQty} ထုပ် - {selectedRecipe.skuName}</h3>
-                 {!bomDetails.allStockEnough && <span className="text-xs font-bold text-white bg-red-600 px-3 py-1 rounded-full">လက်ကျန်မလုံလောက်</span>}
+                 <h3 className="text-lg font-bold text-purple-950 flex items-center gap-2"><span>BOM:</span> {packQty} {tr(language, 'packagingPacks')} - {selectedRecipe.skuName}</h3>
+                 {!bomDetails.allStockEnough && <span className="text-xs font-bold text-white bg-red-600 px-3 py-1 rounded-full">{tr(language, 'packagingStockInsufficient')}</span>}
                </div>
 
                <div className="flex-1 space-y-4 mb-6 overflow-y-auto min-h-[200px]">
                   {/* SFG Ingredients */}
                   <div>
-                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ကုန်ပိုင်း (SFG) ပါဝင်မှု</h5>
+                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{tr(language, 'packagingSfgIngredients')}</h5>
                     {bomDetails.consumedSFG.map((ing, idx) => ing.currentUnitPrice > 0 && (
                         <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 mb-1.5">
                            <span className="font-black text-slate-800">{ing.itemName} (SFG)</span>
@@ -146,7 +151,7 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
                   
                   {/* PKG Ingredients */}
                   <div>
-                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">ထုပ်ပိုးပစ္စည်း (PKG) ပါဝင်မှု</h5>
+                    <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">{tr(language, 'packagingPkgIngredients')}</h5>
                     {bomDetails.consumedPKG.map((ing, idx) => ing.currentUnitPrice > 0 && (
                         <div key={idx} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 mb-1.5">
                            <span className="font-black text-slate-800">{ing.itemName} (PKG)</span>
@@ -160,9 +165,9 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
                </div>
 
                <div className="border-t-2 border-dashed border-gray-200 pt-4 mt-auto space-y-3">
-                 <div className="flex justify-between items-end bg-purple-50 p-3 rounded-lg border border-purple-100"><span className="text-purple-950 font-black">FINISHED GOOD อရင်းဈေး (COGS - 1 ထုပ်)</span><span className="text-3xl font-black text-purple-600">{bomDetails.unitFgCogs.toLocaleString()} Ks</span></div>
+                 <div className="flex justify-between items-end bg-purple-50 p-3 rounded-lg border border-purple-100"><span className="text-purple-950 font-black">{tr(language, 'packagingFinishedCogs')}</span><span className="text-3xl font-black text-purple-600">{bomDetails.unitFgCogs.toLocaleString()} Ks</span></div>
                  {isManager && (
-                   <button onClick={handleConfirmPackaging} disabled={!bomDetails.allStockEnough} className="w-full bg-purple-600 text-white font-black py-4 rounded-xl shadow-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:shadow-none transition-all text-lg">⚖️ ထုပ်ပိုးမှု အတည်ပြုမည် (နှုတ်/ပေါင်း)</button>
+                   <button onClick={handleConfirmPackaging} disabled={!bomDetails.allStockEnough} className="w-full bg-purple-600 text-white font-black py-4 rounded-xl shadow-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:shadow-none transition-all text-lg">{tr(language, 'packagingConfirm')}</button>
                  )}
                </div>
              </div>
@@ -173,13 +178,13 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
       {/* Recipe Management - SKU (မူလအတိုင်း) */}
       {activeTab === 'recipes' && (
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-          <button onClick={() => openRecipeModal()} className="bg-purple-50 text-purple-700 font-bold px-4 py-2.5 rounded-lg border border-purple-200 mb-6">+ SKU (ကုန်ချော) အသစ်ထည့်မည်</button>
+          <button onClick={() => openRecipeModal()} className="bg-purple-50 text-purple-700 font-bold px-4 py-2.5 rounded-lg border border-purple-200 mb-6">{tr(language, 'packagingAddSku')}</button>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {packageRecipes.map(r => (
               <div key={r.id} className="bg-gray-50 p-5 rounded-2xl border border-gray-100 group relative shadow-sm">
                 <h4 className="font-black text-lg text-purple-950 mb-1.5">{r.skuName}</h4>
                 <div className="text-emerald-700 font-black text-2xl mb-3">{r.price.toLocaleString()} Ks</div>
-                <p className="text-sm font-bold text-slate-600">BOM Structure (per Pack):</p>
+                <p className="text-sm font-bold text-slate-600">{tr(language, 'packagingBomStructure')}:</p>
                 <ul className="text-sm text-slate-700 font-medium space-y-1 mt-1">
                   {r.ingredients.map((ing, i) => <li key={i}>- {ing.itemName} ({ing.requiredQty} {ing.unit})</li>)}
                 </ul>
@@ -199,15 +204,15 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
       {isRecipeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
-            <div className="bg-purple-500 text-white p-4 font-bold text-lg">{editingRecipe ? '✏️ SKU (ကုန်ချော) ပြင်မည်' : '➕ SKU (ကုန်ချော) အသစ်ထည့်မည်'}</div>
+            <div className="bg-purple-500 text-white p-4 font-bold text-lg">{editingRecipe ? tr(language, 'packagingEditSku') : tr(language, 'packagingNewSku')}</div>
             <div className="p-6 overflow-y-auto space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                 <input type="text" value={taste} onChange={e => setTaste(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-lg outline-none focus:border-purple-400 font-bold" placeholder="အရသာ (ဥပမာ - Mala / Normal)" />
-                 <input type="number" value={gram} onChange={e => setGram(Number(e.target.value))} className="w-full border-2 border-gray-100 p-3 rounded-lg outline-none focus:border-purple-400 font-bold" placeholder="အလေးချိန် (Gram)" />
+                 <input type="text" value={taste} onChange={e => setTaste(e.target.value)} className="w-full border-2 border-gray-100 p-3 rounded-lg outline-none focus:border-purple-400 font-bold" placeholder={tr(language, 'packagingTaste')} />
+                 <input type="number" value={gram} onChange={e => setGram(Number(e.target.value))} className="w-full border-2 border-gray-100 p-3 rounded-lg outline-none focus:border-purple-400 font-bold" placeholder={tr(language, 'packagingWeight')} />
               </div>
-              <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} className="w-full border-2 border-gray-100 p-3 rounded-lg outline-none focus:border-purple-400 font-black text-lg text-emerald-600" placeholder="ရောင်းဈေး (Ks)" />
+              <input type="number" value={price} onChange={e => setPrice(Number(e.target.value))} className="w-full border-2 border-gray-100 p-3 rounded-lg outline-none focus:border-purple-400 font-black text-lg text-emerald-600" placeholder={tr(language, 'packagingSalePrice')} />
               
-              <h5 className="font-bold border-b pb-2 pt-2 text-gray-700">ပါဝင်ပစ္စည်းများ (ကုန်ပိုင်း - SFG နှင့် ထုပ်ပိုးမှု - PKG) * per Pack logic</h5>
+              <h5 className="font-bold border-b pb-2 pt-2 text-gray-700">{tr(language, 'packagingIngredients')}</h5>
               
               {ingredients.map((ing, idx) => (
                 <div key={idx} className="flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
@@ -216,12 +221,12 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
                       const updated = [...ingredients]; updated[idx] = { ...ing, itemName: e.target.value, unit: item?.unit || 'ယူနစ်', defaultCost: item?.lastPurchasePrice || 0 };
                       setIngredients(updated);
                     }} className="flex-[2] border border-gray-200 p-2 rounded-md outline-none bg-white font-bold text-sm">
-                    <option value="">ပါဝင်ပစ္စည်း (SFG / PKG) ရွေးပါ</option>
+                    <option value="">{tr(language, 'packagingSelectIngredient')}</option>
                     <optgroup label=" Semi-Finished Goods (SFG)">
-                       {sfgItems.map(i => <option key={i.id} value={i.name}>{i.name} ({i.gram}g) ({i.inStock} {i.unit} ရှိ)</option>)}
+                       {sfgItems.map(i => <option key={i.id} value={i.name}>{i.name} ({i.gram}g) ({i.inStock} {i.unit} {tr(language, 'packagingInStock')})</option>)}
                     </optgroup>
                     <optgroup label=" Packaging Materials (PKG)">
-                       {pkgItems.map(i => <option key={i.id} value={i.name}>{i.name} ({i.inStock} {i.unit} ရှိ)</option>)}
+                       {pkgItems.map(i => <option key={i.id} value={i.name}>{i.name} ({i.inStock} {i.unit} {tr(language, 'packagingInStock')})</option>)}
                     </optgroup>
                   </select>
                   {/* gram logic */}
@@ -230,9 +235,9 @@ export const Packaging: React.FC<PackagingProps> = ({ userRole, inventoryItems, 
                   <button onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))} className="text-red-500 font-bold px-2 hover:bg-red-50 p-1 rounded-full">✕</button>
                 </div>
               ))}
-              <button onClick={() => setIngredients([...ingredients, { itemName: '', requiredQty: 0, unit: '', defaultCost: 0 }])} className="text-purple-600 font-bold text-sm hover:text-purple-800">+ BOM ပါဝင်ပစ္စည်း ထပ်ထည့်မည်</button>
+              <button onClick={() => setIngredients([...ingredients, { itemName: '', requiredQty: 0, unit: '', defaultCost: 0 }])} className="text-purple-600 font-bold text-sm hover:text-purple-800">{tr(language, 'packagingAddIngredient')}</button>
             </div>
-            <div className="p-4 border-t flex gap-2 justify-end bg-gray-50"><button onClick={() => setIsRecipeModalOpen(false)} className="px-5 py-2 rounded-lg font-bold bg-white border hover:bg-gray-100">Cancel</button><button onClick={handleSaveRecipe} className="px-5 py-2 rounded-lg font-bold bg-purple-500 text-white hover:bg-purple-600">Save SKU</button></div>
+            <div className="p-4 border-t flex gap-2 justify-end bg-gray-50"><button onClick={() => setIsRecipeModalOpen(false)} className="px-5 py-2 rounded-lg font-bold bg-white border hover:bg-gray-100">{tr(language, 'packagingCancel')}</button><button onClick={handleSaveRecipe} className="px-5 py-2 rounded-lg font-bold bg-purple-500 text-white hover:bg-purple-600">{tr(language, 'packagingSaveSku')}</button></div>
           </div>
         </div>
       )}
