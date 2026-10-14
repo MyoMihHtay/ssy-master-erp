@@ -462,7 +462,7 @@ export default function App() {
         {activeTab === 'production' && <Production language={language} userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'packaging' && <Packaging language={language} userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
         {finishedGoods && activeTab === 'finished_goods' && <FinishedGoods language={language} userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
-        {activeTab === 'expenses' && <Expenses userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
+        {activeTab === 'expenses' && <Expenses language={language} userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
         
         {activeTab === 'hr' && (
            <HR 
