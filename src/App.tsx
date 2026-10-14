@@ -413,7 +413,7 @@ export default function App() {
       )}
       
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
-        {activeTab === 'dashboard' && <Dashboard sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
+        {activeTab === 'dashboard' && <Dashboard language={language} sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
         {activeTab === 'workspace' && <Workspace userName={user.name} userRole={user.role} />}
         
         {activeTab === 'reports' && (
