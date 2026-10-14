@@ -131,36 +131,36 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
   };
 
   const handleQCRecommend = (reqId: number, supId: string) => {
-    const remark = window.prompt("QC ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ :");
+    const remark = window.prompt(tr(language, 'procurementPromptQC'));
     if (remark) updateStatus(reqId, 'QC_Approved', undefined, undefined, { qcSelectedSupplierId: supId, qcRemark: remark });
   };
 
   const handleFinanceRecommend = (reqId: number, supId: string) => {
-    const remark = window.prompt("Finance ထောက်ခံရသည့် အကြောင်းရင်းကို ရေးပါ :");
+    const remark = window.prompt(tr(language, 'procurementPromptFinance'));
     if (remark) updateStatus(reqId, 'Finance_Approved', undefined, undefined, { financeSelectedSupplierId: supId, financeRemark: remark });
   };
 
   const handleStoreReceive = (reqId: number) => {
-    const remark = window.prompt("ပစ္စည်းလက်ခံရရှိမှု အခြေအနေ မှတ်ချက်ရေးပါ :");
+    const remark = window.prompt(tr(language, 'procurementPromptStore'));
     if (remark) updateStatus(reqId, 'Store_Received', undefined, undefined, { storeRemark: remark });
   };
 
   const handleReject = (id: number) => {
-    const reason = window.prompt("ပယ်ချရသည့် အကြောင်းရင်းကို ရေးပါ -");
+    const reason = window.prompt(tr(language, 'procurementPromptReject'));
     if (reason) updateStatus(id, 'Rejected', undefined, reason);
   };
 
   const getStatusBadge = (status: string) => {
     switch(status) {
-      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-orange-200">⏳ Pending (QC)</span>;
-      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-blue-200">🔬 QC Pass (Finance)</span>;
-      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-purple-200">💰 Finance Pass (MD)</span>;
-      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-green-200">✅ MD Approved</span>;
-      case 'Purchased': return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-yellow-300">🛒 Purchased</span>;
-      case 'QC_Received': return <span className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-cyan-200">🔍 QC Received</span>;
-      case 'Store_Received': return <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-indigo-200">📦 Store Received</span>;
-      case 'Completed': return <span className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">🎯 Completed (Auto-Synced)</span>;
-      case 'Rejected': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-red-200">❌ Rejected</span>;
+      case 'Pending': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-orange-200">⏳ {tr(language, 'procurementStatusPending')}</span>;
+      case 'QC_Approved': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-blue-200">🔬 {tr(language, 'procurementStatusQCApproved')}</span>;
+      case 'Finance_Approved': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-purple-200">💰 {tr(language, 'procurementStatusFinanceApproved')}</span>;
+      case 'MD_Approved': return <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-green-200">✅ {tr(language, 'procurementStatusMDApproved')}</span>;
+      case 'Purchased': return <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-yellow-300">🛒 {tr(language, 'procurementStatusPurchased')}</span>;
+      case 'QC_Received': return <span className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-cyan-200">🔍 {tr(language, 'procurementStatusQCReceived')}</span>;
+      case 'Store_Received': return <span className="bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-indigo-200">📦 {tr(language, 'procurementStatusStoreReceived')}</span>;
+      case 'Completed': return <span className="bg-teal-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">🎯 {tr(language, 'procurementStatusCompleted')}</span>;
+      case 'Rejected': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-red-200">❌ {tr(language, 'procurementStatusRejected')}</span>;
       default: return null;
     }
   };
@@ -279,20 +279,20 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
               <div className="flex justify-between items-start">
                 <div className="w-full">
                   <div className="flex justify-between items-center mb-4">
-                    <span className="text-xs font-bold text-gray-400 print:text-black">PR Date: {req.date}</span>
+                    <span className="text-xs font-bold text-gray-400 print:text-black">{tr(language, 'procurementPRDate')}: {req.date}</span>
                     <div className="flex gap-2 items-center">
                        {getStatusBadge(req.status)}
                     </div>
                   </div>
                   <div className="bg-white/5 border border-white/10 rounded-xl p-4 print:bg-gray-50 print:border-gray-300">
-                     <h4 className="text-sm font-bold text-gray-300 mb-3 print:text-gray-700">ဝယ်ယူမည့် ပစ္စည်းစာရင်း ({itemsToDisplay.length} မျိုး)</h4>
+                     <h4 className="text-sm font-bold text-gray-300 mb-3 print:text-gray-700">{tr(language, 'procurementPurchaseItems')} ({itemsToDisplay.length} {tr(language, 'procurementTypes')})</h4>
                      <ul className="space-y-2">
                        {itemsToDisplay.map((item, i) => (
                          <li key={i} className="flex justify-between items-center border-b border-white/10 pb-2 print:border-gray-200">
                            <span className="text-white font-black text-lg print:text-black">{item.itemName}</span>
                            <div className="flex items-center gap-3">
                              <span className="text-indigo-300 font-bold print:text-indigo-700">{item.requestedQty?.toLocaleString()} {item.unit}</span>
-                             <span className="bg-gray-700 text-gray-300 text-[10px] px-2 py-1 rounded print:border print:bg-white print:text-black">ဂိုထောင်: {item.targetWarehouse}</span>
+                             <span className="bg-gray-700 text-gray-300 text-[10px] px-2 py-1 rounded print:border print:bg-white print:text-black">{tr(language, 'procurementWarehouse')}: {item.targetWarehouse}</span>
                            </div>
                          </li>
                        ))}
@@ -310,7 +310,7 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <div className="text-red-600 font-black text-2xl mb-3 print:text-black">{sup.price?.toLocaleString()} Ks</div>
 
                   <div className="bg-gray-100 p-3 rounded-lg mb-4 space-y-2 border border-gray-200">
-                     <h6 className="text-[10px] font-bold text-gray-500 uppercase">ပစ္စည်းအလိုက် ဈေးနှုန်းများ</h6>
+                     <h6 className="text-[10px] font-bold text-gray-500 uppercase">{tr(language, 'procurementItemPrices')}</h6>
                      {itemsToDisplay.map(item => (
                         <div key={item.id} className="flex justify-between text-xs text-gray-700 font-bold border-b border-gray-200 pb-1 last:border-0 last:pb-0">
                            <span className="truncate w-1/2">{item.itemName}:</span>
@@ -324,23 +324,23 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                   <div className="space-y-2 my-4">
                      {req.qcSelectedSupplierId === sup.id && (
                         <div className="bg-blue-50 border border-blue-200 p-3 rounded-xl print:border-none shadow-sm">
-                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1 mb-1"><span>🔬</span> QC ရွေးချယ်ထောက်ခံထားသောဆိုင်</span>
+                          <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1 mb-1"><span>🔬</span> {tr(language, 'procurementQCRecommended')}</span>
                           <span className="text-sm text-blue-900 font-bold">"{req.qcRemark}"</span>
                         </div>
                      )}
                      {req.financeSelectedSupplierId === sup.id && (
                         <div className="bg-purple-50 border border-purple-200 p-3 rounded-xl print:border-none shadow-sm">
-                          <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1 mb-1"><span>💰</span> Finance ရွေးချယ်ထောက်ခံထားသောဆိုင်</span>
+                          <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider flex items-center gap-1 mb-1"><span>💰</span> {tr(language, 'procurementFinanceRecommended')}</span>
                           <span className="text-sm text-purple-900 font-bold">"{req.financeRemark}"</span>
                         </div>
                      )}
                   </div>
 
                   <div className="mt-4 print:hidden space-y-2">
-                    {req.status === 'Pending' && isQC && <button onClick={() => handleQCRecommend(req.id, sup.id)} className="w-full bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-300 font-bold py-2.5 rounded-xl transition-colors">🔬 QC ထောက်ခံမည်</button>}
-                    {req.status === 'QC_Approved' && isFinance && <button onClick={() => handleFinanceRecommend(req.id, sup.id)} className="w-full bg-purple-100 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 font-bold py-2.5 rounded-xl transition-colors">💰 Finance ထောက်ခံမည်</button>}
+                    {req.status === 'Pending' && isQC && <button onClick={() => handleQCRecommend(req.id, sup.id)} className="w-full bg-blue-100 hover:bg-blue-600 hover:text-white text-blue-700 border border-blue-300 font-bold py-2.5 rounded-xl transition-colors">🔬 {tr(language, 'procurementQCRecommend')}</button>}
+                    {req.status === 'QC_Approved' && isFinance && <button onClick={() => handleFinanceRecommend(req.id, sup.id)} className="w-full bg-purple-100 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 font-bold py-2.5 rounded-xl transition-colors">💰 {tr(language, 'procurementFinanceRecommend')}</button>}
                     {req.status === 'Finance_Approved' && isMDorManager && !req.selectedSupplierId && (
-                      <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="w-full bg-green-600 text-white font-black py-3 shadow-md rounded-xl hover:bg-green-700 transition-transform active:scale-95 text-sm uppercase tracking-wide">👑 ဤဆိုင်မှ ဝယ်မည်</button>
+                      <button onClick={() => updateStatus(req.id, 'MD_Approved', sup.id)} className="w-full bg-green-600 text-white font-black py-3 shadow-md rounded-xl hover:bg-green-700 transition-transform active:scale-95 text-sm uppercase tracking-wide">👑 {tr(language, 'procurementBuySupplier')}</button>
                     )}
                   </div>
                 </div>
@@ -349,26 +349,26 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
 
             {req.status !== 'Completed' && req.status !== 'Rejected' && (
               <div className="bg-indigo-50/50 p-5 flex flex-wrap justify-end gap-3 items-center print:hidden border-t">
-                <span className="text-xs font-black text-indigo-800/50 mr-auto uppercase tracking-widest">Next Action</span>
-                {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-yellow-600">🛒 ဝယ်ယူလိုက်ပါပြီ</button>}
-                {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-cyan-700">🔬 ပစ္စည်းရောက်/စစ်ပြီး</button>}
-                {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => handleStoreReceive(req.id)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-indigo-700">📦 ဂိုထောင်လက်ခံမည်</button>}
+                <span className="text-xs font-black text-indigo-800/50 mr-auto uppercase tracking-widest">{tr(language, 'procurementNextAction')}</span>
+                {req.status === 'MD_Approved' && isPurchasing && <button onClick={() => updateStatus(req.id, 'Purchased')} className="bg-yellow-500 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-yellow-600">🛒 {tr(language, 'procurementPurchasedAction')}</button>}
+                {req.status === 'Purchased' && isQC && <button onClick={() => updateStatus(req.id, 'QC_Received')} className="bg-cyan-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-cyan-700">🔬 {tr(language, 'procurementQCReceivedAction')}</button>}
+                {req.status === 'QC_Received' && isStoreKeeper && <button onClick={() => handleStoreReceive(req.id)} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-indigo-700">📦 {tr(language, 'procurementStoreReceiveAction')}</button>}
 
                 {req.status === 'Store_Received' && isFinance && (
                    <div className="flex gap-2 items-center bg-white p-2 rounded-xl border border-teal-200 shadow-sm flex-wrap">
                       <select value={syncPaymentMethod} onChange={(e) => setSyncPaymentMethod(e.target.value)} className="bg-teal-50 text-teal-800 font-bold p-2.5 rounded-lg outline-none border border-teal-100 text-sm">
-                        <option value="CASH (လက်ငင်း)">CASH (လက်ငင်း)</option>
-                        <option value="BANK TRANSFER">BANK TRANSFER</option>
-                        <option value="CREDIT (အကြွေး)">CREDIT (အကြွေးဝယ်)</option>
+                        <option value="CASH (လက်ငင်း)">{tr(language, 'procurementCash')}</option>
+                        <option value="BANK TRANSFER">{tr(language, 'procurementBankTransfer')}</option>
+                        <option value="CREDIT (အကြွေး)">{tr(language, 'procurementCredit')}</option>
                       </select>
                       <button onClick={() => updateStatus(req.id, 'Completed', undefined, undefined, { paymentMethod: syncPaymentMethod })} className="bg-teal-600 text-white px-6 py-2.5 rounded-lg font-black shadow hover:bg-teal-700 animate-pulse whitespace-nowrap">
-                        ✅ စာရင်းသွင်းမည် (Auto +)
+                        ✅ {tr(language, 'procurementPostAccounts')}
                       </button>
                    </div>
                 )}
 
                 {(isQC || isFinance || isMDorManager) && req.status !== 'Purchased' && req.status !== 'QC_Received' && req.status !== 'Store_Received' && (
-                   <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-2.5 rounded-xl font-bold ml-4 hover:bg-red-50">❌ ပယ်ချမည်</button>
+                   <button onClick={() => handleReject(req.id)} className="bg-white border-2 border-red-200 text-red-600 px-6 py-2.5 rounded-xl font-bold ml-4 hover:bg-red-50">❌ {tr(language, 'procurementReject')}</button>
                 )}
               </div>
             )}
@@ -379,25 +379,31 @@ export const Procurement: React.FC<ProcurementProps> = ({ userRole, requests, se
                  {!req.isCreditPaid ? (
                      isMDOnly ? (
                         <>
-                           <span className="text-xs font-black text-rose-600 mr-auto uppercase tracking-widest">⚠️ ဤဝယ်ယူမှုမှာ အကြွေးဖြစ်ပါသည်</span>
+                           <span className="text-xs font-black text-rose-600 mr-auto uppercase tracking-widest">⚠️ {tr(language, 'procurementCreditWarning')}</span>
                            <button
                               onClick={() => {
-                                  const confirm = window.confirm(`⚠️ ${req.suppliers.find(s => s.id === req.selectedSupplierId)?.name} ထံမှ အကြွေး ${req.suppliers.find(s => s.id === req.selectedSupplierId)?.price.toLocaleString()} Ks ကို အကြွေးဆပ်ပြီး Finance သို့ စာရင်းသွင်းမည်လား?`);
+                                  const supplierName = req.suppliers.find(s => s.id === req.selectedSupplierId)?.name;
+                                  const creditAmount = req.suppliers.find(s => s.id === req.selectedSupplierId)?.price.toLocaleString();
+                                  const confirm = window.confirm(
+                                    language === 'my'
+                                      ? `⚠️ ${supplierName} ထံမှ အကြွေး ${creditAmount} Ks ကို အကြွေးဆပ်ပြီး Finance သို့ စာရင်းသွင်းမည်လား?`
+                                      : `⚠️ Mark the ${creditAmount} Ks credit owed to ${supplierName} as paid and post it to Finance?`
+                                  );
                                   if (confirm) {
                                       onCreditPayment(req);
-                                      alert("✅ အကြွေးဆပ်ပြီး Finance စာရင်းသို့ အောင်မြင်စွာ သွင်းပေးလိုက်ပါပြီ။");
+                                      alert(tr(language, 'procurementCreditSuccess'));
                                   }
                               }}
                               className="bg-rose-600 text-white px-6 py-2.5 rounded-xl font-black text-sm shadow-md hover:bg-rose-700 animate-pulse"
                            >
-                              💸 အကြွေးဆပ်မည် (MD Only)
+                              💸 {tr(language, 'procurementPayCredit')}
                            </button>
                         </>
                      ) : (
-                        <span className="text-sm font-bold text-rose-600 w-full text-right">⚠️ အကြွေးဆပ်ရန် ကျန်ရှိပါသေးသည် (MD မှသာ ရှင်းနိုင်မည်)</span>
+                        <span className="text-sm font-bold text-rose-600 w-full text-right">⚠️ {tr(language, 'procurementCreditOutstanding')}</span>
                      )
                  ) : (
-                     <span className="text-sm font-black text-emerald-700 w-full text-right">✅ အကြွေးဆပ်ပြီးပါပြီ (Finance စာရင်းဝင်ပြီး)</span>
+                     <span className="text-sm font-black text-emerald-700 w-full text-right">✅ {tr(language, 'procurementCreditPaid')}</span>
                  )}
               </div>
             )}
