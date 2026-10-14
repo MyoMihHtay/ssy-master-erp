@@ -427,7 +427,8 @@ export default function App() {
         {activeTab === 'workspace' && <Workspace userName={user.name} userRole={user.role} />}
         
         {activeTab === 'reports' && (
-           <Reports 
+           <Reports
+             language={language}
              sales={salesRecords} 
              inventory={inventoryItems} 
              finishedGoods={finishedGoods} 
