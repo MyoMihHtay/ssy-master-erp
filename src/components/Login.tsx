@@ -23,7 +23,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, accounts, language, setLa
     if (validUser) {
       onLogin(validUser.displayName, validUser.role);
     } else {
-      setError('Username သို့မဟုတ် Password မှားယွင်းနေပါသည်။');
+      setError(tr(language, 'loginInvalidCredentials'));
     }
   };
 

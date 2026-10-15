@@ -115,6 +115,12 @@ export const translations = {
     procurementPromptReject: 'ပယ်ချရသည့် အကြောင်းရင်းကို ရေးပါ -',
     procurementCreditSuccess: '✅ အကြွေးဆပ်ပြီး Finance စာရင်းသို့ အောင်မြင်စွာ သွင်းပေးလိုက်ပါပြီ။',
 
+    appProductionCompleteSuccess: '✅ {name} ({qty} {unit}) ထုတ်လုပ်မှု အောင်မြင်ပြီး SFG ဂိုထောင်သို့ အရင်းဈေး {cost} Ks ဖြင့် ပေါင်းထည့်ပြီးပါပြီ။',
+    appPackagingCompleteSuccess: '✅ {sku} ({qty} ထုပ်) ထုပ်ပိုးမှု အောင်မြင်ပြီး ကုန်ချောစာရင်းသို့ COGS {cost} Ks ဖြင့် ရောင်းရန်အသင့် ပေါင်းထည့်ပြီးပါပြီ။',
+    appProcurementCashComplete: '✅ ပစ္စည်းများကို ဂိုထောင်စာရင်းသို့ ထည့်သွင်းပြီး ငွေကျပ် {amount} ကို Finance စာရင်းသို့ အလိုအလျောက် သွင်းပေးလိုက်ပါပြီ။',
+    appProcurementCreditNotice: '📌 အကြွေးဝယ်ယူမှုဖြစ်သဖြင့် Finance စာရင်းထဲသို့ ထွက်ငွေ အလိုအလျောက် မဝင်ပါ။ အကြွေးဆပ်သည့်အခါမှသာ MD အကောင့်ဖြင့် Finance သို့ စာရင်းသွင်းနိုင်ပါသည်။',
+    appSalePaymentReceived: '✅ ငွေလက်ခံရရှိကြောင်း အတည်ပြုပြီး Finance စာရင်းသို့ ဝင်ငွေ ပေါင်းထည့်ပြီးပါပြီ။',
+
     inventoryTitle: 'ကုန်လှောင်ရုံ စီမံခန့်ခွဲမှု (Triple Warehouse)',
     inventoryValuation: 'စုစုပေါင်း ကုန်လက်ကျန်တန်ဖိုး',
     inventoryValuationNote: '*(နောက်ဆုံးဝယ်ဈေး LPP ဖြင့် တွက်ချက်ထားသည်)*',
@@ -746,6 +752,12 @@ export const translations = {
     procurementPromptStore: 'Enter receiving remarks:',
     procurementPromptReject: 'Enter the rejection reason:',
     procurementCreditSuccess: '✅ Credit payment has been posted to Finance successfully.',
+
+    appProductionCompleteSuccess: '✅ Production of {name} ({qty} {unit}) completed successfully and was added to the SFG warehouse at a unit cost of {cost} Ks.',
+    appPackagingCompleteSuccess: '✅ Packaging of {sku} ({qty} packs) completed successfully and was added to finished goods ready for sale with COGS of {cost} Ks.',
+    appProcurementCashComplete: '✅ Items were added to warehouse stock and {amount} Ks was posted automatically to Finance.',
+    appProcurementCreditNotice: '📌 This purchase was made on credit, so no expense was posted automatically to Finance. The payment can be posted to Finance by the MD account when the credit is settled.',
+    appSalePaymentReceived: '✅ Payment receipt was confirmed and the income was posted to Finance successfully.',
 
     inventoryTitle: 'Inventory Management (Triple Warehouse)',
     inventoryValuation: 'Total Inventory Valuation',

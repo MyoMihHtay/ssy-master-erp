@@ -15,7 +15,7 @@ import { HR } from './components/HR';
 import { Dashboard } from './components/Dashboard';
 import { Workspace } from './components/Workspace';
 import { Reports } from './components/Reports';
-import { LANGUAGE_STORAGE_KEY, type AppLanguage } from './i18n';
+import { LANGUAGE_STORAGE_KEY, tr, type AppLanguage } from './i18n';
 
 export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; }
@@ -203,7 +203,13 @@ export default function App() {
       return updated;
     });
 
-    alert(`✅ ${recipe.name} (${producedQty} ${recipe.outputUnit}) ထုတ်လုပ်မှု အောင်မြင်ပြီး SFG ဂိုထောင်သို့ အရင်းဈေး ${unitSfgCost.toLocaleString()} Ks ဖြင့် ပေါင်းထည့်ပြီးပါပြီ။`);
+    alert(
+      tr(language, 'appProductionCompleteSuccess')
+        .replace('{name}', recipe.name)
+        .replace('{qty}', producedQty.toLocaleString())
+        .replace('{unit}', recipe.outputUnit)
+        .replace('{cost}', unitSfgCost.toLocaleString())
+    );
   };
 
   const handleConfirmPackaging = (recipe: PackageRecipe, packQty: number, totalCost: number, consumedSFG: BOMResult[], consumedPKG: BOMResult[]) => {
@@ -240,7 +246,12 @@ export default function App() {
        return updated;
     });
 
-    alert(`✅ ${recipe.skuName} (${packQty} ထုပ်) ထုပ်ပိုးမှု အောင်မြင်ပြီး အရောင်းစာရင်းသို့ COGS ${unitFgCogs.toLocaleString()} Ks ဖြင့် ရောင်းရန်အသင့် ပေါင်းထည့်ပြီးပါပြီ။`);
+    alert(
+      tr(language, 'appPackagingCompleteSuccess')
+        .replace('{sku}', recipe.skuName)
+        .replace('{qty}', packQty.toLocaleString())
+        .replace('{cost}', unitFgCogs.toLocaleString())
+    );
   };
 
   const handleProcurementComplete = (pr: PurchaseRequest) => {
@@ -272,9 +283,12 @@ export default function App() {
 
     if (pr.paymentMethod !== 'CREDIT (အကြွေး)') {
       setExpenses(prev => [{ id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'ကုန်ကြမ်းဝယ်ယူမှု', description: `Auto-Sync: ဝယ်ယူရေး PR #${pr.id} (${selectedSupplier.name}) - ${pr.paymentMethod || 'CASH'}`, amount: totalCost, voucherNo: `PR-${pr.id}`, type: 'expense' }, ...prev]);
-      alert(`✅ ဂိုထောင်စာရင်းထဲသို့ ပစ္စည်းများရောက်ရှိသွားပြီး၊ ငွေကျပ် ${totalCost.toLocaleString()} အား ဘဏ္ဍာရေးစာရင်းသို့ (အော်တို) သွင်းပေးလိုက်ပါပြီ။`);
+      alert(
+        tr(language, 'appProcurementCashComplete')
+          .replace('{amount}', totalCost.toLocaleString())
+      );
     } else {
-      alert(`📌 အကြွေးဝယ်ယူမှုဖြစ်သဖြင့် Finance စာရင်းထဲသို့ ထွက်ငွေ (Auto-Sync) မဝင်ပါ။ \nအကြွေးဆပ်သည့်အခါမှသာ MD အကောင့်ဖြင့် Finance ထဲသို့ သွင်းပေးနိုင်ပါသည်။`);
+      alert(tr(language, 'appProcurementCreditNotice'));
     }
   };
 
@@ -317,7 +331,7 @@ export default function App() {
     if (saleToUpdate && !saleToUpdate.isPaid) {
       setSalesRecords(salesRecords.map(s => s.id === saleId ? { ...s, isPaid: true } : s));
       setExpenses(prev => [...prev, { id: Date.now(), date: new Date().toLocaleDateString('en-GB'), category: 'အကြွေးရငွေ', description: `Invoice: #${saleToUpdate.id} - ${saleToUpdate.customerName}`, amount: saleToUpdate.finalAmount, type: 'income' }]);
-      alert("✅ Ngwe လက်ခံရရှိကြောင်း အတည်ပြုပြီး Finance စာရင်းသို့ ဝင်ငွေပေါင်းထည့်ပြီးပါပြီ။");
+      alert(tr(language, 'appSalePaymentReceived'));
     }
   };
 
