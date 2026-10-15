@@ -443,7 +443,8 @@ export default function App() {
 
         {/* 🌟 Sales Component သို့ handleReturnSale ခေါ်ယူမှုကို ပို့ပေးထားပါသည် 🌟 */}
         {activeTab === 'sales' && (
-          <Sales 
+          <Sales
+            language={language}
             userRole={user.role} 
             userName={user.name} 
             finishedGoods={finishedGoods} 

@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import html2canvas from 'html2canvas'; 
 import Barcode from 'react-barcode'; 
 import type { FinishedGoodItem, SaleRecord, SaleItem, Customer } from '../App';
+import { tr, type AppLanguage } from '../i18n';
 
 interface SalesProps {
+  language: AppLanguage;
   userRole: string;
   userName: string;
   finishedGoods: FinishedGoodItem[];
@@ -43,8 +45,9 @@ const calculateDueDate = (saleDateStr: string, terms: string | undefined) => {
   return date.toLocaleDateString('en-GB');
 };
 
-export const Sales: React.FC<SalesProps> = ({ 
-  userRole, userName, finishedGoods = [], sales = [], customers = [], onCheckout, onMarkAsPaid, onDeleteSale, highlightSaleId, setHighlightSaleId, onReturnSale 
+export const Sales: React.FC<SalesProps> = ({
+  language,
+  userRole, userName, finishedGoods = [], sales = [], customers = [], onCheckout, onMarkAsPaid, onDeleteSale, highlightSaleId, setHighlightSaleId, onReturnSale
 }) => {
   const [activeTab, setActiveTab] = useState<'pos' | 'records'>('pos');
   const [cart, setCart] = useState<SaleItem[]>([]);
@@ -90,11 +93,11 @@ export const Sales: React.FC<SalesProps> = ({
   };
 
   const handleAddToCart = (product: FinishedGoodItem) => {
-    if (product.stockQty <= 0) return alert('❌ ဤကုန်ချော လက်ကျန် ပြတ်နေပါသည်။');
+    if (product.stockQty <= 0) return alert(tr(language, 'salesOutOfStock'));
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
-        if (existing.quantity >= product.stockQty) { alert('❌ လက်ကျန်အရေအတွက်ထက် ပိုရောင်း၍မရပါ။'); return prev; }
+        if (existing.quantity >= product.stockQty) { alert(tr(language, 'salesStockExceeded')); return prev; }
         return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * product.price } : item);
       } else return [...prev, { product, quantity: 1, subtotal: product.price }];
     });
@@ -104,7 +107,7 @@ export const Sales: React.FC<SalesProps> = ({
     const newQty = parseInt(qtyString) || 0;
     if (newQty < 0) return;
     const product = finishedGoods.find(fg => fg.id === productId);
-    if (product && newQty > product.stockQty) return alert(`❌ လက်ကျန် (${product.stockQty}) ထက် ပိုရောင်း၍မရပါ။`);
+    if (product && newQty > product.stockQty) return alert(`${tr(language, 'salesStockExceeded')} (${product.stockQty})`);
     setCart(prev => prev.map(item => {
       if (item.product.id === productId) return { ...item, quantity: newQty, subtotal: newQty * item.product.price };
       return item;
@@ -117,9 +120,9 @@ export const Sales: React.FC<SalesProps> = ({
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => { setGpsLocation(`${position.coords.latitude}, ${position.coords.longitude}`); },
-        (error) => { alert("GPS location ရယူ၍မရပါ။ Location ဖွင့်ထားခြင်း ရှိမရှိ စစ်ဆေးပါ။"); }
+        (error) => { alert(tr(language, 'salesGpsFailed')); }
       );
-    } else { alert("သင့်စက်တွင် GPS မပါဝင်ပါ။"); }
+    } else { alert(tr(language, 'salesGpsUnavailable')); }
   };
 
   const totalAmount = cart.reduce((sum, item) => sum + item.subtotal, 0);
@@ -129,8 +132,8 @@ export const Sales: React.FC<SalesProps> = ({
   const finalAmount = Math.round(taxableAmount + taxAmount);
 
   const handleCheckoutSubmit = () => {
-    if (!customerName) return alert("ဝယ်သူအမည် ထည့်သွင်းပါ။");
-    if (paymentMethod === 'CREDIT' && creditTerms === 'Custom' && !customCreditDays) return alert("စိတ်ကြိုက်ရက် ထည့်ပါ။");
+    if (!customerName) return alert(tr(language, 'salesCustomerRequired'));
+    if (paymentMethod === 'CREDIT' && creditTerms === 'Custom' && !customCreditDays) return alert(tr(language, 'salesCustomCreditRequired'));
     const finalCreditTerms = paymentMethod === 'CREDIT' ? (creditTerms === 'Custom' ? `${customCreditDays} Days (စိတ်ကြိုက်)` : creditTerms) : undefined;
     const now = new Date();
     const dateTimeStr = `${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
@@ -144,7 +147,7 @@ export const Sales: React.FC<SalesProps> = ({
     };
     onCheckout(newSale); setCart([]); setIsCheckoutModalOpen(false);
     setCustomerName(''); setPhone(''); setAddress(''); setGpsLocation('');
-    alert('✅ အရောင်းစာရင်း အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ။');
+    alert(tr(language, 'salesSaveSuccess'));
     setActiveTab('records');
   };
 
@@ -245,21 +248,21 @@ export const Sales: React.FC<SalesProps> = ({
     <div className="p-1 md:p-6 h-full overflow-y-auto print:p-0 print:overflow-visible relative">
       <div className="print:hidden">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 md:mb-6 border-b-2 pb-2 md:pb-4 border-amber-200 gap-2 md:gap-4">
-          <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> အရောင်းပိုင်း (POS)</h2>
+          <h2 className="text-lg md:text-3xl font-black text-slate-800 tracking-tight flex items-center gap-1.5 md:gap-2"><span className="text-xl md:text-4xl">💰</span> {tr(language, 'salesPosTitle')}</h2>
           <div className="flex gap-1.5 md:gap-2 bg-white p-1 rounded-lg md:rounded-xl shadow-sm border border-slate-200 w-full md:w-auto">
-            <button onClick={() => { setActiveTab('pos'); clearHighlight(); }} className={`flex-1 md:flex-none px-3 py-1.5 md:px-6 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] md:text-base ${activeTab === 'pos' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>🛒 ဘောက်ချာဖြတ်မည်</button>
-            <button onClick={() => setActiveTab('records')} className={`flex-1 md:flex-none px-3 py-1.5 md:px-6 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] md:text-base ${activeTab === 'records' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>📜 မှတ်တမ်းများ</button>
+            <button onClick={() => { setActiveTab('pos'); clearHighlight(); }} className={`flex-1 md:flex-none px-3 py-1.5 md:px-6 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] md:text-base ${activeTab === 'pos' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>🛒 {tr(language, 'salesCheckoutTab')}</button>
+            <button onClick={() => setActiveTab('records')} className={`flex-1 md:flex-none px-3 py-1.5 md:px-6 md:py-2.5 rounded-md md:rounded-lg font-bold text-[10px] md:text-base ${activeTab === 'records' ? 'bg-amber-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}>📜 {tr(language, 'salesRecordsTab')}</button>
           </div>
         </div>
 
         {activeTab === 'pos' && (
           <div className="flex flex-col lg:flex-row gap-2 md:gap-6">
             <div className="flex-[2] bg-white p-2 md:p-6 rounded-xl md:rounded-[2rem] shadow-sm border border-slate-200">
-              <h3 className="text-xs md:text-xl font-bold text-slate-800 mb-2 md:mb-6">ရောင်းရန်အသင့်ရှိသော ကုန်ချောများ</h3>
+              <h3 className="text-xs md:text-xl font-bold text-slate-800 mb-2 md:mb-6">{tr(language, 'salesAvailableGoods')}</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-1.5 md:gap-4">
                 {finishedGoods.map(fg => (
                   <div key={fg.id} onClick={() => handleAddToCart(fg)} className={`relative p-1.5 md:p-4 rounded-lg md:rounded-xl border hover:border-amber-400 cursor-pointer transition-all active:scale-95 ${fg.stockQty > 0 ? 'bg-white border-slate-200 shadow-sm hover:shadow-md' : 'bg-slate-100 border-slate-200 opacity-60'}`}>
-                    <div className="absolute top-1 right-1 md:top-2 md:right-2 text-[8px] md:text-xs font-black px-1 py-0.5 md:px-2 md:py-1 rounded bg-slate-800 text-white">Stock: {fg.stockQty}</div>
+                    <div className="absolute top-1 right-1 md:top-2 md:right-2 text-[8px] md:text-xs font-black px-1 py-0.5 md:px-2 md:py-1 rounded bg-slate-800 text-white">{tr(language, 'salesStock')}: {fg.stockQty}</div>
                     <div className="mt-3 md:mt-5 text-[9px] md:text-sm font-bold text-slate-500 truncate">{fg.category}</div>
                     <div className="text-xs md:text-lg font-black text-slate-800 leading-tight truncate">{fg.taste} <span className="text-amber-600 text-[8px] md:text-sm">({fg.gram}g)</span></div>
                     <div className="mt-1 md:mt-3 text-emerald-600 font-black text-xs md:text-xl">{fg.price.toLocaleString()} Ks</div>
@@ -269,8 +272,8 @@ export const Sales: React.FC<SalesProps> = ({
             </div>
             <div className="flex-1 bg-white p-2 md:p-6 rounded-xl md:rounded-[2rem] shadow-xl border border-slate-200 flex flex-col h-full sticky top-1 md:top-4">
               <div className="flex justify-between items-center border-b pb-1.5 md:pb-4 mb-2 md:mb-4">
-                 <h3 className="text-sm md:text-xl font-black text-slate-800">🛒 စာရင်း</h3>
-                 <span className="text-[10px] md:text-sm font-bold text-slate-400">{cart.length} မျိုး</span>
+                 <h3 className="text-sm md:text-xl font-black text-slate-800">🛒 {tr(language, 'salesCart')}</h3>
+                 <span className="text-[10px] md:text-sm font-bold text-slate-400">{cart.length} {tr(language, 'salesItems')}</span>
               </div>
               <div className="flex-1 overflow-y-auto mb-2 md:mb-6 space-y-1.5 md:space-y-3 min-h-[150px] md:min-h-[300px]">
                 {cart.map((item, idx) => (
@@ -289,15 +292,15 @@ export const Sales: React.FC<SalesProps> = ({
                     </div>
                   </div>
                 ))}
-                {cart.length === 0 && <div className="text-center text-slate-400 font-bold mt-4 md:mt-10 text-[10px] md:text-base">ပစ္စည်းများ ရွေးချယ်ပါ</div>}
+                {cart.length === 0 && <div className="text-center text-slate-400 font-bold mt-4 md:mt-10 text-[10px] md:text-base">{tr(language, 'salesSelectProducts')}</div>}
               </div>
               <div className="border-t border-dashed border-slate-200 pt-2 md:pt-4 space-y-2 md:space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-500 font-bold text-[10px] md:text-base">စုစုပေါင်း</span>
+                  <span className="text-slate-500 font-bold text-[10px] md:text-base">{tr(language, 'salesTotal')}</span>
                   <span className="text-base md:text-2xl font-black text-emerald-600">{totalAmount.toLocaleString()} Ks</span>
                 </div>
-                <button onClick={() => { if(cart.length > 0) setIsCheckoutModalOpen(true); else alert("ပစ္စည်းထည့်ပါ"); }} className="w-full bg-emerald-500 text-white py-2 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-lg shadow-md hover:bg-emerald-600 active:scale-95 transition-all">
-                  ငွေရှင်းမည်
+                <button onClick={() => { if(cart.length > 0) setIsCheckoutModalOpen(true); else alert(tr(language, 'salesAddProductFirst')); }} className="w-full bg-emerald-500 text-white py-2 md:py-4 rounded-lg md:rounded-xl font-black text-xs md:text-lg shadow-md hover:bg-emerald-600 active:scale-95 transition-all">
+                  {tr(language, 'salesCheckout')}
                 </button>
               </div>
             </div>
@@ -308,14 +311,14 @@ export const Sales: React.FC<SalesProps> = ({
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-2 md:p-4 backdrop-blur-sm">
             <div className="bg-white rounded-xl md:rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] md:max-h-[90vh]">
               <div className="bg-slate-800 p-2 md:p-4 flex justify-between items-center shrink-0">
-                <h3 className="text-white font-black text-sm md:text-xl flex items-center gap-1.5 md:gap-2"><span>🧾</span> ငွေရှင်းရန်</h3>
+                <h3 className="text-white font-black text-sm md:text-xl flex items-center gap-1.5 md:gap-2"><span>🧾</span> {tr(language, 'salesCheckoutTitle')}</h3>
                 <button onClick={() => setIsCheckoutModalOpen(false)} className="text-slate-300 hover:text-white font-bold text-base md:text-xl px-2">✕</button>
               </div>
               <div className="p-3 md:p-6 overflow-y-auto space-y-3 md:space-y-5">
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
                   <div className="relative">
-                    <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဝယ်သူအမည် *</label>
-                    <input type="text" value={customerName} onChange={e => { setCustomerName(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 font-bold text-[10px] md:text-sm" placeholder="အမည်ရိုက်ထည့်ပါ..." />
+                    <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">{tr(language, 'salesCustomerName')} *</label>
+                    <input type="text" value={customerName} onChange={e => { setCustomerName(e.target.value); setShowSuggestions(true); }} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 font-bold text-[10px] md:text-sm" placeholder={tr(language, 'salesCustomerPlaceholder')} />
                     {showSuggestions && customerName && (
                       <ul className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-1 max-h-48 overflow-y-auto">
                         {customers.filter(c => c.name.toLowerCase().includes(customerName.toLowerCase())).map(c => (
@@ -327,28 +330,28 @@ export const Sales: React.FC<SalesProps> = ({
                       </ul>
                     )}
                   </div>
-                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဆိုင်အမျိုးအစား</label><input type="text" list="shop-types" value={shopType} onChange={e => setShopType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 font-bold text-slate-700 text-[10px] md:text-sm" />
+                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">{tr(language, 'salesShopType')}</label><input type="text" list="shop-types" value={shopType} onChange={e => setShopType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 font-bold text-slate-700 text-[10px] md:text-sm" />
                     <datalist id="shop-types"><option value="Company (ကုမ္ပဏီ)" /><option value="Distribution (ဖြန့်ချိရေး)" /><option value="ကျောင်းဈေးဆိုင်" /><option value="လက်လီဆိုင်" /><option value="လက်ကားဆိုင်" /></datalist>
                   </div>
-                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">ဖုန်းနံပါတ်</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
-                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">လိပ်စာ</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
+                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">{tr(language, 'salesPhone')}</label><input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
+                  <div><label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">{tr(language, 'salesAddress')}</label><input type="text" value={address} onChange={e => setAddress(e.target.value)} className="w-full bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" /></div>
                   
                   <div className="md:col-span-2">
-                    <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">GPS တည်နေရာ (Map Location)</label>
+                    <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-0.5 md:mb-1">{tr(language, 'salesGpsLocation')}</label>
                     <div className="flex gap-2">
                       <input type="text" value={gpsLocation} onChange={e => setGpsLocation(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 p-1.5 md:p-3 rounded-md md:rounded-lg outline-none focus:border-emerald-500 text-[10px] md:text-sm" placeholder="12.3456, 78.9101" />
-                      <button type="button" onClick={fetchLocation} className="bg-blue-500 text-white px-3 py-1.5 md:px-4 md:py-3 rounded-md md:rounded-lg font-bold text-[10px] md:text-sm whitespace-nowrap active:scale-95 transition-transform shadow-sm">📍 ရယူမည်</button>
+                      <button type="button" onClick={fetchLocation} className="bg-blue-500 text-white px-3 py-1.5 md:px-4 md:py-3 rounded-md md:rounded-lg font-bold text-[10px] md:text-sm whitespace-nowrap active:scale-95 transition-transform shadow-sm">📍 {tr(language, 'salesGetLocation')}</button>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 md:gap-4">
-                  <div className="bg-emerald-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-emerald-100"><label className="block text-[9px] md:text-xs font-black text-emerald-600 mb-0.5 md:mb-1">လျှော့ဈေး (%)</label><input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-xs md:text-lg" /></div>
-                  <div className="bg-rose-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-rose-100"><label className="block text-[9px] md:text-xs font-black text-rose-600 mb-0.5 md:mb-1">အခွန် (%)</label><input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-xs md:text-lg" /></div>
+                  <div className="bg-emerald-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-emerald-100"><label className="block text-[9px] md:text-xs font-black text-emerald-600 mb-0.5 md:mb-1">{tr(language, 'salesDiscount')}</label><input type="number" step="0.01" value={discountPercent} onChange={e => setDiscountPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-emerald-700 text-xs md:text-lg" /></div>
+                  <div className="bg-rose-50 p-1.5 md:p-3 rounded-lg md:rounded-xl border border-rose-100"><label className="block text-[9px] md:text-xs font-black text-rose-600 mb-0.5 md:mb-1">{tr(language, 'salesTax')}</label><input type="number" step="0.01" value={taxPercent} onChange={e => setTaxPercent(e.target.value === '' ? '' : Number(e.target.value))} className="w-full bg-transparent outline-none font-black text-rose-700 text-xs md:text-lg" /></div>
                 </div>
 
                 <div>
-                  <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Payment Method</label>
+                  <label className="block text-[9px] md:text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">{tr(language, 'salesPaymentMethod')}</label>
                   <div className="grid grid-cols-3 gap-1 md:gap-2">
                     {['CASH', 'KPAY', 'WAVE PAY', 'UAB PAY', 'AYA PAY', 'CREDIT'].map(method => (
                       <button key={method} onClick={() => setPaymentMethod(method)} className={`p-1 md:p-2 rounded-md md:rounded-lg font-bold text-[8px] md:text-xs border transition-all ${paymentMethod === method ? 'border-emerald-500 text-emerald-700 bg-emerald-50 shadow-sm' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>{method}</button>
@@ -358,20 +361,20 @@ export const Sales: React.FC<SalesProps> = ({
 
                 {paymentMethod === 'CREDIT' && (
                   <div className="bg-amber-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-amber-200">
-                    <label className="block text-[9px] md:text-xs font-black text-amber-700 mb-1">⏳ အကြွေးသက်တမ်း:</label>
+                    <label className="block text-[9px] md:text-xs font-black text-amber-700 mb-1">⏳ {tr(language, 'salesCreditTerms')}:</label>
                     <select value={creditTerms} onChange={e => setCreditTerms(e.target.value)} className="w-full p-1.5 md:p-2.5 rounded-md md:rounded-lg border border-amber-300 outline-none font-bold text-amber-900 mb-1.5 bg-white text-[10px] md:text-sm">
                       <option value="1 Day (၁ ရက်)">1 Day (၁ ရက်)</option><option value="3 Days (၃ ရက်)">3 Days (၃ ရက်)</option><option value="7 Days (၇ ရက်)">7 Days (၇ ရက်)</option><option value="15 Days (၁5 ရက်)">15 Days (၁5 ရက်)</option><option value="1 Month (၁ လ)">1 Month (၁ လ)</option><option value="Custom">Custom (စိတ်ကြိုက်)</option>
                     </select>
                     {creditTerms === 'Custom' && (
-                       <div className="flex items-center gap-1.5 md:gap-2"><input type="number" placeholder="ဥပမာ - 8" value={customCreditDays} onChange={e => setCustomCreditDays(e.target.value)} className="w-full p-1.5 md:p-2.5 rounded-md md:rounded-lg border border-amber-300 outline-none font-black text-amber-900 bg-white text-[10px] md:text-sm" /><span className="font-bold text-amber-800 text-[10px] md:text-sm">ရက်</span></div>
+                       <div className="flex items-center gap-1.5 md:gap-2"><input type="number" placeholder="ဥပမာ - 8" value={customCreditDays} onChange={e => setCustomCreditDays(e.target.value)} className="w-full p-1.5 md:p-2.5 rounded-md md:rounded-lg border border-amber-300 outline-none font-black text-amber-900 bg-white text-[10px] md:text-sm" /><span className="font-bold text-amber-800 text-[10px] md:text-sm">{tr(language, 'salesDays')}</span></div>
                     )}
                   </div>
                 )}
-                <div className="bg-slate-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-slate-200 flex justify-between items-center"><span className="font-bold text-slate-600 text-[10px] md:text-base">ကျသင့်ငွေ:</span><span className="text-lg md:text-3xl font-black text-slate-800">{finalAmount?.toLocaleString()} Ks</span></div>
+                <div className="bg-slate-50 p-2 md:p-4 rounded-lg md:rounded-xl border border-slate-200 flex justify-between items-center"><span className="font-bold text-slate-600 text-[10px] md:text-base">{tr(language, 'salesAmountDue')}:</span><span className="text-lg md:text-3xl font-black text-slate-800">{finalAmount?.toLocaleString()} Ks</span></div>
               </div>
               <div className="p-2 md:p-4 bg-white border-t flex gap-1.5 md:gap-3 shrink-0">
-                <button onClick={() => setIsCheckoutModalOpen(false)} className="flex-1 py-1.5 md:py-3 rounded-lg md:rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-xs md:text-base">Cancel</button>
-                <button onClick={handleCheckoutSubmit} className="flex-[2] py-1.5 md:py-3 rounded-lg md:rounded-xl font-black text-white bg-emerald-500 hover:bg-emerald-600 shadow-md active:scale-95 transition-all text-xs md:text-base">အတည်ပြုမည်</button>
+                <button onClick={() => setIsCheckoutModalOpen(false)} className="flex-1 py-1.5 md:py-3 rounded-lg md:rounded-xl font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-xs md:text-base">{tr(language, 'salesCancel')}</button>
+                <button onClick={handleCheckoutSubmit} className="flex-[2] py-1.5 md:py-3 rounded-lg md:rounded-xl font-black text-white bg-emerald-500 hover:bg-emerald-600 shadow-md active:scale-95 transition-all text-xs md:text-base">{tr(language, 'salesConfirm')}</button>
               </div>
             </div>
           </div>
