@@ -89,6 +89,16 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
 
   const isAdminOrHR = userRole === 'md' || userRole === 'manager' || userRole === 'hr';
   const isMD = userRole === 'md';
+
+  const getLeaveTypeLabel = (leaveType: string) => {
+    if (leaveType === 'Sick Leave (နေမကောင်းခွင့်)') {
+      return tr(language, 'hrLeaveTypeSick');
+    }
+    if (leaveType === 'Casual Leave (ကိစ္စရှိ၍ခွင့်)') {
+      return tr(language, 'hrLeaveTypeCasual');
+    }
+    return leaveType;
+  };
   const currentEmployee = employees.find(e => e.name.toLowerCase() === userName.toLowerCase() || e.id === userName);
   const today = new Date().toLocaleDateString('en-GB');
 
@@ -140,7 +150,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
   const handleDeleteEmployee = (id: string) => { if (window.confirm("⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?")) { setEmployees(employees.filter(e => e.id !== id)); } };
 
   const handleAddAdvance = (e: React.FormEvent) => { e.preventDefault(); if (!advEmpId || !advAmount) return; setAdvances([{ id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false }, ...advances]); setAdvEmpId(''); setAdvAmount(''); setAdvReason(''); alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။'); };
-  const handleAddLeave = (e: React.FormEvent) => { e.preventDefault(); if (!lvEmpId || !lvStart || !lvEnd) return; setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Pending' }, ...leaves]); setLvEmpId(''); setLvStart(''); setLvEnd(''); setLvReason(''); alert('✅ ခွင့်တိုင်ကြားခြင်း မှတ်တမ်းတင်ပြီးပါပြီ။ MD/HR မှ အတည်ပြုပေးရန် စောင့်ဆိုင်းပါ။'); };
+  const handleAddLeave = (e: React.FormEvent) => { e.preventDefault(); if (!lvEmpId || !lvStart || !lvEnd) return; setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Pending' }, ...leaves]); setLvEmpId(''); setLvStart(''); setLvEnd(''); setLvReason(''); alert(tr(language, 'hrLeaveSubmitted')); };
 
   const handleLeaveAction = (status: 'Approved' | 'Rejected') => {
     if (!actionLeave) return;
@@ -395,21 +405,21 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
       {actionLeave && (
          <div className="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm print:hidden">
             <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
-               <h3 className="font-black text-lg text-indigo-900 mb-4">ခွင့်ပြုချက် စီမံရန်</h3>
+               <h3 className="font-black text-lg text-indigo-900 mb-4">{tr(language, 'hrLeaveManageTitle')}</h3>
                <div className="bg-gray-50 p-4 rounded-xl mb-4 text-sm space-y-2">
-                 <p><span className="font-bold text-gray-500">ဝန်ထမ်း:</span> {employees.find(e => e.id === actionLeave.employeeId)?.name}</p>
-                 <p><span className="font-bold text-gray-500">ရက်စွဲ:</span> {actionLeave.startDate} မှ {actionLeave.endDate}</p>
-                 <p><span className="font-bold text-gray-500">အမျိုးအစား:</span> {actionLeave.leaveType}</p>
-                 <p><span className="font-bold text-gray-500">အကြောင်းရင်း:</span> {actionLeave.reason}</p>
+                 <p><span className="font-bold text-gray-500">{tr(language, 'hrEmployeeName')}:</span> {employees.find(e => e.id === actionLeave.employeeId)?.name}</p>
+                 <p><span className="font-bold text-gray-500">{tr(language, 'hrDate')}:</span> {actionLeave.startDate} {tr(language, 'hrLeaveTo')} {actionLeave.endDate}</p>
+                 <p><span className="font-bold text-gray-500">{tr(language, 'hrLeaveType')}:</span> {getLeaveTypeLabel(actionLeave.leaveType)}</p>
+                 <p><span className="font-bold text-gray-500">{tr(language, 'hrLeaveReason')}:</span> {actionLeave.reason}</p>
                </div>
                <div className="mb-6">
-                 <label className="text-xs font-bold text-gray-500 block mb-1">MD / HR မှတ်ချက် (Optional)</label>
-                 <textarea value={leaveRemark} onChange={e=>setLeaveRemark(e.target.value)} className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" rows={3} placeholder="ခွင့်ပြု/မပြု အကြောင်းရင်း..."></textarea>
+                 <label className="text-xs font-bold text-gray-500 block mb-1">{tr(language, 'hrLeaveRemark')}</label>
+                 <textarea value={leaveRemark} onChange={e=>setLeaveRemark(e.target.value)} className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" rows={3} placeholder={tr(language, 'hrLeaveRemarkPlaceholder')}></textarea>
                </div>
                <div className="flex gap-3">
-                 <button onClick={() => setActionLeave(null)} className="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl">Cancel</button>
-                 <button onClick={() => handleLeaveAction('Rejected')} className="flex-1 bg-rose-100 text-rose-700 hover:bg-rose-200 font-bold py-3 rounded-xl">❌ ပယ်ချမည်</button>
-                 <button onClick={() => handleLeaveAction('Approved')} className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 font-bold py-3 rounded-xl shadow-md">✅ ခွင့်ပြုမည်</button>
+                 <button onClick={() => setActionLeave(null)} className="flex-1 bg-gray-200 text-gray-700 font-bold py-3 rounded-xl">{tr(language, 'hrCancel')}</button>
+                 <button onClick={() => handleLeaveAction('Rejected')} className="flex-1 bg-rose-100 text-rose-700 hover:bg-rose-200 font-bold py-3 rounded-xl">❌ {tr(language, 'hrLeaveReject')}</button>
+                 <button onClick={() => handleLeaveAction('Approved')} className="flex-1 bg-emerald-600 text-white hover:bg-emerald-700 font-bold py-3 rounded-xl shadow-md">✅ {tr(language, 'hrLeaveApprove')}</button>
                </div>
             </div>
          </div>
@@ -630,45 +640,45 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
          <div className="space-y-6">
             <form onSubmit={handleAddLeave} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
                <div className="col-span-1 md:col-span-2">
-                  <label className="text-xs font-bold text-gray-500 mb-1 block">ဝန်ထမ်းရွေးချယ်ရန်</label>
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrLeaveFormEmployee')}</label>
                   <select required value={lvEmpId} onChange={e=>setLvEmpId(e.target.value)} className="w-full border p-3 text-sm rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                     <option value="">-- ရွေးချယ်ပါ --</option>
+                     <option value="">{tr(language, 'hrSelect')}</option>
                      {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
                </div>
-               <div><label className="text-xs font-bold text-gray-500 mb-1 block">စတင်မည့်ရက်</label><input type="date" required value={lvStart} onChange={e=>setLvStart(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
-               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ပြီးဆုံးမည့်ရက်</label><input type="date" required value={lvEnd} onChange={e=>setLvEnd(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrLeaveStartDate')}</label><input type="date" required value={lvStart} onChange={e=>setLvStart(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrLeaveEndDate')}</label><input type="date" required value={lvEnd} onChange={e=>setLvEnd(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
                <div className="col-span-1 md:col-span-2">
-                  <label className="text-xs font-bold text-gray-500 mb-1 block">ခွင့်အမျိုးအစား</label>
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrLeaveType')}</label>
                   <select value={lvType} onChange={e=>setLvType(e.target.value)} className="w-full border p-3 text-sm rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                     <option value="Sick Leave (နေမကောင်းခွင့်)">Sick Leave (နေမကောင်းခွင့်)</option>
-                     <option value="Casual Leave (ကိစ္စရှိ၍ခွင့်)">Casual Leave (ကိစ္စရှိ၍ခွင့်)</option>
+                     <option value="Sick Leave (နေမကောင်းခွင့်)">{tr(language, 'hrLeaveTypeSick')}</option>
+                     <option value="Casual Leave (ကိစ္စရှိ၍ခွင့်)">{tr(language, 'hrLeaveTypeCasual')}</option>
                   </select>
                </div>
-               <div className="col-span-1 md:col-span-4"><label className="text-xs font-bold text-gray-500 mb-1 block">အကြောင်းရင်း</label><input required value={lvReason} onChange={e=>setLvReason(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
-               <div className="col-span-1 md:col-span-2"><button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 text-sm rounded-xl hover:bg-indigo-700 shadow-sm">➕ ခွင့်တင်မည်</button></div>
+               <div className="col-span-1 md:col-span-4"><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrLeaveReason')}</label><input required value={lvReason} onChange={e=>setLvReason(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div className="col-span-1 md:col-span-2"><button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 text-sm rounded-xl hover:bg-indigo-700 shadow-sm">➕ {tr(language, 'hrLeaveSubmit')}</button></div>
             </form>
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                <div className="overflow-x-auto">
                  <table className="w-full text-left text-sm whitespace-nowrap">
                    <thead className="bg-gray-50 text-gray-600 font-bold border-b">
-                     <tr><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">ခွင့်ရက်စွဲ (From - To)</th><th className="p-4">ခွင့်အမျိုးအစား & အကြောင်းရင်း</th><th className="p-4">Status</th><th className="p-4 text-right">Action</th></tr>
+                     <tr><th className="p-4">{tr(language, 'hrEmployeeName')}</th><th className="p-4">{tr(language, 'hrLeavePeriod')}</th><th className="p-4">{tr(language, 'hrLeaveTypeReason')}</th><th className="p-4">{tr(language, 'hrStatus')}</th><th className="p-4 text-right">{tr(language, 'hrActions')}</th></tr>
                    </thead>
                    <tbody>
                       {leaves.map(l => {
                          const emp = employees.find(e => e.id === l.employeeId);
                          return (
                            <tr key={l.id} className="border-b hover:bg-gray-50">
-                             <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
-                             <td className="p-4 font-bold text-gray-600">{l.startDate} <span className="text-xs font-normal">မှ</span> {l.endDate}</td>
-                             <td className="p-4 text-gray-500 whitespace-normal min-w-[200px]">{l.leaveType} <br/><span className="text-xs text-gray-400">{l.reason}</span></td>
+                             <td className="p-4 font-black text-indigo-700">{emp?.name || tr(language, 'hrUnknown')}</td>
+                             <td className="p-4 font-bold text-gray-600">{l.startDate} <span className="text-xs font-normal">{tr(language, 'hrLeaveTo')}</span> {l.endDate}</td>
+                             <td className="p-4 text-gray-500 whitespace-normal min-w-[200px]">{getLeaveTypeLabel(l.leaveType)} <br/><span className="text-xs text-gray-400">{l.reason}</span></td>
                              <td className="p-4">
-                                {l.status === 'Pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-amber-200">⏳ စောင့်ဆိုင်းဆဲ</span>}
-                                {l.status === 'Approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">✅ ခွင့်ပြုပြီး</span>}
-                                {l.status === 'Rejected' && <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">❌ ပယ်ချသည်</span>}
+                                {l.status === 'Pending' && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-amber-200">⏳ {tr(language, 'hrLeavePending')}</span>}
+                                {l.status === 'Approved' && <span className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">✅ {tr(language, 'hrLeaveApproved')}</span>}
+                                {l.status === 'Rejected' && <span className="bg-rose-100 text-rose-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase">❌ {tr(language, 'hrLeaveRejected')}</span>}
                              </td>
                              <td className="p-4 text-right">
-                                {l.status === 'Pending' && <button onClick={() => setActionLeave(l)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-blue-200">စီမံမည်</button>}
+                                {l.status === 'Pending' && <button onClick={() => setActionLeave(l)} className="bg-blue-100 text-blue-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-blue-200">{tr(language, 'hrLeaveManage')}</button>}
                              </td>
                            </tr>
                          )
