@@ -95,11 +95,11 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
   // 🌟 အဆင့်မြင့် ခိုင်မာသော Android/iOS Dual-Mode GPS စနစ် 🌟
   const triggerGPSLocation = () => {
     if (!navigator.geolocation) {
-      setLocError('သင်၏ ဖုန်းသည် GPS စနစ်ကို အထောက်အပံ့မပေးပါ။');
+      setLocError(tr(language, 'hrGpsUnsupported'));
       return;
     }
     setIsLocLoading(true);
-    setLocError('GPS တည်နေရာ ရှာဖွေနေဆဲဖြစ်ပါသည်...');
+    setLocError(tr(language, 'hrGpsSearching'));
 
     const highAccuracyOptions = { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 };
     const lowAccuracyOptions = { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 };
@@ -120,7 +120,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
             setIsLocLoading(false);
           },
           (err2) => {
-            setLocError('GPS မရနိုင်ပါ။ ဖုန်း၏ Location တည်နေရာ ဖွင့်ထားကြောင်းနှင့် App တွင် ခွင့်ပြုချက် ပေးထားကြောင်း စစ်ဆေးပါ။');
+            setLocError(tr(language, 'hrGpsUnavailable'));
             setIsLocLoading(false);
           },
           lowAccuracyOptions
@@ -151,8 +151,8 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
   const handleAutoGetGPS = () => { if (currentLoc) { setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString()); alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)'); } else { alert('⚠️ GPS ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် Location ပိတ်ထားပါသည်။'); } };
   const handleSaveSettings = () => { setHrSettings([{ id: 'default', officeLatitude: Number(setLat), officeLongitude: Number(setLon), allowedRadius: Number(setRad), officeStartTime: setStartTime, officeEndTime: setEndTime, punctualityBonus: Number(setPunctuality), perfectAttendanceBonus: Number(setPerfect), lateRules: setRules }]); alert('✅ မူဝါဒများ သိမ်းဆည်းခြင်း အောင်မြင်ပါသည်။'); };
 
-  const handleCheckIn = () => { if (!currentEmployee) return alert('ဝန်ထမ်းစာရင်းတွင် မတွေ့ရှိပါ။'); if (!currentLoc) return alert('GPS ရှာဖွေနေဆဲပါ။'); const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert(`❌ ရုံးတည်နေရာမှ (${Math.round(distance)} မီတာ) ကွာဝေးနေပါသည်။`); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance([...attendance, { id: Date.now(), employeeId: currentEmployee.id, date: today, checkInTime: nowTime, status: 'Present', checkInGps: `${currentLoc.lat}, ${currentLoc.lon}` }]); alert(`✅ အောင်မြင်ပါသည်။ (${nowTime})`); };
-  const handleCheckOut = () => { if (!currentEmployee || !currentLoc) return; const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert('❌ ရုံးပတ်ဝန်းကျင်မှသာ ရုံးဆင်းစာရင်း သွင်းနိုင်ပါသည်။'); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance(attendance.map(a => a.employeeId === currentEmployee.id && a.date === today ? { ...a, checkOutTime: nowTime, checkOutGps: `${currentLoc.lat}, ${currentLoc.lon}` } : a)); alert(`✅ ရုံးဆင်းစာရင်း သွင်းပြီးပါပြီ။ (${nowTime})`); };
+  const handleCheckIn = () => { if (!currentEmployee) return alert(tr(language, 'hrEmployeeNotFound')); if (!currentLoc) return alert(tr(language, 'hrGpsSearchingShort')); const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert(tr(language, 'hrGpsTooFar').replace('{distance}', Math.round(distance).toString())); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance([...attendance, { id: Date.now(), employeeId: currentEmployee.id, date: today, checkInTime: nowTime, status: 'Present', checkInGps: `${currentLoc.lat}, ${currentLoc.lon}` }]); alert(tr(language, 'hrCheckInSuccess').replace('{time}', nowTime)); };
+  const handleCheckOut = () => { if (!currentEmployee || !currentLoc) return; const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert(tr(language, 'hrCheckOutNearOfficeOnly')); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance(attendance.map(a => a.employeeId === currentEmployee.id && a.date === today ? { ...a, checkOutTime: nowTime, checkOutGps: `${currentLoc.lat}, ${currentLoc.lon}` } : a)); alert(tr(language, 'hrCheckOutSuccess').replace('{time}', nowTime)); };
 
   // 🌟 (အသစ်) Attendance Edit/Delete Logic 🌟
   const handleOpenEditAttendance = (rec: Attendance) => {
@@ -166,7 +166,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
     if (!editingAttRecord) return;
     setAttendance(attendance.map(a => a.id === editingAttRecord.id ? { ...a, checkInTime: editInTime, checkOutTime: editOutTime, status: editStatus } : a));
     setEditingAttRecord(null);
-    alert('✅ ရုံးတက်/ဆင်း မှတ်တမ်းကို ပြင်ဆင်ပြီးပါပြီ။');
+    alert(tr(language, 'hrAttendanceEditSaved'));
   };
 
   const handleDeleteAttendance = (id: number) => {
@@ -352,34 +352,34 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
          <div className="fixed inset-0 bg-black/60 z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white p-6 rounded-2xl w-full max-w-md shadow-2xl">
                <div className="flex justify-between items-center border-b pb-3 mb-4">
-                  <h3 className="font-black text-lg text-slate-800">ရုံးတက်/ဆင်း မှတ်တမ်း ပြင်ဆင်ရန်</h3>
+                  <h3 className="font-black text-lg text-slate-800">{tr(language, 'hrEditAttendanceTitle')}</h3>
                   <button onClick={() => setEditingAttRecord(null)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
                </div>
                <div className="space-y-4 text-sm font-bold text-slate-600">
                   <div>
-                     <p className="text-xs text-slate-400 uppercase mb-1">ဝန်ထမ်းအမည်</p>
+                     <p className="text-xs text-slate-400 uppercase mb-1">{tr(language, 'hrEmployeeName')}</p>
                      <p className="text-base font-black text-indigo-700 bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">{employees.find(e => e.id === editingAttRecord.employeeId)?.name}</p>
                   </div>
                   <div>
-                     <p className="text-xs text-slate-400 uppercase mb-1">ရက်စွဲ</p>
+                     <p className="text-xs text-slate-400 uppercase mb-1">{tr(language, 'hrDate')}</p>
                      <p className="text-base font-black text-slate-700 bg-slate-50 p-2.5 rounded-xl border">{editingAttRecord.date}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                     <div><label className="text-xs block mb-1">ရုံးတက်ချိန်</label><input type="text" value={editInTime} onChange={e=>setEditInTime(e.target.value)} placeholder="ဥပမာ - 08:35 AM" className="w-full border p-2.5 rounded-xl font-mono" /></div>
-                     <div><label className="text-xs block mb-1">ရုံးဆင်းချိန်</label><input type="text" value={editOutTime} onChange={e=>setEditOutTime(e.target.value)} placeholder="ဥပမာ - 05:30 PM" className="w-full border p-2.5 rounded-xl font-mono" /></div>
+                     <div><label className="text-xs block mb-1">{tr(language, 'hrCheckInTime')}</label><input type="text" value={editInTime} onChange={e=>setEditInTime(e.target.value)} placeholder={tr(language, 'hrCheckInExample')} className="w-full border p-2.5 rounded-xl font-mono" /></div>
+                     <div><label className="text-xs block mb-1">{tr(language, 'hrCheckOutTime')}</label><input type="text" value={editOutTime} onChange={e=>setEditOutTime(e.target.value)} placeholder={tr(language, 'hrCheckOutExample')} className="w-full border p-2.5 rounded-xl font-mono" /></div>
                   </div>
                   <div>
-                     <label className="text-xs block mb-1">အခြေအနေ (Status)</label>
+                     <label className="text-xs block mb-1">{tr(language, 'hrStatus')}</label>
                      <select value={editStatus} onChange={e=>setEditStatus(e.target.value as any)} className="w-full border p-2.5 rounded-xl bg-white outline-none">
-                        <option value="Present">ရုံးတက် (Present)</option>
-                        <option value="Absent">ပျက်ကွက် (Absent)</option>
-                        <option value="Leave">ခွင့် (Leave)</option>
+                        <option value="Present">{tr(language, 'hrStatusPresent')}</option>
+                        <option value="Absent">{tr(language, 'hrStatusAbsent')}</option>
+                        <option value="Leave">{tr(language, 'hrStatusLeave')}</option>
                      </select>
                   </div>
                </div>
                <div className="flex gap-2 mt-6">
-                  <button onClick={() => setEditingAttRecord(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl">ပယ်ဖျက်မည်</button>
-                  <button onClick={handleSaveEditedAttendance} className="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-md shadow-indigo-500/20">ပြင်ဆင်ချက်သိမ်းမည်</button>
+                  <button onClick={() => setEditingAttRecord(null)} className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl">{tr(language, 'hrCancel')}</button>
+                  <button onClick={handleSaveEditedAttendance} className="flex-1 py-3 bg-indigo-600 text-white font-black rounded-xl shadow-md shadow-indigo-500/20">{tr(language, 'hrSaveChanges')}</button>
                </div>
             </div>
          </div>
@@ -474,24 +474,30 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
       {/* 📍 GPS Attendance Tab */}
       {activeSubTab === 'attendance' && (
         <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col items-center justify-center py-12">
-           <h3 className="text-2xl font-black text-gray-800 mb-2">မင်္ဂလာပါ, {userName}</h3>
+           <h3 className="text-2xl font-black text-gray-800 mb-2">{tr(language, 'hrGreeting')}, {userName}</h3>
            <p className="text-gray-500 font-bold mb-8">{today}</p>
            {locError && <div className="bg-red-50 text-red-600 p-4 rounded-xl font-bold mb-6 w-full max-w-md text-center border border-red-200">⚠️ {locError}</div>}
 
            {!todayAtt?.checkInTime ? (
-              <button onClick={handleCheckIn} className="w-48 h-48 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black text-2xl shadow-2xl hover:scale-105 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2 ring-8 ring-emerald-50"><span>📍</span>ရုံးတက်မည်</button>
+              <button onClick={handleCheckIn} className="w-48 h-48 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black text-2xl shadow-2xl hover:scale-105 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2 ring-8 ring-emerald-50"><span>📍</span>{tr(language, 'hrCheckIn')}</button>
            ) : !todayAtt.checkOutTime ? (
               <div className="text-center">
-                 <div className="text-emerald-600 font-bold mb-8 bg-emerald-50 py-2 px-6 rounded-full inline-block">✅ ရုံးတက်ချိန်: {todayAtt.checkInTime}</div>
-                 <button onClick={handleCheckOut} className="w-48 h-48 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 text-white font-black text-2xl shadow-2xl hover:scale-105 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2 ring-8 ring-rose-50"><span>🏃</span>ရုံးဆင်းမည်</button>
+                 <div className="text-emerald-600 font-bold mb-8 bg-emerald-50 py-2 px-6 rounded-full inline-block">✅ {tr(language, 'hrCheckInTime')}: {todayAtt.checkInTime}</div>
+                 <button onClick={handleCheckOut} className="w-48 h-48 rounded-full bg-gradient-to-br from-rose-400 to-rose-600 text-white font-black text-2xl shadow-2xl hover:scale-105 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2 ring-8 ring-rose-50"><span>🏃</span>{tr(language, 'hrCheckOut')}</button>
               </div>
            ) : (
               <div className="text-center p-8 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
-                 <h4 className="text-xl font-black text-gray-700 mb-4">ယနေ့အတွက် တာဝန်ပြီးဆုံးပါပြီ</h4>
-                 <div className="space-y-2 text-sm font-bold text-gray-500"><p>ရုံးတက်ချိန်: <span className="text-emerald-600">{todayAtt.checkInTime}</span></p><p>ရုံးဆင်းချိန်: <span className="text-rose-600">{todayAtt.checkOutTime}</span></p></div>
+                 <h4 className="text-xl font-black text-gray-700 mb-4">{tr(language, 'hrDutyComplete')}</h4>
+                 <div className="space-y-2 text-sm font-bold text-gray-500"><p>{tr(language, 'hrCheckInTime')}: <span className="text-emerald-600">{todayAtt.checkInTime}</span></p><p>{tr(language, 'hrCheckOutTime')}: <span className="text-rose-600">{todayAtt.checkOutTime}</span></p></div>
               </div>
            )}
-           {currentLoc && (<div className="mt-8 text-[11px] font-black text-slate-500 bg-slate-100 px-4 py-2 rounded-xl border">🏢 SSY Office နှင့် အကွာအဝေး: {Math.round(getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude))} မီတာ (တိကျမှု: {Math.round(currentLoc.accuracy)}m)</div>)}
+           {currentLoc && (
+              <div className="mt-8 text-[11px] font-black text-slate-500 bg-slate-100 px-4 py-2 rounded-xl border">
+                {tr(language, 'hrOfficeDistance')
+                  .replace('{distance}', Math.round(getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude)).toString())
+                  .replace('{accuracy}', Math.round(currentLoc.accuracy).toString())}
+              </div>
+            )}
         </div>
       )}
 
