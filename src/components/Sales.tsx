@@ -197,10 +197,10 @@ export const Sales: React.FC<SalesProps> = ({
     });
 
     if (returnedItemsList.length === 0) {
-      return alert("⚠️ ကျေးဇူးပြု၍ ပြန်အပ်မည့် ပစ္စည်းအရေအတွက် အနည်းဆုံး ၁ ခု ရွေးချယ်ပေးပါဗျာ။");
+      return alert(tr(language, 'salesReturnQtyRequired'));
     }
     if (!returnNote.trim()) {
-      return alert("⚠️ ကျေးဇူးပြု၍ အမှားအယွင်းမရှိစေရန် အပ်ရသည့် အကြောင်းအရင်း (မှတ်ချက်) ရေးပေးပါ ခင်ဗျာ။");
+      return alert(tr(language, 'salesReturnNoteRequired'));
     }
 
     const finalRefundAmount = returnType === 'refund' ? calculatedRefundTotal : 0;
@@ -215,7 +215,7 @@ export const Sales: React.FC<SalesProps> = ({
 
     setIsReturnModalOpen(false);
     setSelectedSaleForReturn(null);
-    alert("✅ ပစ္စည်းပြန်အပ်/လဲလှယ်မှုစနစ် အောင်မြင်စွာ မှတ်တမ်းတင်ပြီး စတော့နှင့် ဘဏ္ဍာရေးစာရင်း ချိန်ညှိပြီးပါပြီ။");
+    alert(tr(language, 'salesReturnSuccess'));
   };
 
   const openPrintModal = (sale: SaleRecord) => {
@@ -463,22 +463,22 @@ export const Sales: React.FC<SalesProps> = ({
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-2 backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="bg-rose-700 p-4 flex justify-between items-center text-white">
-              <h3 className="font-black text-sm md:text-lg flex items-center gap-2">🔄 Return & Exchange စနစ် (Voucher: #{selectedSaleForReturn.id})</h3>
+              <h3 className="font-black text-sm md:text-lg flex items-center gap-2">🔄 {tr(language, 'salesReturnModalTitle')} ({tr(language, 'salesVoucher')}: #{selectedSaleForReturn.id})</h3>
               <button onClick={() => setIsReturnModalOpen(false)} className="text-white hover:text-gray-200 font-bold text-lg">✕</button>
             </div>
             
             <div className="p-4 md:p-6 overflow-y-auto space-y-4">
               <div>
-                <p className="text-xs font-bold text-slate-500 mb-2 uppercase">၁။ အပ်နှံမည့် ပစ္စည်းအရေအတွက် ရွေးချယ်ပါ</p>
+                <p className="text-xs font-bold text-slate-500 mb-2 uppercase">{tr(language, 'salesReturnStep1')}</p>
                 <div className="space-y-2">
                   {selectedSaleForReturn.items?.map((item) => (
                     <div key={item.product.id} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border">
                       <div>
                         <span className="font-bold text-slate-800 text-xs md:text-sm">{item.product.category} ({item.product.taste})</span>
-                        <span className="text-[10px] text-slate-400 block font-bold">ဝယ်ယူခဲ့သည့် အရေအတွက်: {item.quantity} ထုပ် (ဈေးနှုန်း - {item.product.price?.toLocaleString()} Ks)</span>
+                        <span className="text-[10px] text-slate-400 block font-bold">{tr(language, 'salesPurchasedQty')}: {item.quantity} {tr(language, 'salesPacks')} ({tr(language, 'salesPrice')} - {item.product.price?.toLocaleString()} Ks)</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500">အပ်မည့်ဦးရေ:</span>
+                        <span className="text-xs font-bold text-slate-500">{tr(language, 'salesReturnQty')}:</span>
                         <input 
                           type="number" 
                           min="0" 
@@ -495,20 +495,20 @@ export const Sales: React.FC<SalesProps> = ({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">၂။ အလဲအလှယ် အမျိုးအစား</label>
+                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">{tr(language, 'salesReturnStep2')}</label>
                   <select 
                     value={returnType} 
                     onChange={e => setReturnType(e.target.value as any)}
                     className="w-full p-2.5 rounded-xl border font-bold text-sm bg-slate-50 outline-none focus:border-rose-500"
                   >
-                    <option value="refund">Refund (ငွေပြန်အမ်းမည်)</option>
-                    <option value="exchange">Exchange (အခြားပစ္စည်းနှင့်လဲမည်)</option>
+                    <option value="refund">{tr(language, 'salesRefundMethod')}</option>
+                    <option value="exchange">{tr(language, 'salesExchangeMethod')}</option>
                   </select>
                 </div>
 
                 {returnType === 'refund' && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">၃။ တွက်ချက်ပြီး အမ်းငွေစုစုပေါင်း</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">{tr(language, 'salesReturnStep3')}</label>
                     <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl font-black text-rose-700 text-sm md:text-base text-right">
                       {calculatedRefundTotal?.toLocaleString()} Ks
                     </div>
@@ -517,20 +517,20 @@ export const Sales: React.FC<SalesProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">၄။ အပ်ရသည့် အကြောင်းအရင်း / မှတ်ချက် *</label>
+                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">{tr(language, 'salesReturnStep4')} *</label>
                 <textarea 
                   rows={2} 
                   value={returnNote}
                   onChange={e => setReturnNote(e.target.value)}
-                  placeholder="ဥပမာ - ကုန်ပစ္စည်း လေဝင်နေသဖြင့် ငွေပြန်အမ်းပေးခဲ့ရပါသည်..."
+                  placeholder={tr(language, 'salesReturnReasonPlaceholder')}
                   className="w-full p-3 border border-slate-200 rounded-xl outline-none focus:border-rose-500 text-xs md:text-sm font-medium"
                 />
               </div>
             </div>
 
             <div className="p-4 bg-slate-50 border-t flex gap-3">
-              <button onClick={() => setIsReturnModalOpen(false)} className="flex-1 py-2.5 bg-slate-200 font-bold rounded-xl text-slate-600 hover:bg-slate-300 text-sm">မလုပ်တော့ပါ</button>
-              <button onClick={handleReturnSubmit} className="flex-[2] py-2.5 bg-rose-600 font-black rounded-xl text-white hover:bg-rose-700 shadow-md text-sm">စာရင်းသွင်း သိမ်းဆည်းမည်</button>
+              <button onClick={() => setIsReturnModalOpen(false)} className="flex-1 py-2.5 bg-slate-200 font-bold rounded-xl text-slate-600 hover:bg-slate-300 text-sm">{tr(language, 'salesCancel')}</button>
+              <button onClick={handleReturnSubmit} className="flex-[2] py-2.5 bg-rose-600 font-black rounded-xl text-white hover:bg-rose-700 shadow-md text-sm">{tr(language, 'salesReturnSave')}</button>
             </div>
           </div>
         </div>
