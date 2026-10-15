@@ -579,6 +579,16 @@ export const translations = {
     hrEmployeeAddSuccess: '✅ ဝန်ထမ်းအသစ် စာရင်းသွင်းပြီးပါပြီ။',
     hrEmployeeUpdateSuccess: '✅ ဝန်ထမ်းအချက်အလက် ပြင်ဆင်မှု အောင်မြင်ပါသည်။',
     hrEmployeeDeleteConfirm: '⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?',
+
+    hrAdvanceEmployee: 'ဝန်ထမ်းရွေးချယ်ရန်',
+    hrAdvanceAmount: 'ကြိုတင်ငွေပမာဏ (Ks)',
+    hrAdvanceAmountShort: 'ပမာဏ',
+    hrAdvanceReason: 'အကြောင်းရင်း',
+    hrAdvanceReasonPlaceholder: 'ဥပမာ - ဆေးဖိုး...',
+    hrAdvanceAdd: 'ထည့်မည်',
+    hrAdvanceSuccess: '✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။',
+    hrAdvanceDeducted: 'လစာမှနုတ်ပြီး',
+    hrAdvancePendingDeduction: 'နုတ်ရန်ကျန်',
   },
   en: {
     dashboard: 'Dashboard',
@@ -1155,6 +1165,16 @@ export const translations = {
     hrEmployeeAddSuccess: '✅ New employee registered successfully.',
     hrEmployeeUpdateSuccess: '✅ Employee information updated successfully.',
     hrEmployeeDeleteConfirm: '⚠️ Are you sure you want to permanently delete this employee?',
+
+    hrAdvanceEmployee: 'Select Employee',
+    hrAdvanceAmount: 'Advance Amount (Ks)',
+    hrAdvanceAmountShort: 'Amount',
+    hrAdvanceReason: 'Reason',
+    hrAdvanceReasonPlaceholder: 'Example - Medical expense...',
+    hrAdvanceAdd: 'Add Advance',
+    hrAdvanceSuccess: '✅ Advance recorded successfully. It will be deducted automatically during payroll.',
+    hrAdvanceDeducted: 'Deducted from Payroll',
+    hrAdvancePendingDeduction: 'Pending Deduction',
   },
 } as const;
 

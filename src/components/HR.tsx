@@ -149,7 +149,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
   const handleEditEmployee = (emp: Employee) => { setEditingEmpId(emp.id); setEmpName(emp.name); setEmpPos(emp.position); setEmpDept(emp.department); setEmpSalary(emp.basicSalary.toString()); setEmpPhone(emp.phone); };
   const handleDeleteEmployee = (id: string) => { if (window.confirm(tr(language, 'hrEmployeeDeleteConfirm'))) { setEmployees(employees.filter(e => e.id !== id)); } };
 
-  const handleAddAdvance = (e: React.FormEvent) => { e.preventDefault(); if (!advEmpId || !advAmount) return; setAdvances([{ id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false }, ...advances]); setAdvEmpId(''); setAdvAmount(''); setAdvReason(''); alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။'); };
+  const handleAddAdvance = (e: React.FormEvent) => { e.preventDefault(); if (!advEmpId || !advAmount) return; setAdvances([{ id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false }, ...advances]); setAdvEmpId(''); setAdvAmount(''); setAdvReason(''); alert(tr(language, 'hrAdvanceSuccess')); };
   const handleAddLeave = (e: React.FormEvent) => { e.preventDefault(); if (!lvEmpId || !lvStart || !lvEnd) return; setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Pending' }, ...leaves]); setLvEmpId(''); setLvStart(''); setLvEnd(''); setLvReason(''); alert(tr(language, 'hrLeaveSubmitted')); };
 
   const handleLeaveAction = (status: 'Approved' | 'Rejected') => {
@@ -735,30 +735,30 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
          <div className="space-y-6">
             <form onSubmit={handleAddAdvance} className="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
                <div className="col-span-1 sm:col-span-2">
-                  <label className="text-xs font-bold text-gray-500 mb-1 block">ဝန်ထမ်းရွေးချယ်ရန်</label>
+                  <label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrAdvanceEmployee')}</label>
                   <select required value={advEmpId} onChange={e=>setAdvEmpId(e.target.value)} className="w-full border p-3 text-sm rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500">
-                     <option value="">-- ရွေးချယ်ပါ --</option>
+                     <option value="">{tr(language, 'hrSelect')}</option>
                      {employees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.position})</option>)}
                   </select>
                </div>
-               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ကြိုတင်ငွေပမာဏ (Ks)</label><input type="number" required value={advAmount} onChange={e=>setAdvAmount(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
-               <div className="col-span-1 sm:col-span-3"><label className="text-xs font-bold text-gray-500 mb-1 block">အကြောင်းရင်း</label><input required value={advReason} onChange={e=>setAdvReason(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder="ဥပမာ - ဆေးဖိုး..." /></div>
-               <div className="col-span-1"><button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 text-sm rounded-xl hover:bg-indigo-700 shadow-sm">➕ ထည့်မည်</button></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrAdvanceAmount')}</label><input type="number" required value={advAmount} onChange={e=>setAdvAmount(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div className="col-span-1 sm:col-span-3"><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrAdvanceReason')}</label><input required value={advReason} onChange={e=>setAdvReason(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" placeholder={tr(language, 'hrAdvanceReasonPlaceholder')} /></div>
+               <div className="col-span-1"><button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 text-sm rounded-xl hover:bg-indigo-700 shadow-sm">➕ {tr(language, 'hrAdvanceAdd')}</button></div>
             </form>
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                <div className="overflow-x-auto">
                  <table className="w-full text-left text-sm whitespace-nowrap">
-                   <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ရက်စွဲ</th><th className="p-4">ဝန်ထမ်းအမည်</th><th className="p-4">အကြောင်းရင်း</th><th className="p-4 text-right">ပမာဏ</th><th className="p-4 text-center">Status</th></tr></thead>
+                   <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">{tr(language, 'hrDate')}</th><th className="p-4">{tr(language, 'hrEmployeeName')}</th><th className="p-4">{tr(language, 'hrAdvanceReason')}</th><th className="p-4 text-right">{tr(language, 'hrAdvanceAmountShort')}</th><th className="p-4 text-center">{tr(language, 'hrStatus')}</th></tr></thead>
                    <tbody>
                       {advances.map(a => {
                          const emp = employees.find(e => e.id === a.employeeId);
                          return (
                            <tr key={a.id} className="border-b hover:bg-gray-50">
                              <td className="p-4 font-bold text-gray-500">{a.date}</td>
-                             <td className="p-4 font-black text-indigo-700">{emp?.name || 'Unknown'}</td>
+                             <td className="p-4 font-black text-indigo-700">{emp?.name || tr(language, 'hrUnknown')}</td>
                              <td className="p-4 text-gray-600">{a.reason}</td>
                              <td className="p-4 font-bold text-rose-600 text-right">{a.amount.toLocaleString()} Ks</td>
-                             <td className="p-4 text-center">{a.deducted ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase border">လစာမှနုတ်ပြီး</span> : <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-yellow-200">နုတ်ရန်ကျန်</span>}</td>
+                             <td className="p-4 text-center">{a.deducted ? <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded-full text-[10px] font-bold uppercase border">{tr(language, 'hrAdvanceDeducted')}</span> : <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-[10px] font-bold uppercase border border-yellow-200">{tr(language, 'hrAdvancePendingDeduction')}</span>}</td>
                            </tr>
                          )
                       })}
