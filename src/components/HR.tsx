@@ -328,10 +328,16 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
   };
 
   const handleExportCSV = () => {
-    let csvContent = "data:text/csv;charset=utf-8,\uFEFFရက်စွဲ,ဝန်ထမ်းအမည်,ရုံးတက်ချိန်,ရုံးဆင်းချိန်,အခြေအနေ,ဒဏ်ကြေး (Ks)\n";
+    let csvContent = `data:text/csv;charset=utf-8,\uFEFF${tr(language, 'hrCsvAttendanceHeader')}\n`;
     attendanceFilteredList.forEach(a => {
       const emp = employees.find(e => e.id === a.employeeId);
-      csvContent += `${a.date},"${emp?.name || 'Unknown'}",${a.checkInTime || '-'},${a.checkOutTime || '-'},${a.status},${a.calculatedFine || 0}\n`;
+      const statusText =
+        a.status === 'Present'
+          ? tr(language, 'hrReportPresent')
+          : a.status === 'Leave'
+            ? tr(language, 'hrReportLeave')
+            : tr(language, 'hrReportAbsent');
+      csvContent += `${a.date},"${emp?.name || tr(language, 'hrUnknown')}",${a.checkInTime || '-'},${a.checkOutTime || '-'},${statusText},${a.calculatedFine || 0}\n`;
     });
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -508,55 +514,55 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
             {/* Control Filters Area */}
             <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-wrap items-end gap-3 no-print">
                <div className="flex-1 min-w-[150px]">
-                  <label className="text-xs font-bold text-slate-500 block mb-1">ဝန်ထမ်းအလိုက်</label>
+                  <label className="text-xs font-bold text-slate-500 block mb-1">{tr(language, 'hrReportFilterEmployee')}</label>
                   <select value={filterEmpId} onChange={e=>setFilterEmpId(e.target.value)} className="w-full border p-2 text-sm rounded-lg bg-slate-50 font-bold">
-                     <option value="all">ဝန်ထမ်းအားလုံး (All)</option>
+                     <option value="all">{tr(language, 'hrAllEmployees')}</option>
                      {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                   </select>
                </div>
                <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">လအလိုက် စစ်ထုတ်ရန်</label>
+                  <label className="text-xs font-bold text-slate-500 block mb-1">{tr(language, 'hrReportFilterMonth')}</label>
                   <input type="month" value={filterMonth} onChange={e=>{setFilterMonth(e.target.value); setFilterDate('');}} className="border p-2 text-sm rounded-lg bg-slate-50 font-bold" />
                </div>
                <div>
-                  <label className="text-xs font-bold text-slate-500 block mb-1">ရက်စွဲအလိုက် စစ်ထုတ်ရန်</label>
+                  <label className="text-xs font-bold text-slate-500 block mb-1">{tr(language, 'hrReportFilterDate')}</label>
                   <input type="date" value={filterDate} onChange={e=>{setFilterDate(e.target.value); setFilterMonth('');}} className="border p-2 text-sm rounded-lg bg-slate-50 font-bold" />
                </div>
                <div className="flex gap-1.5 ml-auto">
                   <button onClick={handleExportCSV} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1 shadow">
-                     <Download size={14}/> Excel သိမ်းမည်
+                     <Download size={14}/> {tr(language, 'hrExportCsv')}
                   </button>
                   <button onClick={() => window.print()} className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-1 shadow">
-                     <Printer size={14}/> Print Report ထုတ်မည်
+                     <Printer size={14}/> {tr(language, 'hrPrintReport')}
                   </button>
                </div>
             </div>
 
             {/* Print Layout Header Title */}
             <div className="hidden print:block text-center mb-4 border-b pb-2">
-               <h2 className="text-xl font-black text-slate-900">SSY Master ERP - ဝန်ထမ်းရုံးတက်ရှင်းတမ်း အစီရင်ခံစာ</h2>
+               <h2 className="text-xl font-black text-slate-900">{tr(language, 'hrAttendanceReportTitle')}</h2>
                <p className="text-xs font-bold text-slate-500 mt-1">
-                  စစ်ထုတ်ချက်: {filterEmpId === 'all' ? 'ဝန်ထမ်းအားလုံး' : employees.find(e=>e.id===filterEmpId)?.name}
-                  {filterMonth && ` | လစွဲ: ${filterMonth}`} {filterDate && ` | ရက်စွဲ: ${filterDate}`}
+                  {tr(language, 'hrReportFilterLabel')}: {filterEmpId === 'all' ? tr(language, 'hrAllEmployees') : employees.find(e=>e.id===filterEmpId)?.name}
+                  {filterMonth && ` | ${tr(language, 'hrMonth')}: ${filterMonth}`} {filterDate && ` | ${tr(language, 'hrDate')}: ${filterDate}`}
                </p>
             </div>
 
             {/* Mini Stat Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-sm text-center">
-                  <p className="text-[11px] font-bold text-emerald-600 uppercase">ရုံးတက်စုစုပေါင်း</p>
-                  <p className="text-xl font-black text-slate-800 mt-1">{reportSummaryMetrics.presentCount} ရက်</p>
+                  <p className="text-[11px] font-bold text-emerald-600 uppercase">{tr(language, 'hrReportPresentTotal')}</p>
+                  <p className="text-xl font-black text-slate-800 mt-1">{reportSummaryMetrics.presentCount} {tr(language, 'hrDays')}</p>
                </div>
                <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm text-center">
-                  <p className="text-[11px] font-bold text-rose-500 uppercase">ပျက်ကွက်စုစုပေါင်း</p>
-                  <p className="text-xl font-black text-slate-800 mt-1">{reportSummaryMetrics.absentCount} ရက်</p>
+                  <p className="text-[11px] font-bold text-rose-500 uppercase">{tr(language, 'hrReportAbsentTotal')}</p>
+                  <p className="text-xl font-black text-slate-800 mt-1">{reportSummaryMetrics.absentCount} {tr(language, 'hrDays')}</p>
                </div>
                <div className="bg-white p-4 rounded-xl border border-amber-100 shadow-sm text-center">
-                  <p className="text-[11px] font-bold text-amber-600 uppercase">ခွင့်ရက်စုစုပေါင်း</p>
-                  <p className="text-xl font-black text-slate-800 mt-1">{reportSummaryMetrics.leaveCount} ရက်</p>
+                  <p className="text-[11px] font-bold text-amber-600 uppercase">{tr(language, 'hrReportLeaveTotal')}</p>
+                  <p className="text-xl font-black text-slate-800 mt-1">{reportSummaryMetrics.leaveCount} {tr(language, 'hrDays')}</p>
                </div>
                <div className="bg-indigo-600 p-4 rounded-xl shadow-sm text-center text-white">
-                  <p className="text-[11px] font-bold opacity-90 uppercase">ဒဏ်ကြေးငွေစုစုပေါင်း</p>
+                  <p className="text-[11px] font-bold opacity-90 uppercase">{tr(language, 'hrReportFineTotal')}</p>
                   <p className="text-xl font-black mt-1">{reportSummaryMetrics.totalFines.toLocaleString()} Ks</p>
                </div>
             </div>
@@ -567,13 +573,13 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
                   <table className="w-full text-left text-sm whitespace-nowrap report-table">
                     <thead className="bg-slate-800 text-white print:bg-slate-100 print:text-black">
                       <tr>
-                        <th className="p-3">ရက်စွဲ</th>
-                        <th className="p-3">ဝန်ထမ်းအမည်</th>
-                        <th className="p-3">ရုံးတက်ချိန်</th>
-                        <th className="p-3">ရုံးဆင်းချိန်</th>
-                        <th className="p-3 text-center">အခြေအနေ</th>
-                        <th className="p-3 text-right">ဒဏ်ကြေး</th>
-                        <th className="p-3 text-center no-print">လုပ်ဆောင်ချက်</th>
+                        <th className="p-3">{tr(language, 'hrDate')}</th>
+                        <th className="p-3">{tr(language, 'hrEmployeeName')}</th>
+                        <th className="p-3">{tr(language, 'hrCheckInTime')}</th>
+                        <th className="p-3">{tr(language, 'hrCheckOutTime')}</th>
+                        <th className="p-3 text-center">{tr(language, 'hrStatus')}</th>
+                        <th className="p-3 text-right">{tr(language, 'hrFine')}</th>
+                        <th className="p-3 text-center no-print">{tr(language, 'hrActions')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -582,7 +588,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
                           return (
                             <tr key={att.id} className="hover:bg-slate-50 transition-colors">
                               <td className="p-3 font-bold text-slate-600">{att.date}</td>
-                              <td className="p-3 font-black text-slate-800">{emp?.name || 'Unknown'}</td>
+                              <td className="p-3 font-black text-slate-800">{emp?.name || tr(language, 'hrUnknown')}</td>
                               <td className="p-3 text-emerald-600 font-bold font-mono">{att.checkInTime || '-'}</td>
                               <td className="p-3 text-rose-600 font-bold font-mono">{att.checkOutTime || '-'}</td>
                               <td className="p-3 text-center">
@@ -590,7 +596,11 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
                                     att.status === 'Present' ? 'bg-emerald-50 text-emerald-700' :
                                     att.status === 'Leave' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
                                  }`}>
-                                    {att.status === 'Present' ? 'ရုံးတက်' : att.status === 'Leave' ? 'ခွင့်' : 'ပျက်ကွက်'}
+                                    {att.status === 'Present'
+                                       ? tr(language, 'hrReportPresent')
+                                       : att.status === 'Leave'
+                                         ? tr(language, 'hrReportLeave')
+                                         : tr(language, 'hrReportAbsent')}
                                  </span>
                               </td>
                               <td className="p-3 text-right font-black text-rose-600">
@@ -598,15 +608,15 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
                               </td>
                               <td className="p-3 text-center no-print">
                                  <div className="flex justify-center gap-1">
-                                    <button onClick={() => handleOpenEditAttendance(att)} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title="ပြင်ဆင်မည်"><Edit size={15}/></button>
-                                    <button onClick={() => handleDeleteAttendance(att.id)} className="p-1 text-red-600 hover:bg-red-50 rounded" title="ဖျက်ပစ်မည်"><Trash2 size={15}/></button>
+                                    <button onClick={() => handleOpenEditAttendance(att)} className="p-1 text-blue-600 hover:bg-blue-50 rounded" title={tr(language, 'hrEdit')}><Edit size={15}/></button>
+                                    <button onClick={() => handleDeleteAttendance(att.id)} className="p-1 text-red-600 hover:bg-red-50 rounded" title={tr(language, 'hrDelete')}><Trash2 size={15}/></button>
                                  </div>
                               </td>
                             </tr>
                           );
                        })}
                        {attendanceFilteredList.length === 0 && (
-                          <tr><td colSpan={7} className="p-8 text-center text-slate-400 font-bold">ရွေးချယ်ထားသော စစ်ထုတ်ချက်အတိုင်း ရုံးတက်မှတ်တမ်း မရှိသေးပါဗျာ။</td></tr>
+                          <tr><td colSpan={7} className="p-8 text-center text-slate-400 font-bold">{tr(language, 'hrNoAttendanceRecords')}</td></tr>
                        )}
                     </tbody>
                   </table>
