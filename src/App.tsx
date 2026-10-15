@@ -366,7 +366,14 @@ export default function App() {
     }));
   };
 
-  if (!user) return <Login onLogin={(name, role) => setUser({ name, role })} accounts={accounts} />;
+  if (!user) return (
+    <Login
+      language={language}
+      setLanguage={setLanguage}
+      onLogin={(name, role) => setUser({ name, role })}
+      accounts={accounts}
+    />
+  );
 
   const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading || prLoading || recLoading || pkgRecLoading || empLoading || attLoading || advLoading || leaveLoading || hrsLoading;
   

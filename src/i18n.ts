@@ -473,6 +473,13 @@ export const translations = {
     accountRoleElectrician: 'လျှပ်စစ်ကျွမ်းကျင်သူ',
     accountRoleSales: 'အရောင်းဝန်ထမ်း',
     accountRoleHR: 'လူ့စွမ်းအားအရင်းအမြစ် (HR)',
+
+    loginScreenTitle: 'စနစ်ထဲသို့ ဝင်ရောက်ရန်',
+    loginLanguage: 'ဘာသာစကား',
+    loginUsername: 'Username (အကောင့်အမည်)',
+    loginPassword: 'Password (စကားဝှက်)',
+    loginButton: 'စနစ်ထဲသို့ ဝင်မည်',
+    loginInvalidCredentials: 'Username သို့မဟုတ် Password မှားယွင်းနေပါသည်။',
   },
   en: {
     dashboard: 'Dashboard',
@@ -943,6 +950,13 @@ export const translations = {
     accountRoleElectrician: 'Electrician',
     accountRoleSales: 'Sales Person',
     accountRoleHR: 'HR Manager',
+
+    loginScreenTitle: 'Sign in to the system',
+    loginLanguage: 'Language',
+    loginUsername: 'Username',
+    loginPassword: 'Password',
+    loginButton: 'Sign In',
+    loginInvalidCredentials: 'Incorrect username or password.',
   },
 } as const;
 
