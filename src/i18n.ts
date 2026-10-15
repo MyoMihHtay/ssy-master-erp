@@ -634,6 +634,7 @@ export const translations = {
     hrSettingsGpsCaptured: '✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။ မူဝါဒများကို သိမ်းဆည်းရန် Save ကို ဆက်နှိပ်ပါ။',
     hrSettingsGpsUnavailable: '⚠️ GPS ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် Location ပိတ်ထားပါသည်။',
     hrSettingsSaveSuccess: '✅ မူဝါဒများ သိမ်းဆည်းခြင်း အောင်မြင်ပါသည်။',
+    hrAttendanceDeleteConfirm: '⚠️ ဤရုံးတက်မှတ်တမ်းကို အပြီးတိုင် ဖျက်ပစ်ရန် သေချာပါသလား?',
   },
   en: {
     dashboard: 'Dashboard',
@@ -1265,6 +1266,7 @@ export const translations = {
     hrSettingsGpsCaptured: '✅ Current location captured successfully. Click Save Policies to confirm the settings.',
     hrSettingsGpsUnavailable: '⚠️ GPS is still searching or Location access is disabled.',
     hrSettingsSaveSuccess: '✅ HR policies saved successfully.',
+    hrAttendanceDeleteConfirm: '⚠️ Are you sure you want to permanently delete this attendance record?',
   },
 } as const;
 

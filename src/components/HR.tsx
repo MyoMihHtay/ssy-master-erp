@@ -180,7 +180,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
   };
 
   const handleDeleteAttendance = (id: number) => {
-    if (window.confirm('⚠️ ဤရုံးတက်မှတ်တမ်းကို အပြီးတိုင် ဖျက်ပစ်ရန် သေချာပါသလား?')) {
+    if (window.confirm(tr(language, 'hrAttendanceDeleteConfirm'))) {
       setAttendance(attendance.filter(a => a.id !== id));
     }
   };
