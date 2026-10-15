@@ -145,9 +145,9 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
   }, []);
 
   const resetEmpForm = () => { setEditingEmpId(null); setEmpName(''); setEmpPos(''); setEmpDept(''); setEmpSalary(''); setEmpPhone(''); };
-  const handleSaveEmployee = (e: React.FormEvent) => { e.preventDefault(); if (editingEmpId) { setEmployees(employees.map(emp => emp.id === editingEmpId ? { ...emp, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), phone: empPhone } : emp)); alert('✅ ပြင်ဆင်မှု အောင်မြင်ပါသည်။'); } else { const newEmp: Employee = { id: `EMP-${Date.now()}`, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), joinedDate: today, phone: empPhone, status: 'Active' }; setEmployees([...employees, newEmp]); alert('✅ ဝန်ထမ်းအသစ် စာရင်းသွင်းပြီးပါပြီ။'); } resetEmpForm(); };
+  const handleSaveEmployee = (e: React.FormEvent) => { e.preventDefault(); if (editingEmpId) { setEmployees(employees.map(emp => emp.id === editingEmpId ? { ...emp, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), phone: empPhone } : emp)); alert(tr(language, 'hrEmployeeUpdateSuccess')); } else { const newEmp: Employee = { id: `EMP-${Date.now()}`, name: empName, position: empPos, department: empDept, basicSalary: Number(empSalary), joinedDate: today, phone: empPhone, status: 'Active' }; setEmployees([...employees, newEmp]); alert(tr(language, 'hrEmployeeAddSuccess')); } resetEmpForm(); };
   const handleEditEmployee = (emp: Employee) => { setEditingEmpId(emp.id); setEmpName(emp.name); setEmpPos(emp.position); setEmpDept(emp.department); setEmpSalary(emp.basicSalary.toString()); setEmpPhone(emp.phone); };
-  const handleDeleteEmployee = (id: string) => { if (window.confirm("⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?")) { setEmployees(employees.filter(e => e.id !== id)); } };
+  const handleDeleteEmployee = (id: string) => { if (window.confirm(tr(language, 'hrEmployeeDeleteConfirm'))) { setEmployees(employees.filter(e => e.id !== id)); } };
 
   const handleAddAdvance = (e: React.FormEvent) => { e.preventDefault(); if (!advEmpId || !advAmount) return; setAdvances([{ id: Date.now(), employeeId: advEmpId, date: today, amount: Number(advAmount), reason: advReason, status: 'Approved', deducted: false }, ...advances]); setAdvEmpId(''); setAdvAmount(''); setAdvReason(''); alert('✅ ကြိုတင်ငွေ မှတ်တမ်းတင်ပြီးပါပြီ။ လစာထုတ်ချိန်တွင် အလိုအလျောက် ဖြတ်တောက်ပါမည်။'); };
   const handleAddLeave = (e: React.FormEvent) => { e.preventDefault(); if (!lvEmpId || !lvStart || !lvEnd) return; setLeaves([{ id: Date.now(), employeeId: lvEmpId, startDate: lvStart, endDate: lvEnd, leaveType: lvType, reason: lvReason, status: 'Pending' }, ...leaves]); setLvEmpId(''); setLvStart(''); setLvEnd(''); setLvReason(''); alert(tr(language, 'hrLeaveSubmitted')); };
@@ -694,19 +694,19 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
       {activeSubTab === 'employees' && isAdminOrHR && (
          <div className="space-y-6">
             <form onSubmit={handleSaveEmployee} className={`bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end ${editingEmpId ? 'border-yellow-400 bg-yellow-50' : ''}`}>
-               <div><label className="text-xs font-bold text-gray-500 mb-1 block">အမည်</label><input required value={empName} onChange={e=>setEmpName(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
-               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ရာထူး</label><input required value={empPos} onChange={e=>setEmpPos(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
-               <div><label className="text-xs font-bold text-gray-500 mb-1 block">ဌာန</label><input required value={empDept} onChange={e=>setEmpDept(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
-               <div><label className="text-xs font-bold text-gray-500 mb-1 block">အခြေခံလစာ (Ks)</label><input type="number" required value={empSalary} onChange={e=>setEmpSalary(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrEmployeeName')}</label><input required value={empName} onChange={e=>setEmpName(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrEmployeePosition')}</label><input required value={empPos} onChange={e=>setEmpPos(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrEmployeeDepartment')}</label><input required value={empDept} onChange={e=>setEmpDept(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+               <div><label className="text-xs font-bold text-gray-500 mb-1 block">{tr(language, 'hrEmployeeBasicSalary')}</label><input type="number" required value={empSalary} onChange={e=>setEmpSalary(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-indigo-500" /></div>
                <div className="col-span-1 sm:col-span-2 flex gap-2">
-                 <button type="submit" className={`flex-1 text-white text-sm font-bold py-3 rounded-xl ${editingEmpId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{editingEmpId ? '💾 ပြင်ဆင်မည်' : '➕ ဝန်ထမ်းထည့်မည်'}</button>
-                 {editingEmpId && <button type="button" onClick={resetEmpForm} className="bg-gray-200 text-gray-700 text-sm font-bold py-3 px-4 rounded-xl hover:bg-gray-300">✕ Cancel</button>}
+                 <button type="submit" className={`flex-1 text-white text-sm font-bold py-3 rounded-xl ${editingEmpId ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}>{editingEmpId ? `💾 ${tr(language, 'hrEmployeeUpdate')}` : `➕ ${tr(language, 'hrEmployeeAdd')}`}</button>
+                 {editingEmpId && <button type="button" onClick={resetEmpForm} className="bg-gray-200 text-gray-700 text-sm font-bold py-3 px-4 rounded-xl hover:bg-gray-300">✕ {tr(language, 'hrCancel')}</button>}
                </div>
             </form>
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                <div className="overflow-x-auto">
                  <table className="w-full text-left text-sm whitespace-nowrap">
-                   <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ID</th><th className="p-4">အမည်</th><th className="p-4">ရာထူး / ဌာန</th><th className="p-4 text-right">လစာ</th><th className="p-4 text-center">Status</th>{isMD && <th className="p-4 text-right">Action</th>}</tr></thead>
+                   <thead className="bg-gray-50 text-gray-600 font-bold border-b"><tr><th className="p-4">ID</th><th className="p-4">{tr(language, 'hrEmployeeName')}</th><th className="p-4">{tr(language, 'hrEmployeePositionDepartment')}</th><th className="p-4 text-right">{tr(language, 'hrEmployeeSalary')}</th><th className="p-4 text-center">{tr(language, 'hrStatus')}</th>{isMD && <th className="p-4 text-right">{tr(language, 'hrActions')}</th>}</tr></thead>
                    <tbody>
                       {employees.map(e => (
                          <tr key={e.id} className="border-b hover:bg-gray-50">
@@ -714,11 +714,11 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
                             <td className="p-4 font-bold text-gray-800">{e.name}</td>
                             <td className="p-4 text-gray-600">{e.position} <span className="text-xs text-gray-400">({e.department})</span></td>
                             <td className="p-4 font-bold text-emerald-600 text-right">{e.basicSalary.toLocaleString()} Ks</td>
-                            <td className="p-4 text-center"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{e.status}</span></td>
+                            <td className="p-4 text-center"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{e.status === 'Active' ? tr(language, 'hrEmployeeStatusActive') : e.status}</span></td>
                          {isMD && (
                             <td className="p-4 text-right space-x-2">
-                               <button onClick={() => handleEditEmployee(e)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-yellow-200">ပြင်မည်</button>
-                               <button onClick={() => handleDeleteEmployee(e.id)} className="bg-red-100 text-red-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-red-200">ဖျက်မည်</button>
+                               <button onClick={() => handleEditEmployee(e)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-yellow-200">{tr(language, 'hrEdit')}</button>
+                               <button onClick={() => handleDeleteEmployee(e.id)} className="bg-red-100 text-red-700 px-3 py-1 rounded shadow-sm text-xs font-bold hover:bg-red-200">{tr(language, 'hrDelete')}</button>
                             </td>
                          )}
                          </tr>

@@ -567,6 +567,18 @@ export const translations = {
     hrLeaveApproved: 'ခွင့်ပြုပြီး',
     hrLeaveRejected: 'ပယ်ချသည်',
     hrLeaveManage: 'စီမံမည်',
+
+    hrEmployeePosition: 'ရာထူး',
+    hrEmployeeDepartment: 'ဌာန',
+    hrEmployeeBasicSalary: 'အခြေခံလစာ (Ks)',
+    hrEmployeePositionDepartment: 'ရာထူး / ဌာန',
+    hrEmployeeSalary: 'လစာ',
+    hrEmployeeAdd: 'ဝန်ထမ်းထည့်မည်',
+    hrEmployeeUpdate: 'ပြင်ဆင်မည်',
+    hrEmployeeStatusActive: 'တာဝန်ထမ်းဆောင်ဆဲ',
+    hrEmployeeAddSuccess: '✅ ဝန်ထမ်းအသစ် စာရင်းသွင်းပြီးပါပြီ။',
+    hrEmployeeUpdateSuccess: '✅ ဝန်ထမ်းအချက်အလက် ပြင်ဆင်မှု အောင်မြင်ပါသည်။',
+    hrEmployeeDeleteConfirm: '⚠️ ဤဝန်ထမ်းစာရင်းကို အပြီးတိုင် ဖျက်ပစ်မည်မှာ သေချာပါသလား?',
   },
   en: {
     dashboard: 'Dashboard',
@@ -1131,6 +1143,18 @@ export const translations = {
     hrLeaveApproved: 'Approved',
     hrLeaveRejected: 'Rejected',
     hrLeaveManage: 'Manage',
+
+    hrEmployeePosition: 'Position',
+    hrEmployeeDepartment: 'Department',
+    hrEmployeeBasicSalary: 'Basic Salary (Ks)',
+    hrEmployeePositionDepartment: 'Position / Department',
+    hrEmployeeSalary: 'Salary',
+    hrEmployeeAdd: 'Add Employee',
+    hrEmployeeUpdate: 'Update Employee',
+    hrEmployeeStatusActive: 'Active',
+    hrEmployeeAddSuccess: '✅ New employee registered successfully.',
+    hrEmployeeUpdateSuccess: '✅ Employee information updated successfully.',
+    hrEmployeeDeleteConfirm: '⚠️ Are you sure you want to permanently delete this employee?',
   },
 } as const;
 
