@@ -383,7 +383,7 @@ export const Sales: React.FC<SalesProps> = ({
         {/* 🌟 Records Tab 🌟 */}
         {activeTab === 'records' && (
           <div className="space-y-2 md:space-y-6">
-             <div className="relative w-full md:max-w-sm"><span className="absolute left-2.5 top-1.5 md:top-3 text-slate-400 text-xs md:text-base">🔍</span><input type="text" className="w-full pl-7 pr-3 py-1.5 md:py-3 bg-white border border-slate-200 rounded-lg md:rounded-xl shadow-sm outline-none focus:border-amber-500 text-[10px] md:text-base" placeholder="ဘောက်ချာ / အမည် ရှာရန်..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
+             <div className="relative w-full md:max-w-sm"><span className="absolute left-2.5 top-1.5 md:top-3 text-slate-400 text-xs md:text-base">🔍</span><input type="text" className="w-full pl-7 pr-3 py-1.5 md:py-3 bg-white border border-slate-200 rounded-lg md:rounded-xl shadow-sm outline-none focus:border-amber-500 text-[10px] md:text-base" placeholder={tr(language, 'salesRecordSearch')} value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setDisplayLimit(50); }} /></div>
              <div className="grid gap-2 md:gap-4">
               {visibleSalesToRender.map(sale => {
                 const isHighlighted = sale.id === highlightSaleId;
@@ -404,14 +404,16 @@ export const Sales: React.FC<SalesProps> = ({
                             <span className="text-[8px] md:text-xs font-black bg-slate-100 px-1 md:px-1.5 py-0.5 rounded text-slate-600">#{sale.id}</span>
                             
                             {isHighlighted && (
-                              <span className="text-[8px] md:text-xs font-black bg-yellow-500 text-white px-1 md:px-1.5 py-0.5 rounded animate-pulse">📌 ရွေးချယ်ထားသည်</span>
+                              <span className="text-[8px] md:text-xs font-black bg-yellow-500 text-white px-1 md:px-1.5 py-0.5 rounded animate-pulse">📌 {tr(language, 'salesSelected')}</span>
                             )}
 
                             {isReturned && (
-                              <span className="text-[8px] md:text-xs font-black bg-rose-600 text-white px-1 md:px-1.5 py-0.5 rounded">⚠️ ပစ္စည်းပြန်အပ်ထားသည်</span>
+                              <span className="text-[8px] md:text-xs font-black bg-rose-600 text-white px-1 md:px-1.5 py-0.5 rounded">⚠️ {tr(language, 'salesReturned')}</span>
                             )}
 
-                            <span className={`text-[8px] md:text-xs font-black px-1 md:px-1.5 py-0.5 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid ? `✅ ${sale.paymentMethod}` : `⏳ အကြွေး (${sale.creditTerms})`}</span>
+                            <span className={`text-[8px] md:text-xs font-black px-1 md:px-1.5 py-0.5 rounded border ${sale.isPaid ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'}`}>{sale.isPaid
+      ? `✅ ${sale.paymentMethod}`
+      : `⏳ ${tr(language, 'salesCredit')} (${sale.creditTerms})`}</span>
                           </div>
                           <div className="text-xs font-black text-amber-600 md:hidden">{sale.finalAmount?.toLocaleString()} Ks</div>
                         </div>
@@ -424,12 +426,12 @@ export const Sales: React.FC<SalesProps> = ({
                         <div className="text-2xl font-black text-amber-600 mb-2 hidden md:block">{sale.finalAmount?.toLocaleString()} Ks</div>
                         <div className="flex flex-wrap gap-1 md:gap-2 justify-end w-full md:w-auto">
                            {!isReturned && (
-                             <button onClick={() => openReturnModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-rose-200 transition-colors flex items-center gap-1">🔄 ပြန်အပ်/လဲမည်</button>
+                             <button onClick={() => openReturnModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-rose-200 transition-colors flex items-center gap-1">🔄 {tr(language, 'salesReturnExchange')}</button>
                            )}
                            
-                           {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm('ငွေလက်ခံရရှိပြီလား?')) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">ငွေရှင်းမည်</button>}
-                           <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ ဘောက်ချာထုတ်မည်</button>
-                           {isMDOnly && <button onClick={() => { if(window.confirm('ဖျက်ရန် သေချာပါသလား?')) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">ဖျက်မည်</button>}
+                           {!sale.isPaid && isManager && <button onClick={() => { if(window.confirm(tr(language, 'salesPaymentReceivedConfirm'))) onMarkAsPaid(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-emerald-500 text-white font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-emerald-600">{tr(language, 'salesMarkPaid')}</button>}
+                           <button onClick={() => openPrintModal(sale)} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs border border-indigo-200 hover:bg-indigo-600 hover:text-white transition-colors flex items-center gap-1">🖨️ {tr(language, 'salesPrintVoucher')}</button>
+                           {isMDOnly && <button onClick={() => { if(window.confirm(tr(language, 'salesDeleteConfirm'))) onDeleteSale(sale.id); }} className="px-1.5 py-1 md:px-3 md:py-1.5 bg-red-50 text-red-600 font-bold rounded-md md:rounded-lg text-[9px] md:text-xs hover:bg-red-500 hover:text-white transition-colors">{tr(language, 'salesDelete')}</button>}
                         </div>
                       </div>
                     </div>
@@ -437,13 +439,15 @@ export const Sales: React.FC<SalesProps> = ({
                     {isReturned && sale.returnDetails && (
                       <div className="mt-3 bg-rose-50/70 border border-rose-100 rounded-xl p-3 text-[10px] md:text-xs text-rose-900 font-medium">
                         <div className="flex justify-between font-black border-b border-rose-200/50 pb-1 mb-1.5 text-rose-800">
-                          <span>📝 ပြန်အပ်မှတ်တမ်း စာရင်းညှိချက် ({sale.returnDetails?.type === 'refund' ? 'ငွေပြန်အမ်းစနစ်' : 'အခြားပစ္စည်းနှင့်အလဲအလှယ်'})</span>
+                          <span>📝 {tr(language, 'salesReturnAdjustment')} ({sale.returnDetails?.type === 'refund'
+      ? tr(language, 'salesRefundMethod')
+      : tr(language, 'salesExchangeMethod')})</span>
                           <span>📅 {sale.returnDetails?.date}</span>
                         </div>
-                        <div className="mb-1"><strong>ပြန်အပ်သွားသော ပစ္စည်းများ:</strong> {sale.returnDetails?.items?.map(i => `${i.category} (${i.taste}) - ${i.quantity} ထုပ်`).join(', ')}</div>
-                        <div className="mb-1"><strong>အကြောင်းအရင်း / မှတ်ချက်:</strong> {sale.returnDetails?.note}</div>
+                        <div className="mb-1"><strong>{tr(language, 'salesReturnedItems')}:</strong> {sale.returnDetails?.items?.map(i => `${i.category} (${i.taste}) - ${i.quantity} ${tr(language, 'salesPacks')}`).join(', ')}</div>
+                        <div className="mb-1"><strong>{tr(language, 'salesReturnReason')}:</strong> {sale.returnDetails?.note}</div>
                         {sale.returnDetails?.type === 'refund' && (
-                          <div className="font-black text-rose-700 text-xs md:text-sm mt-1">💰 စုစုပေါင်း ပြန်အမ်းငွေ: {sale.returnDetails?.totalRefund?.toLocaleString()} Ks (Finance စာရင်းထဲသို့ အော်တိုခုနှိမ်ပြီး)</div>
+                          <div className="font-black text-rose-700 text-xs md:text-sm mt-1">💰 {tr(language, 'salesTotalRefund')}: {sale.returnDetails?.totalRefund?.toLocaleString()} Ks ({tr(language, 'salesFinanceAdjusted')})</div>
                         )}
                       </div>
                     )}
