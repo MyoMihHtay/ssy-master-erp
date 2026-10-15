@@ -158,8 +158,8 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
     setActionLeave(null); setLeaveRemark('');
   };
 
-  const handleAutoGetGPS = () => { if (currentLoc) { setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString()); alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)'); } else { alert('⚠️ GPS ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် Location ပိတ်ထားပါသည်။'); } };
-  const handleSaveSettings = () => { setHrSettings([{ id: 'default', officeLatitude: Number(setLat), officeLongitude: Number(setLon), allowedRadius: Number(setRad), officeStartTime: setStartTime, officeEndTime: setEndTime, punctualityBonus: Number(setPunctuality), perfectAttendanceBonus: Number(setPerfect), lateRules: setRules }]); alert('✅ မူဝါဒများ သိမ်းဆည်းခြင်း အောင်မြင်ပါသည်။'); };
+  const handleAutoGetGPS = () => { if (currentLoc) { setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString()); alert(tr(language, 'hrSettingsGpsCaptured')); } else { alert(tr(language, 'hrSettingsGpsUnavailable')); } };
+  const handleSaveSettings = () => { setHrSettings([{ id: 'default', officeLatitude: Number(setLat), officeLongitude: Number(setLon), allowedRadius: Number(setRad), officeStartTime: setStartTime, officeEndTime: setEndTime, punctualityBonus: Number(setPunctuality), perfectAttendanceBonus: Number(setPerfect), lateRules: setRules }]); alert(tr(language, 'hrSettingsSaveSuccess')); };
 
   const handleCheckIn = () => { if (!currentEmployee) return alert(tr(language, 'hrEmployeeNotFound')); if (!currentLoc) return alert(tr(language, 'hrGpsSearchingShort')); const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert(tr(language, 'hrGpsTooFar').replace('{distance}', Math.round(distance).toString())); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance([...attendance, { id: Date.now(), employeeId: currentEmployee.id, date: today, checkInTime: nowTime, status: 'Present', checkInGps: `${currentLoc.lat}, ${currentLoc.lon}` }]); alert(tr(language, 'hrCheckInSuccess').replace('{time}', nowTime)); };
   const handleCheckOut = () => { if (!currentEmployee || !currentLoc) return; const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert(tr(language, 'hrCheckOutNearOfficeOnly')); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance(attendance.map(a => a.employeeId === currentEmployee.id && a.date === today ? { ...a, checkOutTime: nowTime, checkOutGps: `${currentLoc.lat}, ${currentLoc.lon}` } : a)); alert(tr(language, 'hrCheckOutSuccess').replace('{time}', nowTime)); };
@@ -812,56 +812,56 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
       {/* ⚙️ Settings Tab */}
       {activeSubTab === 'settings' && isMD && (
          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-xl border border-gray-200 max-w-4xl mx-auto space-y-8">
-            <div className="flex items-center gap-3 border-b-2 border-indigo-100 pb-4"><h3 className="font-black text-xl md:text-2xl text-indigo-900">⚙️ လုပ်ငန်းခွင် မူဝါဒနှင့် ဒဏ်ကြေးသတ်မှတ်ချက်များ</h3></div>
+            <div className="flex items-center gap-3 border-b-2 border-indigo-100 pb-4"><h3 className="font-black text-xl md:text-2xl text-indigo-900">⚙️ {tr(language, 'hrSettingsPolicyTitle')}</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="space-y-4 bg-gray-50 p-5 rounded-2xl border">
-                  <h4 className="font-bold text-gray-700 border-b pb-2">⏰ ရုံးချိန် & တည်နေရာ (GPS)</h4>
+                  <h4 className="font-bold text-gray-700 border-b pb-2">⏰ {tr(language, 'hrSettingsOfficeGps')}</h4>
                   <div className="grid grid-cols-2 gap-4">
-                     <div><label className="text-xs font-bold text-gray-500 block mb-1">ရုံးတက်ချိန်</label><input type="time" value={setStartTime} onChange={e=>setSetStartTime(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
-                     <div><label className="text-xs font-bold text-gray-500 block mb-1">ရုံးဆင်းချိန်</label><input type="time" value={setEndTime} onChange={e=>setSetEndTime(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                     <div><label className="text-xs font-bold text-gray-500 block mb-1">{tr(language, 'hrSettingsOfficeStart')}</label><input type="time" value={setStartTime} onChange={e=>setSetStartTime(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                     <div><label className="text-xs font-bold text-gray-500 block mb-1">{tr(language, 'hrSettingsOfficeEnd')}</label><input type="time" value={setEndTime} onChange={e=>setSetEndTime(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
                   </div>
                   <div className="pt-2 border-t mt-2">
                      <div className="flex justify-between items-end gap-2 mb-3">
-                        <div className="flex-1"><label className="text-xs font-bold text-gray-500 block mb-1">Latitude</label><input value={setLat} onChange={e=>setSetLat(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
-                        <div className="flex-1"><label className="text-xs font-bold text-gray-500 block mb-1">Longitude</label><input value={setLon} onChange={e=>setSetLon(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                        <div className="flex-1"><label className="text-xs font-bold text-gray-500 block mb-1">{tr(language, 'hrSettingsLatitude')}</label><input value={setLat} onChange={e=>setSetLat(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                        <div className="flex-1"><label className="text-xs font-bold text-gray-500 block mb-1">{tr(language, 'hrSettingsLongitude')}</label><input value={setLon} onChange={e=>setSetLon(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
                      </div>
-                     <button type="button" onClick={handleAutoGetGPS} className="w-full bg-blue-600 text-white font-bold py-3 text-sm rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"><span>📍</span> လက်ရှိနေရာကို (Auto) ရယူမည်</button>
+                     <button type="button" onClick={handleAutoGetGPS} className="w-full bg-blue-600 text-white font-bold py-3 text-sm rounded-xl shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"><span>📍</span> {tr(language, 'hrSettingsGetCurrentLocation')}</button>
                   </div>
-                  <div><label className="text-xs font-bold text-gray-500 block mb-1">GPS ခွင့်ပြုမည့်အကွာအဝေး (မီတာ)</label><input type="number" value={setRad} onChange={e=>setSetRad(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
+                  <div><label className="text-xs font-bold text-gray-500 block mb-1">{tr(language, 'hrSettingsGpsRadius')}</label><input type="number" value={setRad} onChange={e=>setSetRad(e.target.value)} className="w-full border p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-blue-500" /></div>
                </div>
                <div className="space-y-4 bg-emerald-50 p-5 rounded-2xl border border-emerald-100">
-                  <h4 className="font-bold text-emerald-800 border-b border-emerald-200 pb-2">💰 အားပေးဆုငွေများ (Bonuses)</h4>
-                  <div><label className="text-xs font-bold text-emerald-600 block mb-1">ရက်မှန်ကြေး (Perfect Attendance)</label><input type="number" value={setPerfect} onChange={e=>setSetPerfect(e.target.value)} className="w-full border border-emerald-200 p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" /></div>
-                  <div><label className="text-xs font-bold text-emerald-600 block mb-1">အချိန်မှန်ကြေး (Punctuality Bonus)</label><input type="number" value={setPunctuality} onChange={e=>setSetPunctuality(e.target.value)} className="w-full border border-emerald-200 p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" /></div>
+                  <h4 className="font-bold text-emerald-800 border-b border-emerald-200 pb-2">💰 {tr(language, 'hrSettingsBonuses')}</h4>
+                  <div><label className="text-xs font-bold text-emerald-600 block mb-1">{tr(language, 'hrSettingsPerfectBonus')}</label><input type="number" value={setPerfect} onChange={e=>setSetPerfect(e.target.value)} className="w-full border border-emerald-200 p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" /></div>
+                  <div><label className="text-xs font-bold text-emerald-600 block mb-1">{tr(language, 'hrSettingsPunctualityBonus')}</label><input type="number" value={setPunctuality} onChange={e=>setSetPunctuality(e.target.value)} className="w-full border border-emerald-200 p-3 text-sm rounded-xl outline-none focus:ring-2 focus:ring-emerald-500" /></div>
                </div>
             </div>
             <div className="bg-rose-50 p-5 md:p-6 rounded-2xl border border-rose-100">
                <h4 className="font-bold text-rose-800 border-b border-rose-200 pb-2 mb-4 flex justify-between items-center">
-                  <span>📉 နောက်ကျဒဏ်ကြေး မူဝါဒများ</span>
-                  <button onClick={() => setSetRules([...setRules, {id: Date.now(), startMin: 0, endMin: 0, deduction: 0, type: 'amount'}])} className="bg-rose-200 text-rose-800 text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-rose-300 shadow-sm">+ ထပ်ထည့်မည်</button>
+                  <span>📉 {tr(language, 'hrSettingsLateRules')}</span>
+                  <button onClick={() => setSetRules([...setRules, {id: Date.now(), startMin: 0, endMin: 0, deduction: 0, type: 'amount'}])} className="bg-rose-200 text-rose-800 text-xs px-3 py-1.5 rounded-lg font-bold hover:bg-rose-300 shadow-sm">+ {tr(language, 'hrSettingsAddRule')}</button>
                </h4>
                <div className="space-y-3">
                   {setRules.map((rule, index) => (
                      <div key={rule.id} className="flex flex-wrap items-center bg-white p-3 rounded-xl border border-rose-100 shadow-sm gap-2">
-                        <span className="text-xs font-bold text-gray-500">မိနစ်:</span>
+                        <span className="text-xs font-bold text-gray-500">{tr(language, 'hrSettingsMinutes')}:</span>
                         <input type="number" value={rule.startMin} onChange={(e) => { const newR = [...setRules]; newR[index].startMin = Number(e.target.value); setSetRules(newR); }} className="w-16 border rounded-lg p-2 text-sm text-center outline-none focus:border-rose-400" />
-                        <span className="text-xs font-bold text-gray-500">မှ</span>
+                        <span className="text-xs font-bold text-gray-500">{tr(language, 'hrSettingsFrom')}</span>
                         <input type="number" value={rule.endMin} onChange={(e) => { const newR = [...setRules]; newR[index].endMin = Number(e.target.value); setSetRules(newR); }} className="w-16 border rounded-lg p-2 text-sm text-center outline-none focus:border-rose-400" />
-                        <span className="text-xs font-bold text-gray-500">အထိ =</span>
+                        <span className="text-xs font-bold text-gray-500">{tr(language, 'hrSettingsTo')} =</span>
                         <select value={rule.type} onChange={(e) => { const newR = [...setRules]; newR[index].type = e.target.value as any; setSetRules(newR); }} className="flex-1 border rounded-lg p-2 text-sm bg-gray-50 font-bold text-rose-600 outline-none focus:border-rose-400">
-                           <option value="amount">ငွေသားဖြတ်မည်</option>
-                           <option value="half_day">နေ့ဝက် (Half-Day)</option>
-                           <option value="full_day">ရက်ပျက် (Full-Day)</option>
+                           <option value="amount">{tr(language, 'hrSettingsRuleAmount')}</option>
+                           <option value="half_day">{tr(language, 'hrSettingsRuleHalfDay')}</option>
+                           <option value="full_day">{tr(language, 'hrSettingsRuleFullDay')}</option>
                         </select>
                         {rule.type === 'amount' && (
-                           <input type="number" value={rule.deduction} onChange={(e) => { const newR = [...setRules]; newR[index].deduction = Number(e.target.value); setSetRules(newR); }} placeholder="ဖြတ်မည့်ငွေ" className="w-24 border rounded-lg p-2 text-sm text-right outline-none focus:border-rose-400" />
+                           <input type="number" value={rule.deduction} onChange={(e) => { const newR = [...setRules]; newR[index].deduction = Number(e.target.value); setSetRules(newR); }} placeholder={tr(language, 'hrSettingsDeductionAmount')} className="w-24 border rounded-lg p-2 text-sm text-right outline-none focus:border-rose-400" />
                         )}
                         <button onClick={() => setSetRules(setRules.filter(r => r.id !== rule.id))} className="text-red-500 font-bold px-2 hover:bg-red-50 rounded-lg text-lg">✕</button>
                      </div>
                   ))}
                </div>
             </div>
-            <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-black py-4 text-sm rounded-xl shadow-lg hover:from-indigo-700 hover:to-indigo-900 transition-transform active:scale-95">💾 မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည်</button>
+            <button onClick={handleSaveSettings} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-800 text-white font-black py-4 text-sm rounded-xl shadow-lg hover:from-indigo-700 hover:to-indigo-900 transition-transform active:scale-95">💾 {tr(language, 'hrSettingsSavePolicies')}</button>
          </div>
       )}
     </div>
