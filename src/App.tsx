@@ -478,7 +478,7 @@ export default function App() {
            />
         )}
         
-        {activeTab === 'accounts' && <AccountManagement accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
+        {activeTab === 'accounts' && <AccountManagement language={language} accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
       </main>
     </div>
   );

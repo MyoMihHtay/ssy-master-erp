@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { tr, type AppLanguage } from '../i18n';
 
 interface Account {
   id: number;
@@ -12,9 +13,10 @@ interface AccountManagementProps {
   accounts: Account[];
   setAccounts: React.Dispatch<React.SetStateAction<Account[]>>;
   currentUserRole: string; // MD ဟုတ်မဟုတ် စစ်ဆေးရန်
+  language: AppLanguage;
 }
 
-export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, setAccounts, currentUserRole }) => {
+export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, setAccounts, currentUserRole, language }) => {
   const [newDisplayName, setNewDisplayName] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -26,12 +28,12 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
   const handleAddAccount = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername || !newPassword || !newDisplayName || !newRole) {
-      alert('ကျေးဇူးပြု၍ အချက်အလက်များကို ပြည့်စုံစွာ ထည့်ပါ။');
+      alert(tr(language, 'accountRequiredFields'));
       return;
     }
 
     if (accounts.some(acc => acc.username === newUsername)) {
-      alert('ဤ Username ကို အသုံးပြုထားပြီးဖြစ်ပါသည်။ အခြား Username ပြောင်းပေးပါ။');
+      alert(tr(language, 'accountUsernameExists'));
       return;
     }
 
@@ -40,21 +42,21 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
       username: newUsername,
       password: newPassword,
       // 🌟 အသစ်ထည့်လိုက်သော ရာထူးအားလုံးကို အလွယ်တကူ စစ်ဆေးနိုင်ရန် lowercase ပြောင်းသိမ်းပါသည် 🌟
-      role: newRole.toLowerCase(), 
+      role: newRole.toLowerCase(),
       displayName: newDisplayName
     };
 
     setAccounts([...accounts, newAccount]);
     setNewDisplayName(''); setNewUsername(''); setNewPassword(''); setNewRole('');
-    alert('✅ အကောင့်သစ် အောင်မြင်စွာ ထည့်သွင်းပြီးပါပြီ။');
+    alert(tr(language, 'accountCreatedSuccess'));
   };
 
   const handleDelete = (id: number, role: string) => {
     if (role === 'md') {
-      alert('⚠️ MD (Managing Director) အကောင့်ကို ဖျက်ခွင့်မရှိပါ။');
+      alert(tr(language, 'accountMdDeleteBlocked'));
       return;
     }
-    if (window.confirm('ဤအကောင့်ကို ဖျက်ရန် သေချာပါသလား?')) {
+    if (window.confirm(tr(language, 'accountDeleteConfirm'))) {
       setAccounts(accounts.filter(a => a.id !== id));
     }
   };
@@ -69,16 +71,18 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
 
   const getRoleName = (role: string) => {
     switch (role) {
-      case 'md': return 'Managing Director (MD)';
-      case 'manager': return 'စက်ရုံမှူး (Manager)';
-      case 'finance': return 'Finance Manager';
-      case 'qc': return 'QC / QA';
-      case 'purchasing': return 'Purchasing Officer';
-      case 'storekeeper': return 'Store Keeper';
-      case 'maintenance': return 'Maintenance';
-      case 'staff': return 'Staff (ဝန်ထမ်း)';
+      case 'md': return tr(language, 'accountRoleMD');
+      case 'manager': return tr(language, 'accountRoleManager');
+      case 'finance': return tr(language, 'accountRoleFinance');
+      case 'qc': return tr(language, 'accountRoleQC');
+      case 'purchasing': return tr(language, 'accountRolePurchasing');
+      case 'storekeeper': return tr(language, 'accountRoleStorekeeper');
+      case 'maintenance': return tr(language, 'accountRoleMaintenance');
+      case 'staff': return tr(language, 'accountRoleStaff');
+      case 'sales': return tr(language, 'accountRoleSales');
+      case 'hr': return tr(language, 'accountRoleHR');
       // 🌟 ရာထူးအသစ်များအတွက် သူရိုက်ထည့်ထားသည့်အတိုင်း ပြန်ပြပါမည် 🌟
-      default: return role.toUpperCase(); 
+      default: return role.toUpperCase();
     }
   };
 
@@ -87,9 +91,9 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
       <div className="p-6 max-w-4xl mx-auto mt-10 text-center">
         <div className="bg-red-50 border-2 border-red-200 rounded-3xl p-10 shadow-lg">
           <div className="text-6xl mb-4">🛡️</div>
-          <h2 className="text-3xl font-extrabold text-red-700 mb-4">Access Denied (ဝင်ခွင့်မရှိပါ)</h2>
+          <h2 className="text-3xl font-extrabold text-red-700 mb-4">{tr(language, 'accountAccessDenied')}</h2>
           <p className="text-lg text-red-500 font-medium">
-            ဤစာမျက်နှာ (အကောင့်နှင့် လုံခြုံရေး စီမံခန့်ခွဲမှု) ကို Managing Director (MD) တစ်ဦးတည်းသာလျှင် ဝင်ရောက်ကြည့်ရှုခွင့် နှင့် ပြင်ဆင်ခွင့် ရှိပါသည်။
+            {tr(language, 'accountAccessDeniedDesc')}
           </p>
         </div>
       </div>
@@ -99,53 +103,53 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <h2 className="text-2xl font-bold text-red-700 border-b-2 border-red-200 pb-3 flex items-center gap-3">
-        <span>👑</span> MD's Security Dashboard (Full Authority)
+        <span>👑</span> {tr(language, 'accountSecurityDashboard')}
       </h2>
 
       <div className="bg-white shadow-xl p-6 rounded-2xl border-t-4 border-red-500">
-        <h3 className="text-lg font-bold text-gray-800 mb-4">+ အကောင့်အသစ် ထပ်ထည့်ရန်</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">+ {tr(language, 'accountAddNew')}</h3>
         <form onSubmit={handleAddAccount} className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
-          
+
           {/* 🌟 ရာထူးကို စိတ်ကြိုက် ရိုက်ထည့်နိုင်ရန် <datalist> အသုံးပြုထားပါသည် 🌟 */}
           <div className="relative">
-            <label className="block text-sm font-bold text-gray-700 mb-1">ရာထူး (Role)</label>
-            <input 
-               list="role-options" 
-               value={newRole} 
-               onChange={e => setNewRole(e.target.value)} 
-               placeholder="ရွေးချယ်ပါ သို့မဟုတ် ရိုက်ထည့်ပါ" 
-               className="border-2 border-gray-200 p-2.5 rounded-xl w-full bg-gray-50 focus:border-red-500 focus:ring-0 font-bold text-gray-800 outline-none" 
+            <label className="block text-sm font-bold text-gray-700 mb-1">{tr(language, 'accountRole')}</label>
+            <input
+               list="role-options"
+               value={newRole}
+               onChange={e => setNewRole(e.target.value)}
+               placeholder={tr(language, 'accountRolePlaceholder')}
+               className="border-2 border-gray-200 p-2.5 rounded-xl w-full bg-gray-50 focus:border-red-500 focus:ring-0 font-bold text-gray-800 outline-none"
                required
             />
             <datalist id="role-options">
-              <option value="md">Managing Director (MD)</option>
-              <option value="manager">စက်ရုံမှူး (Manager)</option>
-              <option value="finance">Finance Manager</option>
-              <option value="qc">QC / QA</option>
-              <option value="purchasing">Purchasing Officer</option>
-              <option value="storekeeper">Store Keeper</option>
-              <option value="maintenance">Maintenance</option>
-              <option value="staff">Staff (ဝန်ထမ်း)</option>
-              <option value="driver">Driver (ယာဉ်မောင်း)</option>
-              <option value="security">Security (လုံခြုံရေး)</option>
-              <option value="electrician">Electrician (လျှပ်စစ်)</option>
+              <option value="md">{tr(language, 'accountRoleMD')}</option>
+              <option value="manager">{tr(language, 'accountRoleManager')}</option>
+              <option value="finance">{tr(language, 'accountRoleFinance')}</option>
+              <option value="qc">{tr(language, 'accountRoleQC')}</option>
+              <option value="purchasing">{tr(language, 'accountRolePurchasing')}</option>
+              <option value="storekeeper">{tr(language, 'accountRoleStorekeeper')}</option>
+              <option value="maintenance">{tr(language, 'accountRoleMaintenance')}</option>
+              <option value="staff">{tr(language, 'accountRoleStaff')}</option>
+              <option value="driver">{tr(language, 'accountRoleDriver')}</option>
+              <option value="security">{tr(language, 'accountRoleSecurity')}</option>
+              <option value="electrician">{tr(language, 'accountRoleElectrician')}</option>
             </datalist>
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">အမည်ရင်း (Display Name)</label>
-            <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder="ဥပမာ - ဦးမျိုးမင်းဌေး" />
+            <label className="block text-sm font-bold text-gray-700 mb-1">{tr(language, 'accountDisplayName')}</label>
+            <input type="text" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder={tr(language, 'accountDisplayNamePlaceholder')} />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Username (အကောင့်)</label>
-            <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder="ဥပမာ - md_myo" />
+            <label className="block text-sm font-bold text-gray-700 mb-1">{tr(language, 'accountUsername')}</label>
+            <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder={tr(language, 'accountUsernamePlaceholder')} />
           </div>
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-1">Password</label>
-            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder="လျှို့ဝှက်နံပါတ်" />
+            <label className="block text-sm font-bold text-gray-700 mb-1">{tr(language, 'accountPassword')}</label>
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="border-2 border-gray-200 p-2.5 rounded-xl w-full focus:border-red-500 focus:ring-0 outline-none" required placeholder={tr(language, 'accountPasswordPlaceholder')} />
           </div>
           <button type="submit" className="bg-red-600 text-white p-2.5 rounded-xl font-bold shadow-md hover:bg-red-700 transition-colors w-full h-12">
-            အကောင့်ဖန်တီးမည်
+            {tr(language, 'accountCreate')}
           </button>
         </form>
       </div>
@@ -155,11 +159,11 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
           <table className="w-full text-left whitespace-nowrap">
             <thead className="bg-red-50 text-red-900 border-b-2 border-red-100">
               <tr>
-                <th className="p-4 font-extrabold">အမည် (Name)</th>
-                <th className="p-4 font-extrabold">ရာထူး (Role)</th>
+                <th className="p-4 font-extrabold">{tr(language, 'accountNameColumn')}</th>
+                <th className="p-4 font-extrabold">{tr(language, 'accountRoleColumn')}</th>
                 <th className="p-4 font-extrabold">Username</th>
-                <th className="p-4 font-extrabold">Password စီမံရန်</th>
-                <th className="p-4 font-extrabold text-center">လုပ်ဆောင်ချက်</th>
+                <th className="p-4 font-extrabold">{tr(language, 'accountPasswordManagement')}</th>
+                <th className="p-4 font-extrabold text-center">{tr(language, 'accountActions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -170,28 +174,28 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ accounts, 
                   <td className="p-4 text-gray-600 font-medium">{acc.username}</td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <input 
-                        type={visiblePasswords[acc.id] ? "text" : "password"} 
-                        value={acc.password || ''} 
+                      <input
+                        type={visiblePasswords[acc.id] ? "text" : "password"}
+                        value={acc.password || ''}
                         onChange={(e) => handlePasswordChange(acc.id, e.target.value)}
                         className="border-2 border-gray-200 p-2 rounded-xl w-40 focus:border-red-500 outline-none bg-gray-50 font-bold"
                       />
-                      <button 
+                      <button
                         onClick={() => togglePasswordVisibility(acc.id)}
                         className="px-3 py-2 text-xl text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                        title="Show/Hide Password"
+                        title={tr(language, 'accountShowHidePassword')}
                       >
                         {visiblePasswords[acc.id] ? '👁️' : '👁️‍🗨️'}
                       </button>
                     </div>
                   </td>
                   <td className="p-4 text-center">
-                    <button 
+                    <button
                       onClick={() => handleDelete(acc.id, acc.role)}
                       disabled={acc.role === 'md'}
                       className={`px-4 py-2 rounded-xl font-bold transition-all ${acc.role === 'md' ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-red-100 text-red-700 hover:bg-red-600 hover:text-white shadow-sm'}`}
                     >
-                      ဖျက်မည်
+                      {tr(language, 'accountDelete')}
                     </button>
                   </td>
                 </tr>
