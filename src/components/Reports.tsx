@@ -196,7 +196,7 @@ export const Reports: React.FC<ReportsProps> = ({
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" + headers + "\n" + rows;
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
-    link.download = `SSY_${fileName}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `MAVORA_${fileName}_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
   };
 
@@ -219,7 +219,7 @@ export const Reports: React.FC<ReportsProps> = ({
       `}</style>
 
       <div className="print-header-only">
-        <h1 className="text-2xl font-black text-indigo-900">SSY Master ERP</h1>
+        <h1 className="text-2xl font-black text-indigo-900">MAVORA Manufacturing ERP</h1>
         <p className="text-lg font-bold uppercase">{getReportTabLabel()} {tr(language, 'reportsReport')}</p>
         <p className="text-sm">{tr(language, 'reportsPrintedOn')}: {new Date().toLocaleString('en-GB')}</p>
       </div>

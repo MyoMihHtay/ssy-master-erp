@@ -78,11 +78,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       <div className="p-6 text-center border-b border-slate-800">
         <h1 className="text-4xl font-black text-blue-500 tracking-wider">
-          SSY
+          MAVORA
         </h1>
 
         <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">
-          MASTER ERP
+          MANUFACTURING ERP
         </p>
       </div>
 

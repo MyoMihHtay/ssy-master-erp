@@ -304,7 +304,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
           </style>
         </head>
         <body>
-          <h2>SSY ERP</h2>
+          <h2>MAVORA Manufacturing ERP</h2>
           <p class="center">${tr(language, 'hrPayslipTitle')}</p>
           <div class="divider"></div>
           <p>${tr(language, 'hrDate')}: ${today}</p>
@@ -352,7 +352,7 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `SSY_Attendance_Report_${today}.csv`);
+    link.setAttribute("download", `MAVORA_Attendance_Report_${today}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -431,7 +431,10 @@ export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees,
           <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden print:shadow-none print:w-full print:rounded-none">
             <div className="p-8 print:p-0">
                <div className="text-center border-b-2 border-indigo-100 pb-6 mb-6">
-                 <h2 className="text-3xl font-black text-indigo-900 tracking-wider">SSY <span className="text-emerald-500">ERP</span></h2>
+                 <div>
+                   <h2 className="text-3xl font-black text-indigo-900 tracking-wider">MAVORA <span className="text-emerald-500">ERP</span></h2>
+                   <p className="text-[10px] font-bold text-slate-400 tracking-wider uppercase">Manufacturing ERP</p>
+                 </div>
                  <p className="text-gray-500 font-bold tracking-widest text-xs mt-1 uppercase">{tr(language, 'hrPayslipTitle')}</p>
                </div>
                <div className="flex justify-between items-center mb-6 bg-gray-50 p-4 rounded-xl border border-gray-100">

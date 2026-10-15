@@ -407,7 +407,7 @@ export default function App() {
   return (
     <div className="flex w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative">
       <div className="md:hidden fixed top-0 left-0 w-full bg-gray-900 text-white z-50 p-4 flex justify-between items-center shadow-md print:hidden">
-        <h1 className="font-black text-xl tracking-wider">SSY <span className="text-emerald-400">ERP</span></h1>
+        <h1 className="font-black text-xl tracking-wider">MAVORA <span className="text-emerald-400">ERP</span></h1>
         <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">☰</button>
       </div>
 

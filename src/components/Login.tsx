@@ -31,8 +31,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, accounts, language, setLa
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 space-y-6">
         <div className="text-center">
-          <h1 className="text-4xl font-extrabold text-blue-600 mb-2">SSY</h1>
-          <p className="text-gray-500 tracking-widest text-sm font-semibold">MASTER ERP SYSTEM</p>
+          <h1 className="text-4xl font-extrabold text-blue-600 mb-2">MAVORA</h1>
+          <p className="text-gray-600 tracking-widest text-sm font-black">MANUFACTURING ERP</p>
+            <p className="text-gray-400 text-xs font-semibold mt-1">Smart Factory Management Platform</p>
         </div>
         <h2 className="text-xl font-bold text-center text-gray-800">{tr(language, 'loginScreenTitle')}</h2>
 
