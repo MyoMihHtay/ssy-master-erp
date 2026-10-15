@@ -480,6 +480,16 @@ export const translations = {
     loginPassword: 'Password (စကားဝှက်)',
     loginButton: 'စနစ်ထဲသို့ ဝင်မည်',
     loginInvalidCredentials: 'Username သို့မဟုတ် Password မှားယွင်းနေပါသည်။',
+
+    hrSystemTitle: 'ဝန်ထမ်းရေးရာ စနစ် (HR)',
+    hrGpsRefresh: 'GPS ပြန်ရှာမည်',
+    hrTabAttendance: 'GPS ရုံးတက်/ဆင်း',
+    hrTabHistory: 'ရုံးတက်/ဒဏ်ကြေး အစီရင်ခံစာ',
+    hrTabLeaves: 'ခွင့်တိုင်ကြားမှု',
+    hrTabEmployees: 'ဝန်ထမ်းစာရင်း',
+    hrTabAdvances: 'ကြိုတင်ငွေ',
+    hrTabPayroll: 'လစာပေးချေမှု',
+    hrTabSettings: 'မူဝါဒ & Settings',
   },
   en: {
     dashboard: 'Dashboard',
@@ -957,6 +967,16 @@ export const translations = {
     loginPassword: 'Password',
     loginButton: 'Sign In',
     loginInvalidCredentials: 'Incorrect username or password.',
+
+    hrSystemTitle: 'Human Resources (HR)',
+    hrGpsRefresh: 'Refresh GPS',
+    hrTabAttendance: 'GPS Attendance',
+    hrTabHistory: 'Attendance / Fine Report',
+    hrTabLeaves: 'Leave Requests',
+    hrTabEmployees: 'Employees',
+    hrTabAdvances: 'Advances',
+    hrTabPayroll: 'Payroll',
+    hrTabSettings: 'Policies & Settings',
   },
 } as const;
 

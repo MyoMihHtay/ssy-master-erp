@@ -475,6 +475,7 @@ export default function App() {
         
         {activeTab === 'hr' && (
            <HR 
+             language={language}
              userRole={user.role} userName={user.name} 
              employees={employees} setEmployees={setEmployees} 
              attendance={attendance} setAttendance={setAttendance} 

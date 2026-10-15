@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Employee, Attendance, Advance, Leave, HRSetting, LateRule, ExpenseItem, AccountItem } from '../App';
 import { Download, Printer, Edit, Trash2, Calendar, Users, Filter, CheckCircle, X, RefreshCw, DollarSign } from 'lucide-react';
+import { tr, type AppLanguage } from '../i18n';
 
 interface HRProps {
   userRole: string; userName: string;
@@ -11,6 +12,7 @@ interface HRProps {
   hrSettings: HRSetting[]; setHrSettings: React.Dispatch<React.SetStateAction<HRSetting[]>>;
   setExpenses: React.Dispatch<React.SetStateAction<ExpenseItem[]>>;
   accounts: AccountItem[];
+  language: AppLanguage;
 }
 
 const getDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -30,18 +32,18 @@ const parseTimeToMinutes = (timeStr: string) => {
   return hours * 60 + minutes;
 };
 
-export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmployees, attendance, setAttendance, advances, setAdvances, leaves, setLeaves, hrSettings, setHrSettings, setExpenses }) => {
+export const HR: React.FC<HRProps> = ({ language, userRole, userName, employees, setEmployees, attendance, setAttendance, advances, setAdvances, leaves, setLeaves, hrSettings, setHrSettings, setExpenses }) => {
   const [activeSubTab, setActiveSubTab] = useState<'attendance' | 'history' | 'employees' | 'advances' | 'leaves' | 'payroll' | 'settings'>('attendance');
-  
+
   // ဝန်ထမ်း Form States
   const [editingEmpId, setEditingEmpId] = useState<string | null>(null);
   const [empName, setEmpName] = useState(''); const [empPos, setEmpPos] = useState('');
   const [empDept, setEmpDept] = useState(''); const [empSalary, setEmpSalary] = useState('');
   const [empPhone, setEmpPhone] = useState('');
-  
+
   // ကြိုတင်ငွေ & ခွင့် States
   const [advEmpId, setAdvEmpId] = useState(''); const [advAmount, setAdvAmount] = useState(''); const [advReason, setAdvReason] = useState('');
-  const [lvEmpId, setLvEmpId] = useState(''); const [lvStart, setLvStart] = useState(''); const [lvEnd, setLvEnd] = useState(''); 
+  const [lvEmpId, setLvEmpId] = useState(''); const [lvStart, setLvStart] = useState(''); const [lvEnd, setLvEnd] = useState('');
   const [lvType, setLvType] = useState('Sick Leave (နေမကောင်းခွင့်)'); const [lvReason, setLvReason] = useState('');
   const [actionLeave, setActionLeave] = useState<Leave | null>(null);
   const [leaveRemark, setLeaveRemark] = useState('');
@@ -60,8 +62,8 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
   const [payslipData, setPayslipData] = useState<{ emp: Employee, data: any } | null>(null);
   const [extraPays, setExtraPays] = useState<Record<string, { bonus: number; commission: number; }>>({});
 
-  const defaultSetting: HRSetting = hrSettings.find(s => s.id === 'default') || { 
-    id: 'default', officeLatitude: 21.9588, officeLongitude: 96.0891, allowedRadius: 50, 
+  const defaultSetting: HRSetting = hrSettings.find(s => s.id === 'default') || {
+    id: 'default', officeLatitude: 21.9588, officeLongitude: 96.0891, allowedRadius: 50,
     officeStartTime: '08:30', officeEndTime: '17:30', punctualityBonus: 20000, perfectAttendanceBonus: 30000,
     lateRules: [
       { id: 1, startMin: 1, endMin: 30, deduction: 1000, type: 'amount' },
@@ -148,7 +150,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
 
   const handleAutoGetGPS = () => { if (currentLoc) { setSetLat(currentLoc.lat.toString()); setSetLon(currentLoc.lon.toString()); alert('✅ လက်ရှိတည်နေရာကို အောင်မြင်စွာ ရယူပြီးပါပြီ။\n(မူဝါဒများ အတည်ပြု သိမ်းဆည်းမည် ကို ဆက်နှိပ်ပါ။)'); } else { alert('⚠️ GPS ရှာဖွေနေဆဲဖြစ်ပါသည် သို့မဟုတ် Location ပိတ်ထားပါသည်။'); } };
   const handleSaveSettings = () => { setHrSettings([{ id: 'default', officeLatitude: Number(setLat), officeLongitude: Number(setLon), allowedRadius: Number(setRad), officeStartTime: setStartTime, officeEndTime: setEndTime, punctualityBonus: Number(setPunctuality), perfectAttendanceBonus: Number(setPerfect), lateRules: setRules }]); alert('✅ မူဝါဒများ သိမ်းဆည်းခြင်း အောင်မြင်ပါသည်။'); };
-  
+
   const handleCheckIn = () => { if (!currentEmployee) return alert('ဝန်ထမ်းစာရင်းတွင် မတွေ့ရှိပါ။'); if (!currentLoc) return alert('GPS ရှာဖွေနေဆဲပါ။'); const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert(`❌ ရုံးတည်နေရာမှ (${Math.round(distance)} မီတာ) ကွာဝေးနေပါသည်။`); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance([...attendance, { id: Date.now(), employeeId: currentEmployee.id, date: today, checkInTime: nowTime, status: 'Present', checkInGps: `${currentLoc.lat}, ${currentLoc.lon}` }]); alert(`✅ အောင်မြင်ပါသည်။ (${nowTime})`); };
   const handleCheckOut = () => { if (!currentEmployee || !currentLoc) return; const distance = getDistanceInMeters(currentLoc.lat, currentLoc.lon, defaultSetting.officeLatitude, defaultSetting.officeLongitude); if (distance > defaultSetting.allowedRadius) return alert('❌ ရုံးပတ်ဝန်းကျင်မှသာ ရုံးဆင်းစာရင်း သွင်းနိုင်ပါသည်။'); const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }); setAttendance(attendance.map(a => a.employeeId === currentEmployee.id && a.date === today ? { ...a, checkOutTime: nowTime, checkOutGps: `${currentLoc.lat}, ${currentLoc.lon}` } : a)); alert(`✅ ရုံးဆင်းစာရင်း သွင်းပြီးပါပြီ။ (${nowTime})`); };
 
@@ -178,20 +180,20 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
     return attendance.filter(a => {
       // 1. Employee Filter
       if (filterEmpId !== 'all' && a.employeeId !== filterEmpId) return false;
-      
+
       // 2. Date Filter (DD/MM/YYYY)
       if (filterDate) {
         const formattedFilterDate = new Date(filterDate).toLocaleDateString('en-GB');
         if (a.date !== formattedFilterDate) return false;
       }
-      
+
       // 3. Month Filter (YYYY-MM)
       if (filterMonth) {
         const [year, month] = filterMonth.split('-');
         const [aDay, aMonth, aYear] = a.date.split('/');
         if (aYear !== year || aMonth !== month) return false;
       }
-      
+
       return true;
     }).map(a => {
       // Inline Late Fine Calculation per Record for Reporting
@@ -233,20 +235,20 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
 
     const totalAdvance = empAdvances.reduce((sum, a) => sum + a.amount, 0);
     const extra = extraPays[emp.id] || { bonus: 0, commission: 0 };
-    
+
     let totalLateDeduction = 0;
-    let isPerfectAttendance = true; 
+    let isPerfectAttendance = true;
     let isPunctual = true;
 
     if (empLeaves.length > 0) isPerfectAttendance = false;
 
     const startMinutes = parseTimeToMinutes(defaultSetting.officeStartTime);
-    
+
     empAtt.forEach(record => {
       if (!record.checkInTime) { isPerfectAttendance = false; isPunctual = false; return; }
       const checkInMins = parseTimeToMinutes(record.checkInTime);
       const lateMins = checkInMins - startMinutes;
-      
+
       if (lateMins > 0) {
         isPunctual = false;
         const rule = defaultSetting.lateRules.find(r => lateMins >= r.startMin && lateMins <= r.endMin);
@@ -299,18 +301,18 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
           <p>Name: <span class="bold">${payslipData.emp.name}</span></p>
           <p>Role: ${payslipData.emp.position}</p>
           <div class="divider"></div>
-          
+
           <p>Basic Salary:</p>
           <p class="bold text-right" style="text-align:right;">${payslipData.emp.basicSalary.toLocaleString()} Ks</p>
-          
+
           ${payslipData.data.earnedPerfect > 0 ? `<p>Perfect Attendance:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.earnedPerfect.toLocaleString()} Ks</p>` : ''}
           ${payslipData.data.earnedPunctuality > 0 ? `<p>Punctuality Bonus:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.earnedPunctuality.toLocaleString()} Ks</p>` : ''}
           ${payslipData.data.extra.bonus > 0 ? `<p>Extra Bonus:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.extra.bonus.toLocaleString()} Ks</p>` : ''}
           ${payslipData.data.extra.commission > 0 ? `<p>Commission:</p><p class="bold" style="text-align:right;">+ ${payslipData.data.extra.commission.toLocaleString()} Ks</p>` : ''}
-          
+
           ${payslipData.data.totalLateDeduction > 0 ? `<p>Late Deductions:</p><p class="bold" style="text-align:right;">- ${payslipData.data.totalLateDeduction.toLocaleString()} Ks</p>` : ''}
           ${payslipData.data.totalAdvance > 0 ? `<p>Advances Deducted:</p><p class="bold" style="text-align:right;">- ${payslipData.data.totalAdvance.toLocaleString()} Ks</p>` : ''}
-          
+
           <div class="flex net">
             <span>NET PAY:</span>
             <span>${payslipData.data.netPay.toLocaleString()} Ks</span>
@@ -344,7 +346,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
 
   return (
     <div className="p-2 md:p-6 max-w-7xl mx-auto space-y-6 print:p-0">
-      
+
       {/* 🌟 (အသစ်) Attendance Record Edit Modal 🌟 */}
       {editingAttRecord && (
          <div className="fixed inset-0 bg-black/60 z-[250] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -447,24 +449,24 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
       {/* Header Panel */}
       <div className="flex items-center justify-between border-b-2 border-indigo-200 pb-4 print:hidden">
         <div className="flex items-center gap-3">
-          <span className="text-3xl">👥</span><h2 className="text-xl md:text-2xl font-extrabold text-indigo-900">ဝန်ထမ်းရေးရာ စနစ် (HR System)</h2>
+          <span className="text-3xl">👥</span><h2 className="text-xl md:text-2xl font-extrabold text-indigo-900">{tr(language, 'hrSystemTitle')}</h2>
         </div>
         {/* GPS Active Manual Trigger Button */}
         <button onClick={triggerGPSLocation} disabled={isLocLoading} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 flex items-center gap-1.5 text-xs font-bold transition-all">
-           <RefreshCw size={14} className={isLocLoading ? 'animate-spin' : ''} /> GPS ပြန်ရှာမည်
+           <RefreshCw size={14} className={isLocLoading ? 'animate-spin' : ''} /> {tr(language, 'hrGpsRefresh')}
         </button>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6 print:hidden">
-        <button onClick={() => setActiveSubTab('attendance')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'attendance' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📍 GPS Attendance</button>
+        <button onClick={() => setActiveSubTab('attendance')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'attendance' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📍 {tr(language, 'hrTabAttendance')}</button>
         {isAdminOrHR && (
           <>
-            <button onClick={() => setActiveSubTab('history')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'history' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📊 ရုံးတက်/ဒဏ်ကြေး Report</button>
-            <button onClick={() => setActiveSubTab('leaves')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'leaves' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📝 ခွင့်တိုင်ကြားမှု</button>
-            <button onClick={() => setActiveSubTab('employees')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'employees' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>👩‍💼 ဝန်ထမ်းစာရင်း</button>
-            <button onClick={() => setActiveSubTab('advances')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'advances' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💸 ကြိုတင်ငွေ</button>
-            <button onClick={() => setActiveSubTab('payroll')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'payroll' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💰 လစာပေးချေမှု</button>
-            {isMD && <button onClick={() => setActiveSubTab('settings')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'settings' ? 'bg-gray-800 text-white shadow' : 'bg-white text-gray-600 border'}`}>⚙️ မူဝါဒ & Settings</button>}
+            <button onClick={() => setActiveSubTab('history')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'history' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📊 {tr(language, 'hrTabHistory')}</button>
+            <button onClick={() => setActiveSubTab('leaves')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'leaves' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>📝 {tr(language, 'hrTabLeaves')}</button>
+            <button onClick={() => setActiveSubTab('employees')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'employees' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>👩‍💼 {tr(language, 'hrTabEmployees')}</button>
+            <button onClick={() => setActiveSubTab('advances')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'advances' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💸 {tr(language, 'hrTabAdvances')}</button>
+            <button onClick={() => setActiveSubTab('payroll')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'payroll' ? 'bg-indigo-600 text-white shadow' : 'bg-white text-gray-600 border'}`}>💰 {tr(language, 'hrTabPayroll')}</button>
+            {isMD && <button onClick={() => setActiveSubTab('settings')} className={`px-4 py-2 rounded-lg font-bold text-sm ${activeSubTab === 'settings' ? 'bg-gray-800 text-white shadow' : 'bg-white text-gray-600 border'}`}>⚙️ {tr(language, 'hrTabSettings')}</button>}
           </>
         )}
       </div>
@@ -475,7 +477,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
            <h3 className="text-2xl font-black text-gray-800 mb-2">မင်္ဂလာပါ, {userName}</h3>
            <p className="text-gray-500 font-bold mb-8">{today}</p>
            {locError && <div className="bg-red-50 text-red-600 p-4 rounded-xl font-bold mb-6 w-full max-w-md text-center border border-red-200">⚠️ {locError}</div>}
-           
+
            {!todayAtt?.checkInTime ? (
               <button onClick={handleCheckIn} className="w-48 h-48 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 text-white font-black text-2xl shadow-2xl hover:scale-105 active:scale-95 transition-transform flex flex-col items-center justify-center gap-2 ring-8 ring-emerald-50"><span>📍</span>ရုံးတက်မည်</button>
            ) : !todayAtt.checkOutTime ? (
@@ -496,7 +498,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
       {/* 📅 🌟 (အဆင့်မြှင့်တင်ထားသော) History & Advanced Filtering Reports Tab 🌟 */}
       {activeSubTab === 'history' && isAdminOrHR && (
          <div className="space-y-6">
-            
+
             {/* Control Filters Area */}
             <div className="bg-white p-4 rounded-2xl border shadow-sm flex flex-wrap items-end gap-3 no-print">
                <div className="flex-1 min-w-[150px]">
@@ -528,7 +530,7 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
             <div className="hidden print:block text-center mb-4 border-b pb-2">
                <h2 className="text-xl font-black text-slate-900">SSY Master ERP - ဝန်ထမ်းရုံးတက်ရှင်းတမ်း အစီရင်ခံစာ</h2>
                <p className="text-xs font-bold text-slate-500 mt-1">
-                  စစ်ထုတ်ချက်: {filterEmpId === 'all' ? 'ဝန်ထမ်းအားလုံး' : employees.find(e=>e.id===filterEmpId)?.name} 
+                  စစ်ထုတ်ချက်: {filterEmpId === 'all' ? 'ဝန်ထမ်းအားလုံး' : employees.find(e=>e.id===filterEmpId)?.name}
                   {filterMonth && ` | လစွဲ: ${filterMonth}`} {filterDate && ` | ရက်စွဲ: ${filterDate}`}
                </p>
             </div>
@@ -751,13 +753,13 @@ export const HR: React.FC<HRProps> = ({ userRole, userName, employees, setEmploy
                      <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
                      <h4 className="font-black text-xl text-indigo-900 ml-2">{emp.name}</h4>
                      <span className="text-xs font-bold text-gray-400 mb-4 ml-2 uppercase">{emp.position}</span>
-                     
+
                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2 text-sm font-bold text-gray-600 flex-1">
                         <div className="flex justify-between"><span>အခြေခံလစာ:</span><span className="text-gray-900">{emp.basicSalary.toLocaleString()} Ks</span></div>
                         <div className="border-t border-gray-200 my-2 pt-2 text-[10px] text-gray-400 uppercase">ထပ်ဆောင်းရငွေများ (Additions)</div>
                         <div className="flex justify-between items-center text-emerald-600"><span>ရက်မှန်ကြေး:</span><span>+ {pData.earnedPerfect.toLocaleString()} Ks</span></div>
                         <div className="flex justify-between items-center text-emerald-600"><span>အချိန်မှန်ကြေး:</span><span>+ {pData.earnedPunctuality.toLocaleString()} Ks</span></div>
-                        
+
                         <div className="flex justify-between items-center mt-2">
                            <span>Bonus အပိုဆု:</span>
                            <input type="number" value={pData.extra.bonus || ''} onChange={(e) => setExtraPays({...extraPays, [emp.id]: {...pData.extra, bonus: Number(e.target.value)}})} placeholder="0" className="w-24 text-right border rounded p-2 text-xs outline-none focus:ring-1 focus:ring-emerald-500" />
