@@ -236,7 +236,7 @@ export const Sales: React.FC<SalesProps> = ({
           const canvas = await html2canvas(receiptRef.current, { scale: 2, useCORS: true, logging: false });
           const image = canvas.toDataURL('image/png');
           setGeneratedImageURL(image); 
-        } catch (err) { alert('ပုံသိမ်းရာတွင် အခက်အခဲရှိပါသည်။'); }
+        } catch (err) { alert(tr(language, 'salesImageSaveError')); }
       }
     }, 500);
   };
@@ -540,7 +540,7 @@ export const Sales: React.FC<SalesProps> = ({
         <div className="fixed top-0 right-0 bottom-0 left-0 md:left-64 z-[200] flex items-center justify-center bg-black/80 p-4 print:hidden backdrop-blur-sm">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-4 flex justify-between items-center">
-               <h3 className="text-white font-black text-lg flex items-center gap-2"><span>🖨️</span> ဘောက်ချာ ရွေးချယ်ရန်</h3>
+               <h3 className="text-white font-black text-lg flex items-center gap-2"><span>🖨️</span> {tr(language, 'salesPrintSelectTitle')}</h3>
                <button onClick={() => setSelectedSaleForPrint(null)} className="text-white/80 hover:text-white font-bold text-xl">✕</button>
             </div>
             <div className="p-6 bg-slate-50">
@@ -549,15 +549,15 @@ export const Sales: React.FC<SalesProps> = ({
                  <p className="text-xs text-slate-500 font-bold">INV: #{selectedSaleForPrint.id}</p>
                </div>
                <div className="flex justify-between items-end border-t-2 border-dashed border-slate-300 pt-4 mt-4">
-                 <span className="text-slate-600 font-bold text-lg">Total Amount:</span>
+                 <span className="text-slate-600 font-bold text-lg">{tr(language, 'salesTotalAmount')}:</span>
                  <span className="text-3xl font-black text-emerald-600">{selectedSaleForPrint.finalAmount?.toLocaleString()} Ks</span>
                </div>
             </div>
             <div className="p-4 bg-white border-t grid grid-cols-2 gap-2">
-               <button onClick={handleSaveAsImage} className="py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 shadow-md text-sm">🖼️ ပုံအဖြစ် သိမ်းမည်</button>
-               <button onClick={() => handlePrint('A4')} className="py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md text-sm">📄 A4 / PDF ထုတ်မည်</button>
-               <button onClick={() => handlePrint('THERMAL')} className="py-3 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 shadow-md text-sm col-span-2">🖨️ BT Thermal Printer</button>
-               <button onClick={() => setSelectedSaleForPrint(null)} className="py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 text-sm col-span-2">ပိတ်မည်</button>
+               <button onClick={handleSaveAsImage} className="py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-700 shadow-md text-sm">🖼️ {tr(language, 'salesSaveAsImage')}</button>
+               <button onClick={() => handlePrint('A4')} className="py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-md text-sm">📄 {tr(language, 'salesPrintA4Pdf')}</button>
+               <button onClick={() => handlePrint('THERMAL')} className="py-3 bg-orange-500 text-white font-black rounded-xl hover:bg-orange-600 shadow-md text-sm col-span-2">🖨️ {tr(language, 'salesPrintThermal')}</button>
+               <button onClick={() => setSelectedSaleForPrint(null)} className="py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 text-sm col-span-2">{tr(language, 'salesClose')}</button>
             </div>
           </div>
         </div>
@@ -570,10 +570,10 @@ export const Sales: React.FC<SalesProps> = ({
               onClick={() => setGeneratedImageURL(null)} 
               className="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-lg font-black text-sm md:text-base shadow-lg flex items-center gap-2 active:scale-95 transition-transform"
             >
-              <span className="text-xl">🔙</span> ပြန်ထွက်မည် (Back)
+              <span className="text-xl">🔙</span> {tr(language, 'salesBack')}
             </button>
             <span className="text-xs md:text-sm font-bold text-white bg-blue-600 px-4 py-2 rounded-lg shadow-md animate-pulse">
-              👇 ပုံကိုဖိနှိပ်ပြီး Save Image ရွေးပါ (သို့) Right-click ထောက်ပါ
+              {tr(language, 'salesImageSaveHint')}
             </span>
           </div>
           <div className="flex-1 overflow-auto p-4 md:p-8 flex justify-center items-start w-full">
@@ -603,15 +603,15 @@ export const Sales: React.FC<SalesProps> = ({
                 </div>
                 <div className="w-[45%] flex justify-end">
                   <div className="w-full max-w-[280px]">
-                    <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest mb-3 text-right">Invoice</h2>
+                    <h2 className="text-3xl font-black text-slate-300 uppercase tracking-widest mb-3 text-right">{tr(language, 'salesInvoice')}</h2>
                     <table className="w-full text-sm font-bold text-slate-700">
                       <tbody>
-                        <tr><td className="py-1 text-slate-500 w-24">No.</td><td className="py-1 w-4 text-center">:</td><td className="py-1 text-slate-900">#{selectedSaleForPrint.id}</td></tr>
-                        <tr><td className="py-1 text-slate-500">Date</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ')[0]}</td></tr>
-                        <tr><td className="py-1 text-slate-500">Time</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td></tr>
-                        <tr><td className="py-1 text-slate-500">Method</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900 uppercase">{selectedSaleForPrint.paymentMethod}</td></tr>
+                        <tr><td className="py-1 text-slate-500 w-24">{tr(language, 'salesInvoiceNo')}</td><td className="py-1 w-4 text-center">:</td><td className="py-1 text-slate-900">#{selectedSaleForPrint.id}</td></tr>
+                        <tr><td className="py-1 text-slate-500">{tr(language, 'salesDate')}</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ')[0]}</td></tr>
+                        <tr><td className="py-1 text-slate-500">{tr(language, 'salesTime')}</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td></tr>
+                        <tr><td className="py-1 text-slate-500">{tr(language, 'salesMethod')}</td><td className="py-1 text-center">:</td><td className="py-1 text-slate-900 uppercase">{selectedSaleForPrint.paymentMethod}</td></tr>
                         {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
-                          <tr><td className="py-1 text-rose-500">Due Date</td><td className="py-1 text-center text-rose-500">:</td><td className="py-1 text-rose-600 font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</td></tr>
+                          <tr><td className="py-1 text-rose-500">{tr(language, 'salesDueDate')}</td><td className="py-1 text-center text-rose-500">:</td><td className="py-1 text-rose-600 font-black">{calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -621,14 +621,14 @@ export const Sales: React.FC<SalesProps> = ({
 
               <div className="flex justify-between items-start mb-6">
                 <div className="w-1/2">
-                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 pb-1 inline-block">Billed To</h3>
+                  <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 border-b border-slate-200 pb-1 inline-block">{tr(language, 'salesBilledTo')}</h3>
                   <h4 className="text-lg font-black text-slate-800">{selectedSaleForPrint.customerName}</h4>
                   <p className="text-sm font-bold text-slate-600 mt-1.5">{selectedSaleForPrint.address || '-'}</p>
                   <p className="text-sm font-bold text-slate-600 mt-0.5">Ph: {selectedSaleForPrint.phone || '-'}</p>
                 </div>
                 <div className="w-1/2 flex flex-col items-end justify-start">
                    <div className="text-right mb-2">
-                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issued By</h3>
+                      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{tr(language, 'salesIssuedBy')}</h3>
                       <p className="text-sm font-bold text-slate-800">{selectedSaleForPrint.salespersonName}</p>
                    </div>
                    <div className="opacity-90 mt-1">
@@ -642,10 +642,10 @@ export const Sales: React.FC<SalesProps> = ({
                   <thead style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
                     <tr className="bg-slate-800 text-white print:bg-slate-800 print:text-white">
                       <th className="py-2 px-2 font-bold text-sm w-12 text-center align-middle rounded-tl-md print:bg-slate-800 print:text-white">No.</th>
-                      <th className="py-2 px-2 font-bold text-sm align-middle print:bg-slate-800 print:text-white">Description</th>
-                      <th className="py-2 px-2 font-bold text-sm text-center w-24 align-middle print:bg-slate-800 print:text-white">Qty</th>
-                      <th className="py-2 px-2 font-bold text-sm text-right w-32 align-middle print:bg-slate-800 print:text-white">Price (Ks)</th>
-                      <th className="py-2 px-2 font-bold text-sm text-right w-32 align-middle rounded-tr-md print:bg-slate-800 print:text-white">Amount (Ks)</th>
+                      <th className="py-2 px-2 font-bold text-sm align-middle print:bg-slate-800 print:text-white">{tr(language, 'salesDescription')}</th>
+                      <th className="py-2 px-2 font-bold text-sm text-center w-24 align-middle print:bg-slate-800 print:text-white">{tr(language, 'salesQty')}</th>
+                      <th className="py-2 px-2 font-bold text-sm text-right w-32 align-middle print:bg-slate-800 print:text-white">{tr(language, 'salesPriceKs')}</th>
+                      <th className="py-2 px-2 font-bold text-sm text-right w-32 align-middle rounded-tr-md print:bg-slate-800 print:text-white">{tr(language, 'salesAmountKs')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -668,31 +668,31 @@ export const Sales: React.FC<SalesProps> = ({
               <div className="flex justify-end mt-4 mb-8">
                 <div className="w-80">
                   <div className="flex justify-between py-1.5 text-sm font-bold text-slate-600">
-                    <span>Subtotal:</span>
+                    <span>{tr(language, 'salesSubtotal')}:</span>
                     <span>{selectedSaleForPrint.totalAmount?.toLocaleString()} Ks</span>
                   </div>
                   {Number(selectedSaleForPrint.discountPercent) > 0 && (
                      <div className="flex justify-between py-1.5 text-sm font-bold text-rose-600 border-t border-slate-100">
-                       <span>Discount ({selectedSaleForPrint.discountPercent}%):</span>
+                       <span>{tr(language, 'salesDiscountPrint')} ({selectedSaleForPrint.discountPercent}%):</span>
                        <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()} Ks</span>
                      </div>
                   )}
                   {Number(selectedSaleForPrint.taxPercent) > 0 && (
                      <div className="flex justify-between py-1.5 text-sm font-bold text-blue-600 border-t border-slate-100">
-                       <span>Tax ({selectedSaleForPrint.taxPercent}%):</span>
+                       <span>{tr(language, 'salesTaxPrint')} ({selectedSaleForPrint.taxPercent}%):</span>
                        <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()} Ks</span>
                      </div>
                   )}
                   <div className="flex justify-between py-3 mt-2 border-t-2 border-slate-800 text-lg">
-                    <span className="font-black text-slate-800">Total:</span>
+                    <span className="font-black text-slate-800">{tr(language, 'salesTotalPrint')}:</span>
                     <span className="font-black text-emerald-600">{selectedSaleForPrint.finalAmount?.toLocaleString()} Ks</span>
                   </div>
                 </div>
               </div>
 
               <div className="flex justify-between px-10 pt-10 mt-auto">
-                 <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Customer Signature</div>
-                 <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">Authorized Signature</div>
+                 <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">{tr(language, 'salesCustomerSignature')}</div>
+                 <div className="text-center border-t-2 border-slate-300 w-48 pt-2 font-bold text-slate-600 text-sm">{tr(language, 'salesAuthorizedSignature')}</div>
               </div>
             </div>
           )}
@@ -715,24 +715,24 @@ export const Sales: React.FC<SalesProps> = ({
               <div className="mb-3 text-xs font-bold space-y-1 border-b-2 border-dashed border-black pb-3">
                 <table className="w-full">
                   <tbody>
-                    <tr><td className="py-0.5 text-left w-12">Inv</td><td className="py-0.5 text-center w-2">:</td><td className="py-0.5 text-right">#{selectedSaleForPrint.id}</td></tr>
-                    <tr><td className="py-0.5 text-left">Date</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ')[0]}</td></tr>
-                    <tr><td className="py-0.5 text-left">Time</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td></tr>
-                    <tr><td className="py-0.5 text-left">Cust</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right uppercase truncate max-w-[140px]">{selectedSaleForPrint.customerName}</td></tr>
-                    <tr><td className="py-0.5 text-left">Pay</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right uppercase">{selectedSaleForPrint.paymentMethod}</td></tr>
+                    <tr><td className="py-0.5 text-left w-12">{tr(language, 'salesThermalInv')}</td><td className="py-0.5 text-center w-2">:</td><td className="py-0.5 text-right">#{selectedSaleForPrint.id}</td></tr>
+                    <tr><td className="py-0.5 text-left">{tr(language, 'salesDate')}</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ')[0]}</td></tr>
+                    <tr><td className="py-0.5 text-left">{tr(language, 'salesTime')}</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right">{selectedSaleForPrint.date.split(' ').slice(1).join(' ')}</td></tr>
+                    <tr><td className="py-0.5 text-left">{tr(language, 'salesThermalCustomer')}</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right uppercase truncate max-w-[140px]">{selectedSaleForPrint.customerName}</td></tr>
+                    <tr><td className="py-0.5 text-left">{tr(language, 'salesThermalPay')}</td><td className="py-0.5 text-center">:</td><td className="py-0.5 text-right uppercase">{selectedSaleForPrint.paymentMethod}</td></tr>
                   </tbody>
                 </table>
                 {!selectedSaleForPrint.isPaid && selectedSaleForPrint.creditTerms && (
                   <div className="text-black border border-black p-1.5 mt-2 text-center font-black">
-                    DUE: {calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}
+                    {tr(language, 'salesThermalDue')}: {calculateDueDate(selectedSaleForPrint.date, selectedSaleForPrint.creditTerms)}
                   </div>
                 )}
               </div>
 
               <div className="mb-3 border-b-2 border-dashed border-black pb-3">
                 <div className="flex justify-between font-black border-b border-black pb-1 mb-2 text-xs">
-                  <span className="w-2/3">Item</span>
-                  <span className="w-1/3 text-right">Amt</span>
+                  <span className="w-2/3">{tr(language, 'salesThermalItem')}</span>
+                  <span className="w-1/3 text-right">{tr(language, 'salesThermalAmount')}</span>
                 </div>
                 {selectedSaleForPrint.items?.map((item, idx) => (
                   <div key={idx} className="mb-2 text-xs">
@@ -746,20 +746,20 @@ export const Sales: React.FC<SalesProps> = ({
               </div>
 
               <div className="space-y-1 text-xs font-bold border-b-2 border-dashed border-black pb-3 mb-3">
-                <div className="flex justify-between"><span>Subtotal:</span> <span>{selectedSaleForPrint.totalAmount?.toLocaleString()}</span></div>
+                <div className="flex justify-between"><span>{tr(language, 'salesSubtotal')}:</span> <span>{selectedSaleForPrint.totalAmount?.toLocaleString()}</span></div>
                 {Number(selectedSaleForPrint.discountPercent) > 0 && (
-                  <div className="flex justify-between"><span>Disc ({selectedSaleForPrint.discountPercent}%):</span> <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span>{tr(language, 'salesDiscountPrint')} ({selectedSaleForPrint.discountPercent}%):</span> <span>- {((selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent)) / 100).toLocaleString()}</span></div>
                 )}
                 {Number(selectedSaleForPrint.taxPercent) > 0 && (
-                  <div className="flex justify-between"><span>Tax ({selectedSaleForPrint.taxPercent}%):</span> <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span>{tr(language, 'salesTaxPrint')} ({selectedSaleForPrint.taxPercent}%):</span> <span>+ {(((selectedSaleForPrint.totalAmount - (selectedSaleForPrint.totalAmount * Number(selectedSaleForPrint.discountPercent||0))/100) * Number(selectedSaleForPrint.taxPercent)) / 100).toLocaleString()}</span></div>
                 )}
                 <div className="flex justify-between text-base font-black pt-1 mt-1 border-t border-black">
-                  <span>TOTAL:</span> <span>{selectedSaleForPrint.finalAmount?.toLocaleString()} Ks</span>
+                  <span>{tr(language, 'salesTotalPrint').toUpperCase()}:</span> <span>{selectedSaleForPrint.finalAmount?.toLocaleString()} Ks</span>
                 </div>
               </div>
 
               <div className="text-center text-xs font-bold mt-4 mb-2">
-                <p>Thank you!</p>
+                <p>{tr(language, 'salesThankYou')}</p>
                 <p className="mt-1">--- စက်စက်ယို ---</p>
               </div>
             </div>
