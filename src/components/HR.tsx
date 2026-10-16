@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import type { Employee, Attendance, Advance, Leave, HRSetting, LateRule, ExpenseItem, AccountItem } from '../App';
+import type { Employee, Attendance, Advance, Leave, HRSetting, LateRule, ExpenseItem } from '../App';
 import { Download, Printer, Edit, Trash2, Calendar, Users, Filter, CheckCircle, X, RefreshCw, DollarSign } from 'lucide-react';
 import { tr, type AppLanguage } from '../i18n';
 
@@ -11,7 +11,6 @@ interface HRProps {
   leaves: Leave[]; setLeaves: React.Dispatch<React.SetStateAction<Leave[]>>;
   hrSettings: HRSetting[]; setHrSettings: React.Dispatch<React.SetStateAction<HRSetting[]>>;
   setExpenses: React.Dispatch<React.SetStateAction<ExpenseItem[]>>;
-  accounts: AccountItem[];
   language: AppLanguage;
 }
 

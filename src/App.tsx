@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './supabase'; 
+import { supabase } from './supabase';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
@@ -8,20 +8,22 @@ import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
 import { Sales } from './components/Sales';
 import { Expenses } from './components/Expenses';
-import { AccountManagement } from './components/AccountManagement';
 import { Procurement } from './components/Procurement';
 
-import { HR } from './components/HR'; 
+import { HR } from './components/HR';
 import { Dashboard } from './components/Dashboard';
 import { Workspace } from './components/Workspace';
 import { Reports } from './components/Reports';
 import { LANGUAGE_STORAGE_KEY, tr, type AppLanguage } from './i18n';
+import {
+  restoreMavoraSession,
+  signOutMavora,
+  type MavoraUserSession,
+} from './auth/mavoraAuth';
 
-export interface AccountItem { id: number; username: string; password?: string; role: string; displayName: string; }
 export interface InventoryItem { id: number; code: string; name: string; category: string; unit: string; inStock: number; updatedBy?: string; updatedAt?: string; warehouse?: 'RM' | 'SFG' | 'PKG' | 'FG'; lastPurchasePrice?: number; }
 export interface FinishedGoodItem { id: number; category: string; taste: string; gram: number; price: number; stockQty: number; cogs?: number; }
 export interface ExpenseItem { id: number; date: string; category: string; description: string; amount: number; voucherNo?: string; receiptImage?: string; type?: 'expense' | 'income'; }
-export interface UserSession { name: string; role: string; }
 export interface BOMResult { itemName: string; amount: number; }
 export interface RecipeIngredient { itemName: string; requiredQty: number; unit: string; defaultCost: number; }
 export interface Recipe { id: string; name: string; outputCategory: string; outputUnit: string; outputQtyPerBatch: number; ingredients: RecipeIngredient[]; }
@@ -30,23 +32,23 @@ export interface AttachedFile { name: string; dataUrl: string; type: string; }
 export interface SupplierOption { id: string; name: string; price: number; qualityDesc: string; analysisNote: string; productFiles?: AttachedFile[]; quotationFiles?: AttachedFile[]; itemUnitPrices?: Record<string, number>; }
 export interface PRItem { id?: string; itemName: string; requestedQty: number; unit: string; targetWarehouse: 'RM' | 'SFG' | 'PKG'; }
 
-export interface PurchaseRequest { 
-  id: number; date: string; 
+export interface PurchaseRequest {
+  id: number; date: string;
   items?: PRItem[]; itemName?: string; requestedQty?: number; unit?: string; targetWarehouse?: 'RM' | 'SFG' | 'PKG';
-  suppliers: SupplierOption[]; selectedSupplierId?: string; 
-  status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected'; 
+  suppliers: SupplierOption[]; selectedSupplierId?: string;
+  status: 'Pending' | 'QC_Approved' | 'Finance_Approved' | 'MD_Approved' | 'Purchased' | 'QC_Received' | 'Store_Received' | 'Completed' | 'Rejected';
   rejectReason?: string; qcSelectedSupplierId?: string; qcRemark?: string; financeSelectedSupplierId?: string; financeRemark?: string; storeRemark?: string;
   paymentMethod?: string;
   isCreditPaid?: boolean;
 }
 
 export interface SaleItem { product: FinishedGoodItem; quantity: number; subtotal: number; }
-export interface SaleRecord { 
-  id: string; date: string; customerName: string; phone?: string; salespersonName: string; 
+export interface SaleRecord {
+  id: string; date: string; customerName: string; phone?: string; salespersonName: string;
   shopType?: string; address?: string; gps?: string;
-  items: SaleItem[]; totalAmount: number; finalAmount: number; 
-  discountPercent?: number; taxPercent?: number; 
-  paymentMethod: string; creditTerms?: string; isPaid: boolean; 
+  items: SaleItem[]; totalAmount: number; finalAmount: number;
+  discountPercent?: number; taxPercent?: number;
+  paymentMethod: string; creditTerms?: string; isPaid: boolean;
   // 🌟 Return & Exchange မှတ်တမ်း သိမ်းရန် field များ 🌟
   status?: 'Normal' | 'Returned';
   returnDetails?: { type: 'refund' | 'exchange'; totalRefund: number; note: string; date: string; items: { category: string; taste: string; quantity: number; }[] };
@@ -60,11 +62,11 @@ export interface Attendance { id: number; employeeId: string; date: string; chec
 export interface Advance { id: number; employeeId: string; date: string; amount: number; reason: string; status: string; deducted: boolean; }
 export interface Leave { id: number; employeeId: string; startDate: string; endDate: string; leaveType: string; reason: string; status: 'Pending' | 'Approved' | 'Rejected'; }
 export interface LateRule { id: number; startMin: number; endMin: number; deduction: number; type: 'amount' | 'half_day' | 'full_day'; }
-export interface HRSetting { 
-  id: string; officeLatitude: number; officeLongitude: number; allowedRadius: number; 
-  officeStartTime: string; officeEndTime: string; 
-  punctualityBonus: number; perfectAttendanceBonus: number; 
-  lateRules: LateRule[]; 
+export interface HRSetting {
+  id: string; officeLatitude: number; officeLongitude: number; allowedRadius: number;
+  officeStartTime: string; officeEndTime: string;
+  punctualityBonus: number; perfectAttendanceBonus: number;
+  lateRules: LateRule[];
 }
 
 function useLocalStorage<T>(key: string, initialValue: T) {
@@ -87,12 +89,12 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
       try {
         const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: true });
         if (error) { console.error(`Error loading ${tableName}:`, error); }
-        else if (data && data.length > 0) { setStoredValue(data as T[]); } 
+        else if (data && data.length > 0) { setStoredValue(data as T[]); }
         else if (initialValue.length > 0) { await supabase.from(tableName).insert(initialValue); setStoredValue(initialValue); }
       } catch (err) {
         console.error("Supabase load error:", err);
       } finally {
-        setIsLoading(false); 
+        setIsLoading(false);
       }
     };
     loadData();
@@ -101,39 +103,29 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
   const setValue = async (value: T[] | ((val: T[]) => T[])) => {
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore); 
+      setStoredValue(valueToStore);
       const { error } = await supabase.from(tableName).upsert(valueToStore);
       if (error) console.error("Supabase Sync Error:", error);
     } catch (error) { console.error(error); }
   };
-  
+
   return [storedValue, setValue, isLoading] as const;
 }
 
 export default function App() {
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false); 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
-  const [accounts, setAccounts] = useLocalStorage<AccountItem[]>('ssy_accounts', [
-    { id: 1, username: 'md', password: '123', role: 'md', displayName: 'Managing Director (MD)' },
-    { id: 2, username: 'manager', password: '123', role: 'manager', displayName: 'စက်ရုံမှူး (Manager)' },
-    { id: 3, username: 'finance', password: '123', role: 'finance', displayName: 'Finance Manager' },
-    { id: 4, username: 'qc', password: '123', role: 'qc', displayName: 'QC / QA' },
-    { id: 5, username: 'purchasing', password: '123', role: 'purchasing', displayName: 'Purchasing Officer' },
-    { id: 6, username: 'store', password: '123', role: 'storekeeper', displayName: 'Store Keeper' },
-    { id: 7, username: 'sale', password: '123', role: 'sales', displayName: 'Sales Person' },
-    { id: 8, username: 'hr', password: '123', role: 'hr', displayName: 'HR Manager' },
-  ]);
 
   const [inventoryItems, setInventoryItems, invLoading] = useSupabaseTable<InventoryItem>('ssy_inventory', [
     { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM', lastPurchasePrice: 15000 },
   ]);
 
   const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', []);
-  const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', []); 
+  const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', []);
   const [expenses, setExpenses, expLoading] = useSupabaseTable<ExpenseItem>('ssy_expenses', []);
   const [customers, setCustomers, custLoading] = useSupabaseTable<Customer>('ssy_customers', []);
-  
+
   const [purchaseRequests, setPurchaseRequests, prLoading] = useSupabaseTable<PurchaseRequest>('ssy_purchase_requests', []);
   const [recipes, setRecipes, recLoading] = useSupabaseTable<Recipe>('ssy_recipes', []);
   const [packageRecipes, setPackageRecipes, pkgRecLoading] = useSupabaseTable<PackageRecipe>('ssy_pkg_recipes', []);
@@ -144,7 +136,8 @@ export default function App() {
   const [leaves, setLeaves, leaveLoading] = useSupabaseTable<Leave>('ssy_leaves', []);
   const [hrSettings, setHrSettings, hrsLoading] = useSupabaseTable<HRSetting>('ssy_hr_settings', []);
 
-  const [user, setUser] = useLocalStorage<UserSession | null>('ssy_user', null);
+  const [user, setUser] = useState<MavoraUserSession | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [language, setLanguage] = useLocalStorage<AppLanguage>(
     LANGUAGE_STORAGE_KEY,
     'my'
@@ -153,10 +146,55 @@ export default function App() {
   const [highlightSaleId, setHighlightSaleId] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Remove obsolete browser-only authentication state.
+    window.localStorage.removeItem('ssy_user');
+    window.localStorage.removeItem('ssy_accounts');
+
+    const restoreAuth = async () => {
+      try {
+        const restoredUser = await restoreMavoraSession();
+
+        if (!cancelled) {
+          setUser(restoredUser);
+        }
+      } catch (error) {
+        console.error('MAVORA session restore failed:', error);
+
+        if (!cancelled) {
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthLoading(false);
+        }
+      }
+    };
+
+    restoreAuth();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOutMavora();
+    } catch (error) {
+      console.error('MAVORA sign out failed:', error);
+    } finally {
+      setUser(null);
+      setActiveTab('dashboard');
+    }
+  };
+
+  useEffect(() => {
     const testSupabaseConnection = async () => {
       try {
         const { error } = await supabase.from('ssy_inventory').select('id').limit(1);
-        if (!error) setIsCloudConnected(true); 
+        if (!error) setIsCloudConnected(true);
       } catch (err) { console.error("Connection failed", err); }
     };
     testSupabaseConnection();
@@ -166,7 +204,7 @@ export default function App() {
 
   const handleConfirmProduction = (recipe: Recipe, producedQty: number, totalCost: number, consumedItems: BOMResult[]) => {
     const unitSfgCost = totalCost / producedQty;
-    
+
     setInventoryItems(prev => {
       let updated = [...prev];
       consumedItems.forEach(consumed => {
@@ -179,7 +217,7 @@ export default function App() {
            }
            return i.name === consumed.itemName && actualWarehouse === 'RM';
          });
-         
+
          if (idx !== -1) {
            updated[idx] = { ...updated[idx], inStock: updated[idx].inStock - consumed.amount };
          }
@@ -187,10 +225,10 @@ export default function App() {
 
       const sfgIdx = updated.findIndex(i => i.name === recipe.name && (i.warehouse === 'SFG' || i.code?.startsWith('SFG')));
       if (sfgIdx !== -1) {
-         updated[sfgIdx] = { 
-           ...updated[sfgIdx], 
+         updated[sfgIdx] = {
+           ...updated[sfgIdx],
            inStock: updated[sfgIdx].inStock + producedQty,
-           lastPurchasePrice: unitSfgCost 
+           lastPurchasePrice: unitSfgCost
          };
       } else {
          updated.push({
@@ -214,7 +252,7 @@ export default function App() {
 
   const handleConfirmPackaging = (recipe: PackageRecipe, packQty: number, totalCost: number, consumedSFG: BOMResult[], consumedPKG: BOMResult[]) => {
     const unitFgCogs = totalCost / packQty;
-    
+
     setInventoryItems(prev => {
       let updated = [...prev];
       [...consumedSFG, ...consumedPKG].forEach(consumed => {
@@ -229,13 +267,13 @@ export default function App() {
     setFinishedGoods(prev => {
        let updated = [...prev];
        const fgIdx = updated.findIndex(fg => fg.category === recipe.category && fg.taste === recipe.taste && fg.gram === recipe.gram);
-       
+
        if (fgIdx !== -1) {
-         updated[fgIdx] = { 
-           ...updated[fgIdx], 
+         updated[fgIdx] = {
+           ...updated[fgIdx],
            stockQty: updated[fgIdx].stockQty + packQty,
            cogs: unitFgCogs,
-           price: recipe.price 
+           price: recipe.price
          };
        } else {
          updated.push({
@@ -258,7 +296,7 @@ export default function App() {
     const selectedSupplier = pr.suppliers.find(s => s.id === pr.selectedSupplierId);
     if (!selectedSupplier) return;
     const totalCost = selectedSupplier.price || 0;
-    
+
     setInventoryItems(prevItems => {
       let newItems = [...prevItems];
       const itemsToProcess = pr.items || [];
@@ -266,7 +304,7 @@ export default function App() {
       itemsToProcess.forEach((prItem) => {
         if (!prItem.itemName) return;
         const existingIdx = newItems.findIndex(i => i.name.toLowerCase() === prItem.itemName.toLowerCase() && i.warehouse === prItem.targetWarehouse);
-        
+
         let exactUnitPrice = selectedSupplier.itemUnitPrices?.[prItem.id || ''] || 0;
         if (!exactUnitPrice && totalCost > 0) {
             exactUnitPrice = totalCost / (itemsToProcess.length * (prItem.requestedQty || 1));
@@ -380,17 +418,31 @@ export default function App() {
     }));
   };
 
-  if (!user) return (
-    <Login
-      language={language}
-      setLanguage={setLanguage}
-      onLogin={(name, role) => setUser({ name, role })}
-      accounts={accounts}
-    />
-  );
+  if (authLoading) {
+    return (
+      <div className="flex w-full h-screen items-center justify-center bg-gray-50 flex-col gap-4">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="font-bold text-slate-500">
+          {language === 'my'
+            ? 'အကောင့် လုံခြုံရေး စစ်ဆေးနေပါသည်...'
+            : 'Checking secure session...'}
+        </p>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Login
+        language={language}
+        setLanguage={setLanguage}
+        onLogin={setUser}
+      />
+    );
+  }
 
   const isAnyLoading = invLoading || fgLoading || salesLoading || expLoading || custLoading || prLoading || recLoading || pkgRecLoading || empLoading || attLoading || advLoading || leaveLoading || hrsLoading;
-  
+
   if (isAnyLoading) {
     return (
       <div className="flex w-full h-screen items-center justify-center bg-gray-50 flex-col gap-4">
@@ -417,7 +469,7 @@ export default function App() {
          </div>
          <div className="flex-1 overflow-y-auto">
            <div onClick={() => setIsMobileMenuOpen(false)}>
-             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={() => setUser(null)} language={language} setLanguage={setLanguage} />
+             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={handleLogout} language={language} setLanguage={setLanguage} />
            </div>
          </div>
          <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">
@@ -442,22 +494,22 @@ export default function App() {
       {isMobileMenuOpen && (
         <div onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-black/60 z-[90] md:hidden backdrop-blur-sm print:hidden"></div>
       )}
-      
+
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         {activeTab === 'dashboard' && <Dashboard language={language} sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
         {activeTab === 'workspace' && <Workspace language={language} userName={user.name} userRole={user.role} />}
-        
+
         {activeTab === 'reports' && (
            <Reports
              language={language}
-             sales={salesRecords} 
-             inventory={inventoryItems} 
-             finishedGoods={finishedGoods} 
-             expenses={expenses} 
+             sales={salesRecords}
+             inventory={inventoryItems}
+             finishedGoods={finishedGoods}
+             expenses={expenses}
              purchaseRequests={purchaseRequests}
              recipes={recipes}
              packageRecipes={packageRecipes}
-             setActiveTab={setActiveTab} 
+             setActiveTab={setActiveTab}
              setHighlightSaleId={setHighlightSaleId}
            />
         )}
@@ -466,17 +518,17 @@ export default function App() {
         {activeTab === 'sales' && (
           <Sales
             language={language}
-            userRole={user.role} 
-            userName={user.name} 
-            finishedGoods={finishedGoods} 
-            sales={salesRecords} 
-            customers={customers} 
-            onCheckout={handleCheckoutSale} 
-            onMarkAsPaid={handleMarkAsPaid} 
-            onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))} 
-            highlightSaleId={highlightSaleId} 
-            setHighlightSaleId={setHighlightSaleId} 
-            onReturnSale={handleReturnSale} 
+            userRole={user.role}
+            userName={user.name}
+            finishedGoods={finishedGoods}
+            sales={salesRecords}
+            customers={customers}
+            onCheckout={handleCheckoutSale}
+            onMarkAsPaid={handleMarkAsPaid}
+            onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))}
+            highlightSaleId={highlightSaleId}
+            setHighlightSaleId={setHighlightSaleId}
+            onReturnSale={handleReturnSale}
           />
         )}
 
@@ -486,21 +538,19 @@ export default function App() {
         {activeTab === 'packaging' && <Packaging language={language} userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
         {finishedGoods && activeTab === 'finished_goods' && <FinishedGoods language={language} userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses language={language} userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
-        
+
         {activeTab === 'hr' && (
-           <HR 
+           <HR
              language={language}
-             userRole={user.role} userName={user.name} 
-             employees={employees} setEmployees={setEmployees} 
-             attendance={attendance} setAttendance={setAttendance} 
-             advances={advances} setAdvances={setAdvances} 
+             userRole={user.role} userName={user.name}
+             employees={employees} setEmployees={setEmployees}
+             attendance={attendance} setAttendance={setAttendance}
+             advances={advances} setAdvances={setAdvances}
              leaves={leaves} setLeaves={setLeaves}
-             hrSettings={hrSettings} setHrSettings={setHrSettings} 
-             setExpenses={setExpenses} accounts={accounts} 
+             hrSettings={hrSettings} setHrSettings={setHrSettings}
+             setExpenses={setExpenses}
            />
         )}
-        
-        {activeTab === 'accounts' && <AccountManagement language={language} accounts={accounts} setAccounts={setAccounts} currentUserRole={user.role} />}
       </main>
     </div>
   );

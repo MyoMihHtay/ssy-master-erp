@@ -482,10 +482,10 @@ export const translations = {
 
     loginScreenTitle: 'စနစ်ထဲသို့ ဝင်ရောက်ရန်',
     loginLanguage: 'ဘာသာစကား',
-    loginUsername: 'Username (အကောင့်အမည်)',
+    loginUsername: 'Email (အီးမေးလ်)',
     loginPassword: 'Password (စကားဝှက်)',
     loginButton: 'စနစ်ထဲသို့ ဝင်မည်',
-    loginInvalidCredentials: 'Username သို့မဟုတ် Password မှားယွင်းနေပါသည်။',
+    loginInvalidCredentials: 'Email သို့မဟုတ် Password မှားယွင်းနေပါသည်၊ သို့မဟုတ် ဤအကောင့်တွင် အသုံးပြုခွင့်မရှိပါ။',
 
     hrSystemTitle: 'ဝန်ထမ်းရေးရာ စနစ် (HR)',
     hrGpsRefresh: 'GPS ပြန်ရှာမည်',
@@ -1120,10 +1120,10 @@ export const translations = {
 
     loginScreenTitle: 'Sign in to the system',
     loginLanguage: 'Language',
-    loginUsername: 'Username',
+    loginUsername: 'Email',
     loginPassword: 'Password',
     loginButton: 'Sign In',
-    loginInvalidCredentials: 'Incorrect username or password.',
+    loginInvalidCredentials: 'Incorrect email or password, or this account is not authorized.',
 
     hrSystemTitle: 'Human Resources (HR)',
     hrGpsRefresh: 'Refresh GPS',

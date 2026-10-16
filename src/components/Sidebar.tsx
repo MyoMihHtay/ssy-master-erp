@@ -61,9 +61,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     { id: 'hr', labelKey: 'hr', icon: '👥',
       roles: ['all'] },
-
-    { id: 'accounts', labelKey: 'accounts', icon: '⚙️',
-      roles: ['md'] },
   ];
 
   const filteredNavItems = navItems.filter(
