@@ -248,7 +248,7 @@ create table if not exists public.inventory_balances (
       or average_unit_cost >= 0
     ),
 
-  constraint inventory_balances_reserved_quantity_check
+  constraint inventory_balances_reserved_not_exceed_quantity_check
     check (reserved_quantity <= quantity),
 
   updated_at timestamptz not null default now(),
