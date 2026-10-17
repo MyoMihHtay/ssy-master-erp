@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './supabase';
+import { legacySupabase } from './legacySupabase';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { Inventory } from './components/Inventory';
@@ -87,10 +87,10 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.from(tableName).select('*').order('id', { ascending: true });
+        const { data, error } = await legacySupabase.from(tableName).select('*').order('id', { ascending: true });
         if (error) { console.error(`Error loading ${tableName}:`, error); }
         else if (data && data.length > 0) { setStoredValue(data as T[]); }
-        else if (initialValue.length > 0) { await supabase.from(tableName).insert(initialValue); setStoredValue(initialValue); }
+        else if (initialValue.length > 0) { await legacySupabase.from(tableName).insert(initialValue); setStoredValue(initialValue); }
       } catch (err) {
         console.error("Supabase load error:", err);
       } finally {
@@ -104,7 +104,7 @@ function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
-      const { error } = await supabase.from(tableName).upsert(valueToStore);
+      const { error } = await legacySupabase.from(tableName).upsert(valueToStore);
       if (error) console.error("Supabase Sync Error:", error);
     } catch (error) { console.error(error); }
   };
@@ -193,7 +193,7 @@ export default function App() {
   useEffect(() => {
     const testSupabaseConnection = async () => {
       try {
-        const { error } = await supabase.from('ssy_inventory').select('id').limit(1);
+        const { error } = await legacySupabase.from('ssy_inventory').select('id').limit(1);
         if (!error) setIsCloudConnected(true);
       } catch (err) { console.error("Connection failed", err); }
     };

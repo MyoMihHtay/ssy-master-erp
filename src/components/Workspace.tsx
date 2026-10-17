@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Image as ImageIcon, Mic, Square, X, MessageSquare, Trash2, Edit } from 'lucide-react';
-import { supabase } from '../supabase';
+import { legacySupabase } from '../legacySupabase';
 import { tr, type AppLanguage } from '../i18n';
 
 interface Post {
@@ -93,18 +93,18 @@ export const Workspace: React.FC<WorkspaceProps> = ({ language, userName, userRo
     if (imageFile) {
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const { error } = await supabase.storage.from('workspace-files').upload(fileName, imageFile);
+      const { error } = await legacySupabase.storage.from('workspace-files').upload(fileName, imageFile);
       if (!error) {
-        const { data } = supabase.storage.from('workspace-files').getPublicUrl(fileName);
+        const { data } = legacySupabase.storage.from('workspace-files').getPublicUrl(fileName);
         finalPhotoUrl = data.publicUrl;
       }
     }
 
     if (audioBlob) {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.webm`;
-      const { error } = await supabase.storage.from('workspace-files').upload(fileName, audioBlob);
+      const { error } = await legacySupabase.storage.from('workspace-files').upload(fileName, audioBlob);
       if (!error) {
-        const { data } = supabase.storage.from('workspace-files').getPublicUrl(fileName);
+        const { data } = legacySupabase.storage.from('workspace-files').getPublicUrl(fileName);
         finalAudioUrl = data.publicUrl;
       }
     }
@@ -119,7 +119,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ language, userName, userRo
       audio_url: finalAudioUrl
     };
 
-    const { data, error } = await supabase.from('workspace_posts').insert([newPost]).select();
+    const { data, error } = await legacySupabase.from('workspace_posts').insert([newPost]).select();
     
     if (!error && data) {
       setPosts([data[0] as Post, ...posts]);
@@ -135,12 +135,12 @@ export const Workspace: React.FC<WorkspaceProps> = ({ language, userName, userRo
 
   const handleDelete = async (id: string) => {
     if (!window.confirm(tr(language, 'workspaceDeleteConfirm'))) return;
-    const { error } = await supabase.from('workspace_posts').delete().eq('id', id);
+    const { error } = await legacySupabase.from('workspace_posts').delete().eq('id', id);
     if (!error) setPosts(posts.filter(post => post.id !== id));
   };
 
   const handleUpdate = async (id: string) => {
-    const { error } = await supabase.from('workspace_posts').update({ content: editContent }).eq('id', id);
+    const { error } = await legacySupabase.from('workspace_posts').update({ content: editContent }).eq('id', id);
     if (!error) {
       setPosts(posts.map(post => post.id === id ? { ...post, content: editContent } : post));
       setEditingId(null);
