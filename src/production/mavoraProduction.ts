@@ -373,3 +373,208 @@ export const loadMavoraProductionSnapshot = async (
         []) as MavoraProductionOrderMaterial[],
   };
 };
+
+export interface CreateMavoraWorkCenterInput {
+  tenantId: string;
+  siteId: string;
+  departmentId?: string | null;
+  code: string;
+  name: string;
+}
+
+export interface UpdateMavoraWorkCenterInput {
+  tenantId: string;
+  id: string;
+  siteId: string;
+  departmentId?: string | null;
+  code: string;
+  name: string;
+}
+
+export interface CreateMavoraProductionLineInput {
+  tenantId: string;
+  siteId: string;
+  workCenterId: string;
+  code: string;
+  name: string;
+  capacityPerHour?: number | null;
+}
+
+export interface UpdateMavoraProductionLineInput {
+  tenantId: string;
+  id: string;
+  siteId: string;
+  code: string;
+  name: string;
+  capacityPerHour?: number | null;
+}
+
+const normalizeProductionMasterCode = (
+  value: string
+): string =>
+  value
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '-');
+
+const requireMasterText = (
+  value: string,
+  field: string
+): string => {
+  const result = value.trim();
+
+  if (!result) {
+    throw new Error(`${field} is required`);
+  }
+
+  return result;
+};
+
+export const createMavoraWorkCenter = async (
+  input: CreateMavoraWorkCenterInput
+): Promise<MavoraWorkCenter> => {
+  const code = normalizeProductionMasterCode(
+    requireMasterText(input.code, 'Work Center code')
+  );
+
+  const name = requireMasterText(
+    input.name,
+    'Work Center name'
+  );
+
+  const { data, error } = await mavoraSupabase
+    .from('work_centers')
+    .insert({
+      tenant_id: input.tenantId,
+      site_id: input.siteId,
+      department_id:
+        input.departmentId || null,
+      code,
+      name,
+    })
+    .select(
+      'id, tenant_id, site_id, department_id, code, name, is_active'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to create Work Center'
+  );
+
+  return data as MavoraWorkCenter;
+};
+
+export const updateMavoraWorkCenter = async (
+  input: UpdateMavoraWorkCenterInput
+): Promise<MavoraWorkCenter> => {
+  const code = normalizeProductionMasterCode(
+    requireMasterText(input.code, 'Work Center code')
+  );
+
+  const name = requireMasterText(
+    input.name,
+    'Work Center name'
+  );
+
+  const { data, error } = await mavoraSupabase
+    .from('work_centers')
+    .update({
+      department_id:
+        input.departmentId || null,
+      code,
+      name,
+    })
+    .eq('id', input.id)
+    .eq('tenant_id', input.tenantId)
+    .eq('site_id', input.siteId)
+    .select(
+      'id, tenant_id, site_id, department_id, code, name, is_active'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to update Work Center'
+  );
+
+  return data as MavoraWorkCenter;
+};
+
+export const createMavoraProductionLine = async (
+  input: CreateMavoraProductionLineInput
+): Promise<MavoraProductionLine> => {
+  const code = normalizeProductionMasterCode(
+    requireMasterText(
+      input.code,
+      'Production Line code'
+    )
+  );
+
+  const name = requireMasterText(
+    input.name,
+    'Production Line name'
+  );
+
+  const { data, error } = await mavoraSupabase
+    .from('production_lines')
+    .insert({
+      tenant_id: input.tenantId,
+      site_id: input.siteId,
+      work_center_id: input.workCenterId,
+      code,
+      name,
+      capacity_per_hour:
+        input.capacityPerHour ?? null,
+    })
+    .select(
+      'id, tenant_id, site_id, work_center_id, code, name, capacity_per_hour, is_active'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to create Production Line'
+  );
+
+  return data as MavoraProductionLine;
+};
+
+export const updateMavoraProductionLine = async (
+  input: UpdateMavoraProductionLineInput
+): Promise<MavoraProductionLine> => {
+  const code = normalizeProductionMasterCode(
+    requireMasterText(
+      input.code,
+      'Production Line code'
+    )
+  );
+
+  const name = requireMasterText(
+    input.name,
+    'Production Line name'
+  );
+
+  const { data, error } = await mavoraSupabase
+    .from('production_lines')
+    .update({
+      code,
+      name,
+      capacity_per_hour:
+        input.capacityPerHour ?? null,
+    })
+    .eq('id', input.id)
+    .eq('tenant_id', input.tenantId)
+    .eq('site_id', input.siteId)
+    .select(
+      'id, tenant_id, site_id, work_center_id, code, name, capacity_per_hour, is_active'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to update Production Line'
+  );
+
+  return data as MavoraProductionLine;
+};

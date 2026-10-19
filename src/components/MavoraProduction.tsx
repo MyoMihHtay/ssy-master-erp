@@ -7,6 +7,8 @@ import React, {
 
 import type { AppLanguage } from '../i18n';
 
+import { MavoraProductionMasters } from './MavoraProductionMasters';
+
 import {
   loadMavoraProductionSnapshot,
   type MavoraProductionSnapshot,
@@ -563,98 +565,13 @@ export const MavoraProduction: React.FC<Props> = ({
             </div>
           )}
 
-          {activeTab ===
-            'work-centers' && (
-            <div className="rounded-2xl border bg-white overflow-hidden">
-              <div className="p-4 border-b font-black text-slate-800">
-                ⚙️ Work Centers & Production Lines
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="text-left p-3">
-                        Type
-                      </th>
-                      <th className="text-left p-3">
-                        Code
-                      </th>
-                      <th className="text-left p-3">
-                        Name
-                      </th>
-                      <th className="text-left p-3">
-                        Capacity
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {snapshot.workCenters.map(
-                      (item) => (
-                        <tr
-                          key={item.id}
-                          className="border-t"
-                        >
-                          <td className="p-3 font-bold">
-                            Work Center
-                          </td>
-                          <td className="p-3">
-                            {item.code}
-                          </td>
-                          <td className="p-3">
-                            {item.name}
-                          </td>
-                          <td className="p-3">
-                            —
-                          </td>
-                        </tr>
-                      )
-                    )}
-
-                    {snapshot.productionLines.map(
-                      (item) => (
-                        <tr
-                          key={item.id}
-                          className="border-t"
-                        >
-                          <td className="p-3 font-bold">
-                            Production Line
-                          </td>
-                          <td className="p-3">
-                            {item.code}
-                          </td>
-                          <td className="p-3">
-                            {item.name}
-                          </td>
-                          <td className="p-3">
-                            {item.capacity_per_hour ??
-                              '—'}
-                          </td>
-                        </tr>
-                      )
-                    )}
-
-                    {snapshot.workCenters.length ===
-                      0 &&
-                      snapshot.productionLines.length ===
-                        0 && (
-                        <tr>
-                          <td
-                            colSpan={4}
-                            className="p-8 text-center font-bold text-slate-400"
-                          >
-                            {t(
-                              'Work Center / Production Line မသတ်မှတ်ရသေးပါ။',
-                              'No Work Centers or Production Lines configured yet.'
-                            )}
-                          </td>
-                        </tr>
-                      )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+          {activeTab === 'work-centers' && (
+            <MavoraProductionMasters
+              tenantId={tenantId}
+              language={language}
+              snapshot={snapshot}
+              onRefresh={refresh}
+            />
           )}
 
           {activeTab === 'recipes' && (
@@ -863,8 +780,8 @@ export const MavoraProduction: React.FC<Props> = ({
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-700">
             🔒{' '}
             {t(
-              'ယခုအဆင့်သည် Read-only Foundation ဖြစ်ပါသည်။ Create / Edit / Approve / Execute actions မဖွင့်ရသေးပါ။',
-              'This phase is read-only. Create, Edit, Approve and Execute actions are not enabled yet.'
+              'Work Center / Production Line Setup ကို အခွင့်အရေးထိန်းချုပ်မှုဖြင့် ဖွင့်ထားပါသည်။ Formula / BOM နှင့် Production Order များသည် Read-only ဖြစ်နေသေးသည်။',
+              'Controlled Work Center / Production Line setup is enabled. Recipes / BOM and Production Orders remain read-only.'
             )}
           </div>
         </>
