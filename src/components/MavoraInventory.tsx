@@ -380,9 +380,43 @@ export const MavoraInventory: React.FC<
   ) => {
     event.preventDefault();
 
-    setWorking(true);
     setErrorMessage('');
     setSuccessMessage('');
+
+    const selectedCategory =
+      snapshot.categories.find(
+        (category) =>
+          category.id === productForm.categoryId
+      );
+
+    const categoryMustMatchType =
+      [
+        'RM',
+        'SFG',
+        'FG',
+        'PKG',
+        'SPARE',
+        'CONSUMABLE',
+      ].includes(productForm.productType);
+
+    if (
+      categoryMustMatchType &&
+      (
+        !selectedCategory ||
+        selectedCategory.category_type !==
+          productForm.productType
+      )
+    ) {
+      setErrorMessage(
+        t(
+          'Product Type နှင့် Category ကိုက်ညီရပါမည်။',
+          'Product Type and Category must match.'
+        )
+      );
+      return;
+    }
+
+    setWorking(true);
 
     try {
       await createMavoraProduct({
@@ -1113,14 +1147,26 @@ export const MavoraInventory: React.FC<
               </label>
               <select
                 value={productForm.productType}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const productType =
+                    event.target
+                      .value as MavoraProductType;
+
+                  const matchingCategory =
+                    snapshot.categories.find(
+                      (category) =>
+                        category.category_type ===
+                        productType
+                    );
+
                   setProductForm((current) => ({
                     ...current,
-                    productType:
-                      event.target
-                        .value as MavoraProductType,
-                  }))
-                }
+                    productType,
+                    categoryId:
+                      matchingCategory?.id ||
+                      current.categoryId,
+                  }));
+                }}
                 className="w-full border-2 rounded-xl p-3 font-bold"
               >
                 {[
@@ -1226,8 +1272,8 @@ export const MavoraInventory: React.FC<
                 <p className="text-xs font-bold text-amber-600 mt-2">
                   ⚠️{' '}
                   {t(
-                    'Lot/Batch Posting UI ကို နောက်အဆင့်တွင် ထည့်မည်။',
-                    'Lot/Batch posting UI will be added in the next inventory phase.'
+                    'Tracked Product များကို Receiving သို့မဟုတ် Lot / Batch workflow မှ စနစ်တကျ စီမံနိုင်ပါသည်။',
+                    'Tracked products are managed through Receiving or the Lot / Batch workflow.'
                   )}
                 </p>
               )}
