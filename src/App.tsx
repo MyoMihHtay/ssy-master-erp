@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { legacySupabase } from './legacySupabase';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
-import { Inventory } from './components/Inventory';
+import { MavoraInventory } from './components/MavoraInventory';
 import { Production } from './components/Production';
 import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
@@ -533,7 +533,12 @@ export default function App() {
         )}
 
         {activeTab === 'procurement' && <Procurement language={language} userRole={user.role} requests={purchaseRequests} setRequests={setPurchaseRequests} onComplete={handleProcurementComplete} onCreditPayment={handleCreditPayment} />}
-        {activeTab === 'inventory' && <Inventory language={language} userRole={user.role} userName={user.name} items={inventoryItems} setItems={setInventoryItems} onStockIn={handleStockInAndExpense} />}
+        {activeTab === 'inventory' && (
+          <MavoraInventory
+            language={language}
+            tenantId={user.tenantId}
+          />
+        )}
         {activeTab === 'production' && <Production language={language} userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
         {activeTab === 'packaging' && <Packaging language={language} userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
         {finishedGoods && activeTab === 'finished_goods' && <FinishedGoods language={language} userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
