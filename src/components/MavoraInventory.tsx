@@ -7,6 +7,10 @@ import React, {
 
 import type { AppLanguage } from '../i18n';
 
+import { MavoraSimpleOperations } from './MavoraSimpleOperations';
+
+import { MavoraLotManagement } from './MavoraLotManagement';
+
 import {
   createInventoryPostingKey,
   createMavoraProduct,
@@ -25,8 +29,10 @@ interface MavoraInventoryProps {
 }
 
 type ViewTab =
+  | 'operations'
   | 'overview'
   | 'products'
+  | 'lots'
   | 'posting'
   | 'transfer'
   | 'ledger';
@@ -36,6 +42,7 @@ const EMPTY_SNAPSHOT: MavoraInventorySnapshot = {
   warehouses: [],
   units: [],
   categories: [],
+  lots: [],
   balances: [],
   movements: [],
 };
@@ -52,7 +59,10 @@ export const MavoraInventory: React.FC<
     language === 'my' ? my : en;
 
   const [activeView, setActiveView] =
-    useState<ViewTab>('overview');
+    useState<ViewTab>('operations');
+
+  const [showAdvanced, setShowAdvanced] =
+    useState(false);
 
   const [snapshot, setSnapshot] =
     useState<MavoraInventorySnapshot>(EMPTY_SNAPSHOT);
@@ -79,6 +89,7 @@ export const MavoraInventory: React.FC<
     productId: '',
     warehouseId: '',
     movementType: 'opening' as MavoraMovementType,
+    lotId: '',
     quantity: '',
     unitCost: '',
     referenceId: '',
@@ -92,6 +103,7 @@ export const MavoraInventory: React.FC<
 
   const [transferForm, setTransferForm] = useState({
     productId: '',
+    lotId: '',
     sourceWarehouseId: '',
     destinationWarehouseId: '',
     quantity: '',
@@ -196,6 +208,17 @@ export const MavoraInventory: React.FC<
     [snapshot.warehouses]
   );
 
+  const lotsById = useMemo(
+    () =>
+      new Map(
+        snapshot.lots.map((item) => [
+          item.id,
+          item,
+        ])
+      ),
+    [snapshot.lots]
+  );
+
   const unitsById = useMemo(
     () =>
       new Map(
@@ -235,6 +258,107 @@ export const MavoraInventory: React.FC<
 
   const selectedTransferProduct =
     productsById.get(transferForm.productId);
+
+  const movementNeedsReleasedLot =
+    movementForm.movementType === 'issue' ||
+    movementForm.movementType ===
+      'production_consume' ||
+    movementForm.movementType === 'return_out';
+
+  const movementLots = useMemo(() => {
+    if (
+      !selectedMovementProduct ||
+      selectedMovementProduct.tracking_mode === 'none'
+    ) {
+      return [];
+    }
+
+    return snapshot.lots.filter((lot) => {
+      if (
+        lot.product_id !== selectedMovementProduct.id ||
+        lot.status === 'consumed'
+      ) {
+        return false;
+      }
+
+      if (movementNeedsReleasedLot) {
+        return lot.status === 'released';
+      }
+
+      return true;
+    });
+  }, [
+    snapshot.lots,
+    selectedMovementProduct,
+    movementNeedsReleasedLot,
+  ]);
+
+  const transferLots = useMemo(() => {
+    if (
+      !selectedTransferProduct ||
+      selectedTransferProduct.tracking_mode === 'none'
+    ) {
+      return [];
+    }
+
+    return snapshot.lots.filter(
+      (lot) =>
+        lot.product_id === selectedTransferProduct.id &&
+        lot.status === 'released'
+    );
+  }, [snapshot.lots, selectedTransferProduct]);
+
+  useEffect(() => {
+    setMovementForm((current) => {
+      if (
+        !selectedMovementProduct ||
+        selectedMovementProduct.tracking_mode === 'none'
+      ) {
+        return current.lotId
+          ? { ...current, lotId: '' }
+          : current;
+      }
+
+      if (
+        movementLots.some(
+          (lot) => lot.id === current.lotId
+        )
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        lotId: movementLots[0]?.id || '',
+      };
+    });
+  }, [selectedMovementProduct, movementLots]);
+
+  useEffect(() => {
+    setTransferForm((current) => {
+      if (
+        !selectedTransferProduct ||
+        selectedTransferProduct.tracking_mode === 'none'
+      ) {
+        return current.lotId
+          ? { ...current, lotId: '' }
+          : current;
+      }
+
+      if (
+        transferLots.some(
+          (lot) => lot.id === current.lotId
+        )
+      ) {
+        return current;
+      }
+
+      return {
+        ...current,
+        lotId: transferLots[0]?.id || '',
+      };
+    });
+  }, [selectedTransferProduct, transferLots]);
 
   const incomingMovement =
     movementForm.movementType === 'opening' ||
@@ -344,12 +468,13 @@ export const MavoraInventory: React.FC<
 
     if (
       selectedMovementProduct?.tracking_mode !==
-      'none'
+        'none' &&
+      !movementForm.lotId
     ) {
       setErrorMessage(
         t(
-          'Lot/Batch tracking product များအတွက် Lot Management UI ကို နောက်အဆင့်တွင် ချိတ်ပါမည်။',
-          'Lot/Batch products require the upcoming Lot Management UI.'
+          'ဤ Tracked Product အတွက် အသုံးပြုနိုင်သော Lot / Batch ကို ရွေးပါ။',
+          'Select an available Lot / Batch for this tracked product.'
         )
       );
       return;
@@ -400,6 +525,11 @@ export const MavoraInventory: React.FC<
           movementForm.movementType,
         quantity,
         postingKey: movementPostingKey,
+        lotId:
+          selectedMovementProduct?.tracking_mode ===
+          'none'
+            ? null
+            : movementForm.lotId,
         unitCost:
           incomingMovement ? unitCost : null,
         referenceType: 'inventory_ui',
@@ -489,12 +619,13 @@ export const MavoraInventory: React.FC<
 
     if (
       selectedTransferProduct?.tracking_mode !==
-      'none'
+        'none' &&
+      !transferForm.lotId
     ) {
       setErrorMessage(
         t(
-          'Lot/Batch tracking product များအတွက် Lot Transfer UI ကို နောက်အဆင့်တွင် ချိတ်ပါမည်။',
-          'Lot/Batch products require the upcoming Lot Transfer UI.'
+          'Transfer အတွက် Released Lot / Batch ကို ရွေးပါ။',
+          'Select a Released Lot / Batch for transfer.'
         )
       );
       return;
@@ -514,6 +645,11 @@ export const MavoraInventory: React.FC<
         productId: transferForm.productId,
         quantity,
         postingKey: transferPostingKey,
+        lotId:
+          selectedTransferProduct?.tracking_mode ===
+          'none'
+            ? null
+            : transferForm.lotId,
         referenceType: 'inventory_ui',
         referenceId:
           transferForm.referenceId || null,
@@ -556,6 +692,11 @@ export const MavoraInventory: React.FC<
     en: string;
   }[] = [
     {
+      id: 'operations',
+      my: 'နေ့စဉ်လုပ်ငန်း',
+      en: 'Operations',
+    },
+    {
       id: 'overview',
       my: 'လက်ကျန်',
       en: 'Balances',
@@ -564,6 +705,11 @@ export const MavoraInventory: React.FC<
       id: 'products',
       my: 'ကုန်ပစ္စည်း',
       en: 'Products',
+    },
+    {
+      id: 'lots',
+      my: 'Lot / Batch',
+      en: 'Lot / Batch',
     },
     {
       id: 'posting',
@@ -581,6 +727,14 @@ export const MavoraInventory: React.FC<
       en: 'Ledger',
     },
   ];
+
+  const visibleTabs = showAdvanced
+    ? tabs
+    : tabs.filter(
+        (tab) =>
+          tab.id === 'operations' ||
+          tab.id === 'overview'
+      );
 
   if (loading) {
     return (
@@ -607,10 +761,15 @@ export const MavoraInventory: React.FC<
                 MAVORA Inventory
               </h2>
               <p className="text-xs md:text-sm font-bold text-slate-500 mt-1">
-                {t(
-                  'Atomic Ledger • Warehouse Control • Audit Ready',
-                  'Atomic Ledger • Warehouse Control • Audit Ready'
-                )}
+                {showAdvanced
+                  ? t(
+                      'Atomic Ledger • Warehouse Control • Audit Ready',
+                      'Atomic Ledger • Warehouse Control • Audit Ready'
+                    )
+                  : t(
+                      'နေ့စဉ်ကုန်ပစ္စည်းလုပ်ငန်းများကို ရိုးရှင်းလွယ်ကူစွာ အသုံးပြုနိုင်ပါသည်။',
+                      'Simple daily inventory operations'
+                    )}
               </p>
             </div>
           </div>
@@ -628,10 +787,15 @@ export const MavoraInventory: React.FC<
 
       <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-800">
         🛡️{' '}
-        {t(
-          'ဤ Screen သည် MAVORA DEV Database ကိုအသုံးပြုပါသည်။ Stock Balance/Ledger ကို Client မှ တိုက်ရိုက်ပြင်၍မရဘဲ Controlled RPC ဖြင့်သာ Post လုပ်ပါသည်။',
-          'This screen uses the MAVORA DEV database. Stock balances and ledger rows are posted only through controlled RPCs.'
-        )}
+        {showAdvanced
+          ? t(
+              'ဤ Screen သည် MAVORA DEV Database ကိုအသုံးပြုပါသည်။ Stock Balance/Ledger ကို Client မှ တိုက်ရိုက်ပြင်၍မရဘဲ Controlled RPC ဖြင့်သာ Post လုပ်ပါသည်။',
+              'This screen uses the MAVORA DEV database. Stock balances and ledger rows are posted only through controlled RPCs.'
+            )
+          : t(
+              'နေ့စဉ်အသုံးပြုမှုအတွက် ရိုးရှင်းသော Mode ဖြစ်ပါသည်။ လုံခြုံရေး၊ ကုန်လက်ကျန်စာရင်းနှင့် လုပ်ဆောင်မှုမှတ်တမ်းများကို MAVORA က နောက်ကွယ်မှ အလိုအလျောက်ထိန်းသိမ်းပေးပါသည်။',
+              'Simple Mode for daily use. MAVORA handles security, stock records and audit history automatically.'
+            )}
       </div>
 
       {errorMessage && (
@@ -646,46 +810,48 @@ export const MavoraInventory: React.FC<
         </div>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white border rounded-2xl p-4 shadow-sm">
-          <p className="text-xs font-black text-slate-400 uppercase">
-            {t('Products', 'Products')}
-          </p>
-          <p className="text-3xl font-black text-blue-700 mt-2">
-            {snapshot.products.length}
-          </p>
-        </div>
+      {showAdvanced && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white border rounded-2xl p-4 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase">
+              {t('Products', 'Products')}
+            </p>
+            <p className="text-3xl font-black text-blue-700 mt-2">
+              {snapshot.products.length}
+            </p>
+          </div>
 
-        <div className="bg-white border rounded-2xl p-4 shadow-sm">
-          <p className="text-xs font-black text-slate-400 uppercase">
-            {t('Warehouses', 'Warehouses')}
-          </p>
-          <p className="text-3xl font-black text-indigo-700 mt-2">
-            {snapshot.warehouses.length}
-          </p>
-        </div>
+          <div className="bg-white border rounded-2xl p-4 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase">
+              {t('Warehouses', 'Warehouses')}
+            </p>
+            <p className="text-3xl font-black text-indigo-700 mt-2">
+              {snapshot.warehouses.length}
+            </p>
+          </div>
 
-        <div className="bg-white border rounded-2xl p-4 shadow-sm">
-          <p className="text-xs font-black text-slate-400 uppercase">
-            {t('Ledger Lines', 'Ledger Lines')}
-          </p>
-          <p className="text-3xl font-black text-violet-700 mt-2">
-            {snapshot.movements.length}
-          </p>
-        </div>
+          <div className="bg-white border rounded-2xl p-4 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase">
+              {t('Ledger Lines', 'Ledger Lines')}
+            </p>
+            <p className="text-3xl font-black text-violet-700 mt-2">
+              {snapshot.movements.length}
+            </p>
+          </div>
 
-        <div className="bg-white border rounded-2xl p-4 shadow-sm">
-          <p className="text-xs font-black text-slate-400 uppercase">
-            {t('Inventory Value', 'Inventory Value')}
-          </p>
-          <p className="text-xl md:text-2xl font-black text-emerald-700 mt-2">
-            {totalInventoryValue.toLocaleString()} Ks
-          </p>
+          <div className="bg-white border rounded-2xl p-4 shadow-sm">
+            <p className="text-xs font-black text-slate-400 uppercase">
+              {t('Inventory Value', 'Inventory Value')}
+            </p>
+            <p className="text-xl md:text-2xl font-black text-emerald-700 mt-2">
+              {totalInventoryValue.toLocaleString()} Ks
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex gap-2 overflow-x-auto bg-white border rounded-2xl p-2 shadow-sm">
-        {tabs.map((tab) => (
+        {visibleTabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
@@ -704,6 +870,41 @@ export const MavoraInventory: React.FC<
           </button>
         ))}
       </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => {
+            const next = !showAdvanced;
+            setShowAdvanced(next);
+
+            if (!next) {
+              setActiveView('operations');
+            }
+          }}
+          className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-black hover:bg-slate-200"
+        >
+          ⚙️{' '}
+          {showAdvanced
+            ? t(
+                'ရိုးရှင်းသောအသုံးပြုမှု',
+                'Simple Mode'
+              )
+            : t(
+                'အဆင့်မြင့် (Advanced)',
+                'Advanced'
+              )}
+        </button>
+      </div>
+
+      {activeView === 'operations' && (
+        <MavoraSimpleOperations
+          tenantId={tenantId}
+          language={language}
+          snapshot={snapshot}
+          onChanged={refreshInventory}
+        />
+      )}
 
       {activeView === 'overview' && (
         <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
@@ -728,6 +929,9 @@ export const MavoraInventory: React.FC<
                   </th>
                   <th className="p-3 text-left">
                     Warehouse
+                  </th>
+                  <th className="p-3 text-left">
+                    Lot / Batch
                   </th>
                   <th className="p-3 text-right">
                     {t('လက်ကျန်', 'On Hand')}
@@ -793,6 +997,23 @@ export const MavoraInventory: React.FC<
                         </span>
                       </td>
 
+                      <td className="p-3">
+                        {balance.lot_id
+                          ? (() => {
+                              const lot =
+                                lotsById.get(balance.lot_id);
+
+                              return lot
+                                ? `${lot.lot_no}${
+                                    lot.batch_no
+                                      ? ` / ${lot.batch_no}`
+                                      : ''
+                                  }`
+                                : '-';
+                            })()
+                          : '-'}
+                      </td>
+
                       <td className="p-3 text-right font-black text-blue-700">
                         {qty.toLocaleString()}
                       </td>
@@ -821,7 +1042,7 @@ export const MavoraInventory: React.FC<
                 {snapshot.balances.length === 0 && (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={9}
                       className="p-10 text-center text-slate-400 font-bold"
                     >
                       {t(
@@ -1120,6 +1341,15 @@ export const MavoraInventory: React.FC<
         </div>
       )}
 
+      {activeView === 'lots' && (
+        <MavoraLotManagement
+          tenantId={tenantId}
+          language={language}
+          snapshot={snapshot}
+          onChanged={refreshInventory}
+        />
+      )}
+
       {activeView === 'posting' && (
         <form
           onSubmit={handlePostMovement}
@@ -1197,6 +1427,53 @@ export const MavoraInventory: React.FC<
                 )}
               </select>
             </div>
+
+            {selectedMovementProduct &&
+              selectedMovementProduct.tracking_mode !==
+                'none' && (
+                <div>
+                  <label className="block text-xs font-black text-slate-500 mb-1">
+                    Lot / Batch *
+                  </label>
+
+                  <select
+                    value={movementForm.lotId}
+                    onChange={(event) =>
+                      setMovementForm((current) => ({
+                        ...current,
+                        lotId: event.target.value,
+                      }))
+                    }
+                    className="w-full border-2 rounded-xl p-3 font-bold"
+                  >
+                    <option value="">
+                      -- Select Lot / Batch --
+                    </option>
+
+                    {movementLots.map((lot) => (
+                      <option
+                        key={lot.id}
+                        value={lot.id}
+                      >
+                        {lot.lot_no}
+                        {lot.batch_no
+                          ? ` / ${lot.batch_no}`
+                          : ''}{' '}
+                        [{lot.status}]
+                      </option>
+                    ))}
+                  </select>
+
+                  {movementLots.length === 0 && (
+                    <p className="text-xs font-bold text-amber-700 mt-1">
+                      {t(
+                        'အသုံးပြုနိုင်သော Lot / Batch မရှိသေးပါ။',
+                        'No eligible Lot / Batch is available.'
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
 
             <div>
               <label className="block text-xs font-black text-slate-500 mb-1">
@@ -1395,6 +1672,53 @@ export const MavoraInventory: React.FC<
               </select>
             </div>
 
+            {selectedTransferProduct &&
+              selectedTransferProduct.tracking_mode !==
+                'none' && (
+                <div className="md:col-span-2">
+                  <label className="block text-xs font-black text-slate-500 mb-1">
+                    Released Lot / Batch *
+                  </label>
+
+                  <select
+                    value={transferForm.lotId}
+                    onChange={(event) =>
+                      setTransferForm((current) => ({
+                        ...current,
+                        lotId: event.target.value,
+                      }))
+                    }
+                    className="w-full border-2 rounded-xl p-3 font-bold"
+                  >
+                    <option value="">
+                      -- Select Released Lot / Batch --
+                    </option>
+
+                    {transferLots.map((lot) => (
+                      <option
+                        key={lot.id}
+                        value={lot.id}
+                      >
+                        {lot.lot_no}
+                        {lot.batch_no
+                          ? ` / ${lot.batch_no}`
+                          : ''}{' '}
+                        [released]
+                      </option>
+                    ))}
+                  </select>
+
+                  {transferLots.length === 0 && (
+                    <p className="text-xs font-bold text-amber-700 mt-1">
+                      {t(
+                        'Released Lot / Batch မရှိသေးပါ။ QC Release အရင်လုပ်ပါ။',
+                        'No Released Lot / Batch is available. Complete QC Release first.'
+                      )}
+                    </p>
+                  )}
+                </div>
+              )}
+
             <div>
               <label className="block text-xs font-black text-slate-500 mb-1">
                 Source Warehouse
@@ -1582,6 +1906,9 @@ export const MavoraInventory: React.FC<
                   <th className="p-3 text-left">
                     Warehouse
                   </th>
+                  <th className="p-3 text-left">
+                    Lot / Batch
+                  </th>
                   <th className="p-3 text-right">
                     Qty
                   </th>
@@ -1641,6 +1968,25 @@ export const MavoraInventory: React.FC<
                           {warehouse?.code || '-'}
                         </td>
 
+                        <td className="p-3">
+                          {movement.lot_id
+                            ? (() => {
+                                const lot =
+                                  lotsById.get(
+                                    movement.lot_id
+                                  );
+
+                                return lot
+                                  ? `${lot.lot_no}${
+                                      lot.batch_no
+                                        ? ` / ${lot.batch_no}`
+                                        : ''
+                                    }`
+                                  : '-';
+                              })()
+                            : '-'}
+                        </td>
+
                         <td
                           className={`p-3 text-right font-black ${
                             qty >= 0
@@ -1675,7 +2021,7 @@ export const MavoraInventory: React.FC<
                   0 && (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="p-10 text-center text-slate-400 font-bold"
                     >
                       {t(

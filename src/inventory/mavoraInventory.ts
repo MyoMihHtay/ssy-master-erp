@@ -14,6 +14,13 @@ export type MavoraTrackingMode =
   | 'lot'
   | 'batch';
 
+export type MavoraLotStatus =
+  | 'released'
+  | 'quarantine'
+  | 'blocked'
+  | 'expired'
+  | 'consumed';
+
 export type MavoraMovementType =
   | 'opening'
   | 'receipt'
@@ -73,6 +80,20 @@ export interface MavoraProduct {
   updated_at: string;
 }
 
+export interface MavoraInventoryLot {
+  id: string;
+  tenant_id: string;
+  product_id: string;
+  lot_no: string;
+  batch_no: string | null;
+  manufactured_at: string | null;
+  expires_at: string | null;
+  status: MavoraLotStatus;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MavoraInventoryBalance {
   id: string;
   tenant_id: string;
@@ -110,6 +131,7 @@ export interface MavoraInventorySnapshot {
   warehouses: MavoraWarehouse[];
   units: MavoraUnit[];
   categories: MavoraProductCategory[];
+  lots: MavoraInventoryLot[];
   balances: MavoraInventoryBalance[];
   movements: MavoraInventoryMovement[];
 }
@@ -124,6 +146,23 @@ export interface CreateMavoraProductInput {
   description?: string | null;
   productType: MavoraProductType;
   trackingMode?: MavoraTrackingMode;
+}
+
+export interface CreateMavoraInventoryLotInput {
+  tenantId: string;
+  productId: string;
+  lotNo: string;
+  batchNo?: string | null;
+  manufacturedAt?: string | null;
+  expiresAt?: string | null;
+  notes?: string | null;
+}
+
+export interface ChangeMavoraInventoryLotStatusInput {
+  tenantId: string;
+  lotId: string;
+  newStatus: Exclude<MavoraLotStatus, 'consumed'>;
+  reason: string;
 }
 
 export interface PostInventoryMovementInput {
@@ -186,6 +225,7 @@ export const loadMavoraInventorySnapshot = async (
     warehousesResult,
     unitsResult,
     categoriesResult,
+    lotsResult,
     balancesResult,
     movementsResult,
   ] = await Promise.all([
@@ -225,6 +265,14 @@ export const loadMavoraInventorySnapshot = async (
       .order('code', { ascending: true }),
 
     mavoraSupabase
+      .from('inventory_lots')
+      .select(
+        'id, tenant_id, product_id, lot_no, batch_no, manufactured_at, expires_at, status, notes, created_at, updated_at'
+      )
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false }),
+
+    mavoraSupabase
       .from('inventory_balances')
       .select(
         'id, tenant_id, warehouse_id, product_id, lot_id, quantity, reserved_quantity, average_unit_cost, updated_at'
@@ -258,6 +306,10 @@ export const loadMavoraInventorySnapshot = async (
     'Unable to load product categories'
   );
   throwIfError(
+    lotsResult.error,
+    'Unable to load inventory lots'
+  );
+  throwIfError(
     balancesResult.error,
     'Unable to load inventory balances'
   );
@@ -276,6 +328,8 @@ export const loadMavoraInventorySnapshot = async (
     categories:
       (categoriesResult.data as MavoraProductCategory[]) ??
       [],
+    lots:
+      (lotsResult.data as MavoraInventoryLot[]) ?? [],
     balances:
       (balancesResult.data as MavoraInventoryBalance[]) ??
       [],
@@ -321,6 +375,67 @@ export const createMavoraProduct = async (
   throwIfError(error, 'Unable to create product');
 
   return data as MavoraProduct;
+};
+
+export const createMavoraInventoryLot = async (
+  input: CreateMavoraInventoryLotInput
+) => {
+  const lotNo = input.lotNo.trim();
+  const batchNo = input.batchNo?.trim() || null;
+  const notes = input.notes?.trim() || null;
+
+  if (!lotNo) {
+    throw new Error('Lot number is required');
+  }
+
+  const { data, error } = await mavoraSupabase.rpc(
+    'create_inventory_lot',
+    {
+      p_tenant_id: input.tenantId,
+      p_product_id: input.productId,
+      p_lot_no: lotNo,
+      p_batch_no: batchNo,
+      p_manufactured_at: input.manufacturedAt || null,
+      p_expires_at: input.expiresAt || null,
+      p_notes: notes,
+    }
+  );
+
+  throwIfError(
+    error,
+    'Unable to create inventory lot/batch'
+  );
+
+  return data;
+};
+
+export const changeMavoraInventoryLotStatus = async (
+  input: ChangeMavoraInventoryLotStatusInput
+) => {
+  const reason = input.reason.trim();
+
+  if (!reason) {
+    throw new Error(
+      'Reason is required for lot status changes'
+    );
+  }
+
+  const { data, error } = await mavoraSupabase.rpc(
+    'change_inventory_lot_status',
+    {
+      p_tenant_id: input.tenantId,
+      p_lot_id: input.lotId,
+      p_new_status: input.newStatus,
+      p_reason: reason,
+    }
+  );
+
+  throwIfError(
+    error,
+    'Unable to change inventory lot status'
+  );
+
+  return data;
 };
 
 export const postMavoraInventoryMovement = async (
@@ -380,4 +495,63 @@ export const postMavoraInventoryTransfer = async (
   );
 
   return data;
+};
+
+export interface SimpleReceiveInventoryInput {
+  tenantId: string;
+  warehouseId: string;
+  productId: string;
+  quantity: number;
+  unitCost: number;
+  postingKey: string;
+  lotNo?: string | null;
+  batchNo?: string | null;
+  manufacturedAt?: string | null;
+  expiresAt?: string | null;
+  referenceId?: string | null;
+  notes?: string | null;
+  occurredAt?: string | null;
+}
+
+export interface MavoraSimpleReceiveResult {
+  ok: boolean;
+  workflow: string;
+  tracked: boolean;
+  tracking_mode: MavoraTrackingMode;
+  warehouse_type: string;
+  lot_id: string | null;
+  lot_no: string | null;
+  batch_no: string | null;
+  lot_status: string | null;
+  idempotent: boolean;
+}
+
+export const receiveMavoraInventory = async (
+  input: SimpleReceiveInventoryInput
+): Promise<MavoraSimpleReceiveResult> => {
+  const { data, error } = await mavoraSupabase.rpc(
+    'receive_inventory',
+    {
+      p_tenant_id: input.tenantId,
+      p_warehouse_id: input.warehouseId,
+      p_product_id: input.productId,
+      p_quantity: input.quantity,
+      p_unit_cost: input.unitCost,
+      p_posting_key: input.postingKey,
+      p_lot_no: input.lotNo ?? null,
+      p_batch_no: input.batchNo ?? null,
+      p_manufactured_at: input.manufacturedAt ?? null,
+      p_expires_at: input.expiresAt ?? null,
+      p_reference_id: input.referenceId ?? null,
+      p_notes: input.notes ?? null,
+      p_occurred_at: input.occurredAt ?? null,
+    }
+  );
+
+  throwIfError(
+    error,
+    'Unable to receive inventory'
+  );
+
+  return data as MavoraSimpleReceiveResult;
 };
