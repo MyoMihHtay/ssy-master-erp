@@ -3,7 +3,7 @@ import { legacySupabase } from './legacySupabase';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { MavoraInventory } from './components/MavoraInventory';
-import { Production } from './components/Production';
+import { MavoraProduction } from './components/MavoraProduction';
 import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
 import { Sales } from './components/Sales';
@@ -539,7 +539,12 @@ export default function App() {
             tenantId={user.tenantId}
           />
         )}
-        {activeTab === 'production' && <Production language={language} userRole={user.role} inventoryItems={inventoryItems} recipes={recipes} setRecipes={setRecipes} onProductionConfirm={handleConfirmProduction} />}
+        {activeTab === 'production' && (
+          <MavoraProduction
+            language={language}
+            tenantId={user.tenantId}
+          />
+        )}
         {activeTab === 'packaging' && <Packaging language={language} userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
         {finishedGoods && activeTab === 'finished_goods' && <FinishedGoods language={language} userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses language={language} userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
