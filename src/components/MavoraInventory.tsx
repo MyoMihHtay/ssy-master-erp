@@ -14,6 +14,7 @@ import { MavoraLotManagement } from './MavoraLotManagement';
 import {
   createInventoryPostingKey,
   createMavoraProduct,
+  updateMavoraProductName,
   loadMavoraInventorySnapshot,
   postMavoraInventoryMovement,
   postMavoraInventoryTransfer,
@@ -84,6 +85,12 @@ export const MavoraInventory: React.FC<
     baseUnitId: '',
     trackingMode: 'none' as MavoraTrackingMode,
   });
+
+  const [editingProductId, setEditingProductId] =
+    useState('');
+
+  const [editingProductName, setEditingProductName] =
+    useState('');
 
   const [movementForm, setMovementForm] = useState({
     productId: '',
@@ -450,6 +457,54 @@ export const MavoraInventory: React.FC<
         error instanceof Error
           ? error.message
           : 'Unable to create product'
+      );
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handleSaveProductName = async (
+    productId: string
+  ) => {
+    const name = editingProductName.trim();
+
+    if (!name) {
+      setErrorMessage(
+        t(
+          'Product Name ဖြည့်ပါ။',
+          'Product Name is required.'
+        )
+      );
+      return;
+    }
+
+    setWorking(true);
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    try {
+      await updateMavoraProductName({
+        tenantId,
+        productId,
+        name,
+      });
+
+      setEditingProductId('');
+      setEditingProductName('');
+
+      setSuccessMessage(
+        t(
+          'Product Name ကို ပြင်ဆင်ပြီးပါပြီ။',
+          'Product Name updated successfully.'
+        )
+      );
+
+      await refreshInventory();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to update product name'
       );
     } finally {
       setWorking(false);
@@ -1328,6 +1383,9 @@ export const MavoraInventory: React.FC<
                     <th className="p-3 text-left">
                       Tracking
                     </th>
+                    <th className="p-3 text-left">
+                      Action
+                    </th>
                   </tr>
                 </thead>
 
@@ -1342,7 +1400,20 @@ export const MavoraInventory: React.FC<
                           {product.sku}
                         </td>
                         <td className="p-3 font-black">
-                          {product.name}
+                          {editingProductId === product.id ? (
+                            <input
+                              value={editingProductName}
+                              disabled={working}
+                              onChange={(event) =>
+                                setEditingProductName(
+                                  event.target.value
+                                )
+                              }
+                              className="w-full min-w-[220px] border-2 rounded-lg px-2 py-1.5 font-bold outline-none focus:border-blue-500"
+                            />
+                          ) : (
+                            product.name
+                          )}
                         </td>
                         <td className="p-3">
                           {product.product_type}
@@ -1362,6 +1433,56 @@ export const MavoraInventory: React.FC<
                         <td className="p-3">
                           {product.tracking_mode}
                         </td>
+
+                        <td className="p-3">
+                          {editingProductId === product.id ? (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                disabled={working}
+                                onClick={() =>
+                                  handleSaveProductName(
+                                    product.id
+                                  )
+                                }
+                                className="font-black text-emerald-600 hover:underline disabled:opacity-50"
+                              >
+                                ✅ Save
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={working}
+                                onClick={() => {
+                                  setEditingProductId('');
+                                  setEditingProductName('');
+                                  setErrorMessage('');
+                                }}
+                                className="font-black text-slate-500 hover:underline disabled:opacity-50"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={working}
+                              onClick={() => {
+                                setEditingProductId(
+                                  product.id
+                                );
+                                setEditingProductName(
+                                  product.name
+                                );
+                                setErrorMessage('');
+                                setSuccessMessage('');
+                              }}
+                              className="font-black text-blue-600 hover:underline disabled:opacity-50"
+                            >
+                              ✏️ Edit Name
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     )
                   )}
@@ -1370,7 +1491,7 @@ export const MavoraInventory: React.FC<
                     0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         className="p-10 text-center text-slate-400 font-bold"
                       >
                         {t(

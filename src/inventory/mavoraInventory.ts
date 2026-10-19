@@ -148,6 +148,12 @@ export interface CreateMavoraProductInput {
   trackingMode?: MavoraTrackingMode;
 }
 
+export interface UpdateMavoraProductNameInput {
+  tenantId: string;
+  productId: string;
+  name: string;
+}
+
 export interface CreateMavoraInventoryLotInput {
   tenantId: string;
   productId: string;
@@ -373,6 +379,35 @@ export const createMavoraProduct = async (
     .single();
 
   throwIfError(error, 'Unable to create product');
+
+  return data as MavoraProduct;
+};
+
+export const updateMavoraProductName = async (
+  input: UpdateMavoraProductNameInput
+): Promise<MavoraProduct> => {
+  const name = input.name.trim();
+
+  if (!name) {
+    throw new Error('Product name is required');
+  }
+
+  const { data, error } = await mavoraSupabase
+    .from('products')
+    .update({
+      name,
+    })
+    .eq('id', input.productId)
+    .eq('tenant_id', input.tenantId)
+    .select(
+      'id, tenant_id, category_id, base_unit_id, sku, barcode, name, description, product_type, tracking_mode, is_active, created_at, updated_at'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to update product name'
+  );
 
   return data as MavoraProduct;
 };
