@@ -8,6 +8,7 @@ import React, {
 import type { AppLanguage } from '../i18n';
 
 import { MavoraProductionMasters } from './MavoraProductionMasters';
+import { MavoraRecipeSetup } from './MavoraRecipeSetup';
 
 import {
   loadMavoraProductionSnapshot,
@@ -575,117 +576,12 @@ export const MavoraProduction: React.FC<Props> = ({
           )}
 
           {activeTab === 'recipes' && (
-            <div className="rounded-2xl border bg-white overflow-hidden">
-              <div className="p-4 border-b font-black text-slate-800">
-                🧾{' '}
-                {t(
-                  'Formula / BOM Register',
-                  'Recipe / BOM Register'
-                )}
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <th className="text-left p-3">
-                        Code
-                      </th>
-                      <th className="text-left p-3">
-                        Name
-                      </th>
-                      <th className="text-left p-3">
-                        Output
-                      </th>
-                      <th className="text-left p-3">
-                        Versions
-                      </th>
-                      <th className="text-left p-3">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {snapshot.recipes.map(
-                      (recipe) => {
-                        const versions =
-                          versionsByRecipe.get(
-                            recipe.id
-                          ) || [];
-
-                        const approved =
-                          versions.find(
-                            (version) =>
-                              version.status ===
-                              'approved'
-                          );
-
-                        const output =
-                          productsById.get(
-                            recipe.output_product_id
-                          );
-
-                        const outputUnit =
-                          approved
-                            ? unitsById.get(
-                                approved.output_unit_id
-                              )
-                            : undefined;
-
-                        return (
-                          <tr
-                            key={recipe.id}
-                            className="border-t"
-                          >
-                            <td className="p-3 font-bold">
-                              {recipe.code}
-                            </td>
-
-                            <td className="p-3">
-                              {recipe.name}
-                            </td>
-
-                            <td className="p-3">
-                              {output?.sku ||
-                                '—'}
-                              {approved
-                                ? ` • ${approved.standard_output_qty} ${outputUnit?.symbol || outputUnit?.code || ''}`
-                                : ''}
-                            </td>
-
-                            <td className="p-3">
-                              {versions.length}
-                            </td>
-
-                            <td className="p-3">
-                              {approved
-                                ? '✅ Approved'
-                                : '📝 Draft / None'}
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )}
-
-                    {snapshot.recipes.length ===
-                      0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="p-8 text-center font-bold text-slate-400"
-                        >
-                          {t(
-                            'Formula / BOM မရှိသေးပါ။',
-                            'No Production Recipes configured yet.'
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <MavoraRecipeSetup
+              tenantId={tenantId}
+              language={language}
+              snapshot={snapshot}
+              onRefresh={refresh}
+            />
           )}
 
           {activeTab === 'orders' && (
@@ -780,8 +676,8 @@ export const MavoraProduction: React.FC<Props> = ({
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-700">
             🔒{' '}
             {t(
-              'Work Center / Production Line Setup ကို အခွင့်အရေးထိန်းချုပ်မှုဖြင့် ဖွင့်ထားပါသည်။ Formula / BOM နှင့် Production Order များသည် Read-only ဖြစ်နေသေးသည်။',
-              'Controlled Work Center / Production Line setup is enabled. Recipes / BOM and Production Orders remain read-only.'
+              'Work Center / Production Line နှင့် Recipe Master / Draft Version Setup ကို အခွင့်အရေးထိန်းချုပ်မှုဖြင့် ဖွင့်ထားပါသည်။ BOM Approval နှင့် Production Order များသည် မဖွင့်ရသေးပါ။',
+              'Controlled Work Center / Production Line and Recipe Master / Draft Version setup are enabled. BOM approval and Production Orders remain disabled.'
             )}
           </div>
         </>

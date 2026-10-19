@@ -578,3 +578,123 @@ export const updateMavoraProductionLine = async (
 
   return data as MavoraProductionLine;
 };
+
+export type MavoraRecipeProcessType =
+  | 'manufacturing'
+  | 'packaging'
+  | 'rework';
+
+export interface CreateMavoraProductionRecipeInput {
+  tenantId: string;
+  code: string;
+  name: string;
+  processType: MavoraRecipeProcessType;
+  outputProductId: string;
+}
+
+export interface CreateMavoraRecipeVersionInput {
+  tenantId: string;
+  recipeId: string;
+  versionNo: number;
+  standardOutputQty: number;
+  outputUnitId: string;
+}
+
+export const createMavoraProductionRecipe = async (
+  input: CreateMavoraProductionRecipeInput
+): Promise<MavoraProductionRecipe> => {
+  const code = normalizeProductionMasterCode(
+    requireMasterText(
+      input.code,
+      'Recipe code'
+    )
+  );
+
+  const name = requireMasterText(
+    input.name,
+    'Recipe name'
+  );
+
+  if (!input.outputProductId) {
+    throw new Error(
+      'Output product is required'
+    );
+  }
+
+  const { data, error } = await mavoraSupabase
+    .from('production_recipes')
+    .insert({
+      tenant_id: input.tenantId,
+      code,
+      name,
+      process_type: input.processType,
+      output_product_id:
+        input.outputProductId,
+      is_active: true,
+    })
+    .select(
+      'id, tenant_id, code, name, process_type, output_product_id, is_active, notes, created_at, updated_at'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to create Production Recipe'
+  );
+
+  return data as MavoraProductionRecipe;
+};
+
+export const createMavoraRecipeVersion = async (
+  input: CreateMavoraRecipeVersionInput
+): Promise<MavoraProductionRecipeVersion> => {
+  if (
+    !Number.isInteger(input.versionNo) ||
+    input.versionNo <= 0
+  ) {
+    throw new Error(
+      'Version number must be a positive integer'
+    );
+  }
+
+  if (
+    !Number.isFinite(
+      input.standardOutputQty
+    ) ||
+    input.standardOutputQty <= 0
+  ) {
+    throw new Error(
+      'Standard output quantity must be greater than zero'
+    );
+  }
+
+  if (!input.outputUnitId) {
+    throw new Error(
+      'Output unit is required'
+    );
+  }
+
+  const { data, error } = await mavoraSupabase
+    .from('production_recipe_versions')
+    .insert({
+      tenant_id: input.tenantId,
+      recipe_id: input.recipeId,
+      version_no: input.versionNo,
+      status: 'draft',
+      standard_output_qty:
+        input.standardOutputQty,
+      output_unit_id:
+        input.outputUnitId,
+    })
+    .select(
+      'id, tenant_id, recipe_id, version_no, status, standard_output_qty, output_unit_id, effective_from, effective_to, approved_at, created_at, updated_at'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to create Recipe Version'
+  );
+
+  return data as MavoraProductionRecipeVersion;
+};
