@@ -10,6 +10,7 @@ import type { AppLanguage } from '../i18n';
 import { MavoraProductionMasters } from './MavoraProductionMasters';
 import { MavoraRecipeSetup } from './MavoraRecipeSetup';
 import { MavoraProductionOrderSetup } from './MavoraProductionOrderSetup';
+import { MavoraProductionExecutionPanel } from './MavoraProductionExecutionPanel';
 
 import {
   loadMavoraProductionSnapshot,
@@ -63,6 +64,11 @@ export const MavoraProduction: React.FC<Props> = ({
 
   const [activeTab, setActiveTab] =
     useState<AdvancedTab>('overview');
+
+  const [
+    selectedExecutionOrderId,
+    setSelectedExecutionOrderId,
+  ] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -169,6 +175,20 @@ export const MavoraProduction: React.FC<Props> = ({
       ),
     [snapshot.units]
   );
+
+  const selectedExecutionOrder =
+    useMemo(
+      () =>
+        snapshot.orders.find(
+          (order) =>
+            order.id ===
+            selectedExecutionOrderId
+        ) || null,
+      [
+        snapshot.orders,
+        selectedExecutionOrderId,
+      ]
+    );
 
   const versionsByRecipe = useMemo(() => {
     const map = new Map<
@@ -615,6 +635,9 @@ export const MavoraProduction: React.FC<Props> = ({
                       <th className="text-left p-3">
                         Status
                       </th>
+                      <th className="text-left p-3">
+                        Action
+                      </th>
                     </tr>
                   </thead>
 
@@ -657,6 +680,24 @@ export const MavoraProduction: React.FC<Props> = ({
                             <td className="p-3">
                               {order.status}
                             </td>
+
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSelectedExecutionOrderId(
+                                    order.id
+                                  )
+                                }
+                                className="rounded-lg bg-orange-50 border border-orange-200 px-3 py-2 text-xs font-black text-orange-700 hover:bg-orange-100"
+                              >
+                                ⚙️{' '}
+                                {t(
+                                  'Execute',
+                                  'Execute'
+                                )}
+                              </button>
+                            </td>
                           </tr>
                         );
                       }
@@ -666,7 +707,7 @@ export const MavoraProduction: React.FC<Props> = ({
                       0 && (
                       <tr>
                         <td
-                          colSpan={4}
+                          colSpan={5}
                           className="p-8 text-center font-bold text-slate-400"
                         >
                           {t(
@@ -680,14 +721,29 @@ export const MavoraProduction: React.FC<Props> = ({
                 </table>
               </div>
               </div>
+
+              {selectedExecutionOrder && (
+                <MavoraProductionExecutionPanel
+                  tenantId={tenantId}
+                  language={language}
+                  snapshot={snapshot}
+                  order={selectedExecutionOrder}
+                  onClose={() =>
+                    setSelectedExecutionOrderId(
+                      null
+                    )
+                  }
+                  onRefresh={refresh}
+                />
+              )}
             </div>
           )}
 
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-700">
             🔒{' '}
             {t(
-              'Work Center / Production Line, Recipe / BOM Approval နှင့် Draft Production Order Planning ကို ဖွင့်ထားပါသည်။ Release / Start / Complete နှင့် Inventory Posting ကို မဖွင့်ရသေးပါ။',
-              'Controlled Work Center / Production Line, Recipe / BOM Approval and Draft Production Order Planning are enabled. Release / Start / Complete and inventory posting remain disabled.'
+              'Work Center / Production Line, Recipe / BOM Approval, Production Order Planning နှင့် Controlled Production Execution ကို ဖွင့်ထားပါသည်။ Material Consumption နှင့် Output Posting များကို Inventory Ledger မှတစ်ဆင့်သာ ဆောင်ရွက်ပါသည်။',
+              'Controlled Work Center / Production Line, Recipe / BOM Approval, Production Order Planning and controlled Production Execution are enabled. Material consumption and output posting use the controlled Inventory Ledger only.'
             )}
           </div>
         </>
