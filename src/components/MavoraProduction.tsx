@@ -676,8 +676,8 @@ export const MavoraProduction: React.FC<Props> = ({
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-700">
             🔒{' '}
             {t(
-              'Work Center / Production Line နှင့် Recipe Master / Draft Version Setup ကို အခွင့်အရေးထိန်းချုပ်မှုဖြင့် ဖွင့်ထားပါသည်။ BOM Approval နှင့် Production Order များသည် မဖွင့်ရသေးပါ။',
-              'Controlled Work Center / Production Line and Recipe Master / Draft Version setup are enabled. BOM approval and Production Orders remain disabled.'
+              'Work Center / Production Line, Recipe / BOM Setup နှင့် Controlled Approval ကို ဖွင့်ထားပါသည်။ Production Order workflow ကို မဖွင့်ရသေးပါ။',
+              'Controlled Work Center / Production Line, Recipe / BOM setup and Approval are enabled. Production Order workflow remains disabled.'
             )}
           </div>
         </>

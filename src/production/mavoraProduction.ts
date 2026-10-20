@@ -795,3 +795,38 @@ export const removeMavoraRecipeComponent = async (
     'Unable to remove BOM ingredient'
   );
 };
+
+export interface ApproveMavoraRecipeVersionInput {
+  tenantId: string;
+  recipeVersionId: string;
+}
+
+export const approveMavoraRecipeVersion = async (
+  input: ApproveMavoraRecipeVersionInput
+): Promise<MavoraProductionRecipeVersion> => {
+  const { data, error } = await mavoraSupabase
+    .from('production_recipe_versions')
+    .update({
+      status: 'approved',
+    })
+    .eq(
+      'id',
+      input.recipeVersionId
+    )
+    .eq(
+      'tenant_id',
+      input.tenantId
+    )
+    .eq('status', 'draft')
+    .select(
+      'id, tenant_id, recipe_id, version_no, status, standard_output_qty, output_unit_id, effective_from, effective_to, approved_at, created_at, updated_at'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to approve Recipe Version'
+  );
+
+  return data as MavoraProductionRecipeVersion;
+};

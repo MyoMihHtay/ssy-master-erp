@@ -354,8 +354,8 @@ export const MavoraRecipeSetup: React.FC<
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
         🔐{' '}
         {t(
-          'Recipe Master, Draft Version နှင့် Draft BOM Ingredient Setup ကို ဖွင့်ထားပါသည်။ Approval ကို မဖွင့်ရသေးပါ။',
-          'Recipe Master, Draft Version and Draft BOM ingredient setup are enabled. Approval remains disabled.'
+          'Recipe Master, Draft Version, Draft BOM Setup နှင့် Controlled Approval ကို ဖွင့်ထားပါသည်။',
+          'Recipe Master, Draft Version, Draft BOM setup and Controlled Approval are enabled.'
         )}
       </div>
 

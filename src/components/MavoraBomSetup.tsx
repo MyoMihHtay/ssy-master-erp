@@ -7,6 +7,7 @@ import React, {
 import type { AppLanguage } from '../i18n';
 
 import {
+  approveMavoraRecipeVersion,
   createMavoraRecipeComponent,
   removeMavoraRecipeComponent,
   type MavoraProductionSnapshot,
@@ -373,13 +374,83 @@ export const MavoraBomSetup: React.FC<
     }
   };
 
+  const handleApprove = async () => {
+    if (
+      !selectedVersion ||
+      !selectedRecipe
+    ) {
+      setErrorMessage(
+        t(
+          'Approve လုပ်ရန် Draft Recipe Version ကိုရွေးပါ။',
+          'Select a Draft Recipe Version to approve.'
+        )
+      );
+      return;
+    }
+
+    if (components.length === 0) {
+      setErrorMessage(
+        t(
+          'BOM Ingredient မရှိသော Formula ကို Approve မလုပ်နိုင်ပါ။',
+          'A Recipe Version without BOM ingredients cannot be approved.'
+        )
+      );
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        t(
+          'ဒီ Recipe Version ကို Approve လုပ်မလား? Approve ပြီးနောက် Formula Quantity / Unit နှင့် BOM Components ကို Lock လုပ်သွားမည်ဖြစ်ပြီး ပြင်ဆင်လိုပါက Version အသစ်ဖန်တီးရပါမည်။',
+          'Approve this Recipe Version? After approval, the formula quantity/unit and BOM components are locked. Future formula changes require a new version.'
+        )
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setWorking(true);
+    resetMessages();
+
+    try {
+      await approveMavoraRecipeVersion({
+        tenantId,
+        recipeVersionId:
+          selectedVersion.id,
+      });
+
+      setVersionId('');
+      setInputProductId('');
+      setRequiredQty('');
+
+      setSuccessMessage(
+        t(
+          'Recipe / BOM ကို Approve လုပ်ပြီး Lock ချပြီးပါပြီ။',
+          'Recipe / BOM approved and locked successfully.'
+        )
+      );
+
+      await onRefresh();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to approve Recipe Version'
+      );
+    } finally {
+      setWorking(false);
+    }
+  };
+
+
   return (
     <div className="space-y-5">
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
         🔐{' '}
         {t(
-          'Draft Recipe Version တွင်သာ BOM Ingredient Add / Remove လုပ်နိုင်ပါသည်။ Approval ကို မဖွင့်ရသေးပါ။',
-          'BOM ingredients can be added or removed only while the Recipe Version is Draft. Approval is not enabled yet.'
+          'Draft Recipe Version တွင် BOM Ingredient Add / Remove နှင့် Controlled Approval လုပ်နိုင်ပါသည်။ Approve ပြီးနောက် Formula / BOM ကို Lock လုပ်မည်။',
+          'Draft Recipe Versions support controlled BOM Add / Remove and Approval. After approval, the Formula / BOM is locked.'
         )}
       </div>
 
@@ -664,6 +735,29 @@ export const MavoraBomSetup: React.FC<
                   'Review the complete BOM before approval.'
                 )}
               </div>
+
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">
+                ⚠️{' '}
+                {t(
+                  'Approve ပြီးနောက် Formula Quantity / Unit နှင့် BOM Components ကို ပြန်ပြင်၍မရတော့ပါ။ ပြောင်းလဲရန် Version အသစ်ဖန်တီးရပါမည်။',
+                  'Approval locks the formula quantity/unit and BOM components. Future formula changes require a new version.'
+                )}
+              </div>
+
+              <button
+                type="button"
+                disabled={
+                  working ||
+                  components.length === 0
+                }
+                onClick={handleApprove}
+                className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-black text-white disabled:opacity-50"
+              >
+                {t(
+                  '✅ Recipe / BOM Approve & Lock',
+                  '✅ Approve & Lock Recipe / BOM'
+                )}
+              </button>
             </div>
           ) : (
             <div className="mt-4 font-bold text-slate-400">
