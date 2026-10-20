@@ -830,3 +830,151 @@ export const approveMavoraRecipeVersion = async (
 
   return data as MavoraProductionRecipeVersion;
 };
+
+export interface CreateMavoraProductionOrderPlanInput {
+  tenantId: string;
+  siteId: string;
+  orderNo: string;
+  recipeVersionId: string;
+  plannedQty: number;
+  workCenterId?: string | null;
+  productionLineId?: string | null;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  notes?: string | null;
+}
+
+export interface CreateMavoraProductionOrderPlanResult {
+  production_order_id: string;
+  order_no: string;
+  status: 'draft';
+  planned_qty: number;
+  material_count: number;
+}
+
+export const createMavoraProductionOrderPlan = async (
+  input: CreateMavoraProductionOrderPlanInput
+): Promise<CreateMavoraProductionOrderPlanResult> => {
+  const orderNo = requireMasterText(
+    input.orderNo,
+    'Production Order number'
+  );
+
+  if (orderNo.length > 100) {
+    throw new Error(
+      'Production Order number cannot exceed 100 characters'
+    );
+  }
+
+  if (!input.siteId) {
+    throw new Error(
+      'Production Site is required'
+    );
+  }
+
+  if (!input.recipeVersionId) {
+    throw new Error(
+      'Approved Recipe Version is required'
+    );
+  }
+
+  if (
+    !Number.isFinite(input.plannedQty) ||
+    input.plannedQty <= 0
+  ) {
+    throw new Error(
+      'Planned Production quantity must be greater than zero'
+    );
+  }
+
+  // production_orders.planned_qty is numeric(18,6).
+  // Normalize before the RPC so header and BOM scaling use
+  // the exact same six-decimal planned quantity.
+  const plannedQty =
+    Number(input.plannedQty.toFixed(6));
+
+  if (plannedQty <= 0) {
+    throw new Error(
+      'Planned Production quantity is too small'
+    );
+  }
+
+  if (
+    input.productionLineId &&
+    !input.workCenterId
+  ) {
+    throw new Error(
+      'Select a Work Center before selecting a Production Line'
+    );
+  }
+
+  const priority =
+    input.priority ?? 'normal';
+
+  if (
+    ![
+      'low',
+      'normal',
+      'high',
+      'urgent',
+    ].includes(priority)
+  ) {
+    throw new Error(
+      'Invalid Production Order priority'
+    );
+  }
+
+  const notes =
+    input.notes?.trim() || null;
+
+  if (
+    notes &&
+    notes.length > 4000
+  ) {
+    throw new Error(
+      'Production Order notes cannot exceed 4000 characters'
+    );
+  }
+
+  const { data, error } =
+    await mavoraSupabase.rpc(
+      'create_production_order_plan',
+      {
+        p_tenant_id: input.tenantId,
+        p_site_id: input.siteId,
+        p_order_no: orderNo,
+        p_recipe_version_id:
+          input.recipeVersionId,
+        p_planned_qty:
+          plannedQty,
+        p_work_center_id:
+          input.workCenterId || null,
+        p_production_line_id:
+          input.productionLineId || null,
+        p_priority: priority,
+        p_planned_start_at: null,
+        p_planned_end_at: null,
+        p_notes: notes,
+      }
+    );
+
+  throwIfError(
+    error,
+    'Unable to create Production Order plan'
+  );
+
+  const result =
+    data as CreateMavoraProductionOrderPlanResult | null;
+
+  if (
+    !result ||
+    !result.production_order_id ||
+    result.status !== 'draft' ||
+    result.material_count < 1
+  ) {
+    throw new Error(
+      'Production Order planning returned an invalid result'
+    );
+  }
+
+  return result;
+};

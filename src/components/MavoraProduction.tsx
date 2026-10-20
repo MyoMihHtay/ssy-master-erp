@@ -9,6 +9,7 @@ import type { AppLanguage } from '../i18n';
 
 import { MavoraProductionMasters } from './MavoraProductionMasters';
 import { MavoraRecipeSetup } from './MavoraRecipeSetup';
+import { MavoraProductionOrderSetup } from './MavoraProductionOrderSetup';
 
 import {
   loadMavoraProductionSnapshot,
@@ -585,10 +586,18 @@ export const MavoraProduction: React.FC<Props> = ({
           )}
 
           {activeTab === 'orders' && (
-            <div className="rounded-2xl border bg-white overflow-hidden">
-              <div className="p-4 border-b font-black text-slate-800">
-                📋 Production Orders
-              </div>
+            <div className="space-y-5">
+              <MavoraProductionOrderSetup
+                tenantId={tenantId}
+                language={language}
+                snapshot={snapshot}
+                onRefresh={refresh}
+              />
+
+              <div className="rounded-2xl border bg-white overflow-hidden">
+                <div className="p-4 border-b font-black text-slate-800">
+                  📋 Production Orders
+                </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -670,14 +679,15 @@ export const MavoraProduction: React.FC<Props> = ({
                   </tbody>
                 </table>
               </div>
+              </div>
             </div>
           )}
 
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-700">
             🔒{' '}
             {t(
-              'Work Center / Production Line, Recipe / BOM Setup နှင့် Controlled Approval ကို ဖွင့်ထားပါသည်။ Production Order workflow ကို မဖွင့်ရသေးပါ။',
-              'Controlled Work Center / Production Line, Recipe / BOM setup and Approval are enabled. Production Order workflow remains disabled.'
+              'Work Center / Production Line, Recipe / BOM Approval နှင့် Draft Production Order Planning ကို ဖွင့်ထားပါသည်။ Release / Start / Complete နှင့် Inventory Posting ကို မဖွင့်ရသေးပါ။',
+              'Controlled Work Center / Production Line, Recipe / BOM Approval and Draft Production Order Planning are enabled. Release / Start / Complete and inventory posting remain disabled.'
             )}
           </div>
         </>
