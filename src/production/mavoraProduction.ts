@@ -698,3 +698,100 @@ export const createMavoraRecipeVersion = async (
 
   return data as MavoraProductionRecipeVersion;
 };
+
+export interface CreateMavoraRecipeComponentInput {
+  tenantId: string;
+  recipeVersionId: string;
+  lineNo: number;
+  inputProductId: string;
+  inputUnitId: string;
+  requiredQty: number;
+  wastageAllowancePct?: number;
+  isOptional?: boolean;
+}
+
+export const createMavoraRecipeComponent = async (
+  input: CreateMavoraRecipeComponentInput
+): Promise<MavoraProductionRecipeComponent> => {
+  if (
+    !Number.isInteger(input.lineNo) ||
+    input.lineNo <= 0
+  ) {
+    throw new Error(
+      'BOM line number must be a positive integer'
+    );
+  }
+
+  if (
+    !Number.isFinite(input.requiredQty) ||
+    input.requiredQty <= 0
+  ) {
+    throw new Error(
+      'Required quantity must be greater than zero'
+    );
+  }
+
+  const wastage =
+    input.wastageAllowancePct ?? 0;
+
+  if (
+    !Number.isFinite(wastage) ||
+    wastage < 0 ||
+    wastage > 100
+  ) {
+    throw new Error(
+      'Wastage allowance must be between 0 and 100'
+    );
+  }
+
+  const { data, error } = await mavoraSupabase
+    .from('production_recipe_components')
+    .insert({
+      tenant_id: input.tenantId,
+      recipe_version_id:
+        input.recipeVersionId,
+      line_no: input.lineNo,
+      input_product_id:
+        input.inputProductId,
+      input_unit_id:
+        input.inputUnitId,
+      required_qty:
+        input.requiredQty,
+      wastage_allowance_pct:
+        wastage,
+      is_optional:
+        input.isOptional ?? false,
+    })
+    .select(
+      'id, tenant_id, recipe_version_id, line_no, input_product_id, input_unit_id, required_qty, wastage_allowance_pct, is_optional'
+    )
+    .single();
+
+  throwIfError(
+    error,
+    'Unable to add BOM ingredient'
+  );
+
+  return data as MavoraProductionRecipeComponent;
+};
+
+export const removeMavoraRecipeComponent = async (
+  tenantId: string,
+  recipeVersionId: string,
+  componentId: string
+): Promise<void> => {
+  const { error } = await mavoraSupabase
+    .from('production_recipe_components')
+    .delete()
+    .eq('id', componentId)
+    .eq('tenant_id', tenantId)
+    .eq(
+      'recipe_version_id',
+      recipeVersionId
+    );
+
+  throwIfError(
+    error,
+    'Unable to remove BOM ingredient'
+  );
+};

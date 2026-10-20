@@ -6,6 +6,8 @@ import React, {
 
 import type { AppLanguage } from '../i18n';
 
+import { MavoraBomSetup } from './MavoraBomSetup';
+
 import {
   createMavoraProductionRecipe,
   createMavoraRecipeVersion,
@@ -352,8 +354,8 @@ export const MavoraRecipeSetup: React.FC<
       <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-800">
         🔐{' '}
         {t(
-          'Recipe Master နှင့် Draft Version Create လုပ်နိုင်ပါသည်။ BOM Ingredient နှင့် Approval ကို နောက်အဆင့်တွင် ဖွင့်မည်။',
-          'Recipe Master and Draft Version creation are enabled. BOM ingredients and approval remain disabled for this phase.'
+          'Recipe Master, Draft Version နှင့် Draft BOM Ingredient Setup ကို ဖွင့်ထားပါသည်။ Approval ကို မဖွင့်ရသေးပါ။',
+          'Recipe Master, Draft Version and Draft BOM ingredient setup are enabled. Approval remains disabled.'
         )}
       </div>
 
@@ -850,6 +852,13 @@ export const MavoraRecipeSetup: React.FC<
           </table>
         </div>
       </div>
+
+      <MavoraBomSetup
+        tenantId={tenantId}
+        language={language}
+        snapshot={snapshot}
+        onRefresh={onRefresh}
+      />
     </div>
   );
 };
