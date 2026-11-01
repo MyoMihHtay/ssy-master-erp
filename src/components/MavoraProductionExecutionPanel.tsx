@@ -17,11 +17,14 @@ import {
   completeProductionOrder,
   consumeProductionMaterial,
   createProductionExecutionPostingKey,
+  finalizeCompletedProductionOrderCost,
   loadMavoraProductionExecutionSnapshot,
+  loadProductionOrderCost,
   recordProductionOutput,
   releaseProductionOrder,
   startProductionOrder,
   type MavoraProductionExecutionSnapshot,
+  type MavoraProductionOrderCost,
 } from '../production/mavoraProductionExecution';
 
 interface Props {
@@ -104,6 +107,11 @@ export const MavoraProductionExecutionPanel:
     const [successMessage, setSuccessMessage] =
       useState('');
 
+    const [productionCost, setProductionCost] =
+      useState<MavoraProductionOrderCost | null>(
+        null
+      );
+
     const [releaseReason, setReleaseReason] =
       useState('');
 
@@ -129,12 +137,21 @@ export const MavoraProductionExecutionPanel:
         setErrorMessage('');
 
         try {
-          const data =
-            await loadMavoraProductionExecutionSnapshot(
+          const [
+            data,
+            cost,
+          ] = await Promise.all([
+            loadMavoraProductionExecutionSnapshot(
               tenantId
-            );
+            ),
+            loadProductionOrderCost(
+              tenantId,
+              order.id
+            ),
+          ]);
 
           setExecution(data);
+          setProductionCost(cost);
         } catch (error) {
           setErrorMessage(
             error instanceof Error
@@ -144,7 +161,10 @@ export const MavoraProductionExecutionPanel:
         } finally {
           setLoading(false);
         }
-      }, [tenantId]);
+      }, [
+        tenantId,
+        order.id,
+      ]);
 
     useEffect(() => {
       refreshExecution();
@@ -771,6 +791,41 @@ export const MavoraProductionExecutionPanel:
           t(
             `${result.order_no} Completed ဖြစ်ပါပြီ။ Yield ${Number(result.yield_pct).toFixed(2)}%`,
             `${result.order_no} completed. Yield ${Number(result.yield_pct).toFixed(2)}%`
+          )
+        );
+
+        await refreshAll();
+      });
+
+    const handleFinalizeHistoricalCost = () =>
+      runAction(async () => {
+        const confirmed =
+          window.confirm(
+            t(
+              `${order.order_no} အတွက် Historical Production Cost ကို Finalize လုပ်မလား?
+
+ဒီလုပ်ဆောင်ချက်သည် actual material consumption cost မှ Cost ကိုတွက်ပြီး output inventory valuation ကို ပြန်ဖြည့်ပါမည်။ Historical Inventory Movement rows များကို rewrite မလုပ်ပါ။`,
+              `Finalize historical Production Cost for ${order.order_no}?
+
+This derives cost from actual material consumption and restores output inventory valuation. Historical Inventory Movement rows are not rewritten.`
+            )
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+        const result =
+          await finalizeCompletedProductionOrderCost({
+            tenantId,
+            productionOrderId:
+              order.id,
+          });
+
+        setSuccessMessage(
+          t(
+            `${result.order_no} Cost Finalized ဖြစ်ပါပြီ။ Material Cost ${Number(result.material_cost).toLocaleString()} • Unit Cost ${Number(result.output_unit_cost).toLocaleString()}`,
+            `${result.order_no} cost finalized. Material Cost ${Number(result.material_cost).toLocaleString()} • Unit Cost ${Number(result.output_unit_cost).toLocaleString()}`
           )
         );
 
@@ -1615,16 +1670,30 @@ export const MavoraProductionExecutionPanel:
           {!loading &&
             order.status ===
               'completed' && (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
-                <div className="text-xl font-black text-emerald-800">
-                  ✅{' '}
-                  {t(
-                    'Production ပြီးစီးပြီးပါပြီ',
-                    'Production Completed'
-                  )}
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 space-y-4">
+                <div>
+                  <div className="text-xl font-black text-emerald-800">
+                    ✅{' '}
+                    {t(
+                      'Production ပြီးစီးပြီးပါပြီ',
+                      'Production Completed'
+                    )}
+                  </div>
+
+                  <div className="text-sm font-bold text-emerald-700 mt-1">
+                    {productionCost
+                      ? t(
+                          'Production Cost Finalized ဖြစ်ပြီး Inventory Valuation ချိတ်ဆက်ပြီးပါပြီ။',
+                          'Production cost is finalized and linked to Inventory valuation.'
+                        )
+                      : t(
+                          'ယခင် Production Order ဖြစ်သောကြောင့် Cost Finalization လိုအပ်နေသေးသည်။',
+                          'This historical Production Order still requires cost finalization.'
+                        )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div className="rounded-xl bg-white border p-4">
                     <div className="text-xs font-black text-slate-400">
                       PLANNED
@@ -1657,6 +1726,110 @@ export const MavoraProductionExecutionPanel:
                     </div>
                   </div>
                 </div>
+
+                {productionCost ? (
+                  <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                    <div className="font-black text-blue-800">
+                      💰{' '}
+                      {t(
+                        'Finalized Production Cost',
+                        'Finalized Production Cost'
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-3">
+                      <div className="rounded-xl bg-white border p-3">
+                        <div className="text-xs font-black text-slate-400">
+                          MATERIAL COST
+                        </div>
+                        <div className="text-lg font-black text-slate-800 mt-1">
+                          {Number(
+                            productionCost.material_cost
+                          ).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-white border p-3">
+                        <div className="text-xs font-black text-slate-400">
+                          TOTAL COST
+                        </div>
+                        <div className="text-lg font-black text-slate-800 mt-1">
+                          {Number(
+                            productionCost.total_cost
+                          ).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-white border p-3">
+                        <div className="text-xs font-black text-slate-400">
+                          COSTED OUTPUT
+                        </div>
+                        <div className="text-lg font-black text-slate-800 mt-1">
+                          {Number(
+                            productionCost.actual_output_qty
+                          ).toLocaleString()}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-white border p-3">
+                        <div className="text-xs font-black text-slate-400">
+                          UNIT COST
+                        </div>
+                        <div className="text-lg font-black text-blue-800 mt-1">
+                          {Number(
+                            productionCost.output_unit_cost
+                          ).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="text-xs font-bold text-blue-700 mt-3">
+                      {productionCost.is_backfill
+                        ? t(
+                            'Historical Cost Backfill',
+                            'Historical Cost Backfill'
+                          )
+                        : t(
+                            'Automatic Cost Finalization',
+                            'Automatic Cost Finalization'
+                          )}
+                      {' • '}
+                      {productionCost.costing_method}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                    <div className="font-black text-amber-800">
+                      ⚠️{' '}
+                      {t(
+                        'Production Cost မဖြည့်ရသေးပါ',
+                        'Production Cost Not Finalized'
+                      )}
+                    </div>
+
+                    <div className="text-sm font-bold text-amber-700 mt-1">
+                      {t(
+                        'Actual Material Consumption Ledger ကိုအခြေခံပြီး Historical Cost ကို server မှတွက်ချက်ပါမည်။',
+                        'The server will derive historical cost from the actual Material Consumption ledger.'
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={working}
+                      onClick={
+                        handleFinalizeHistoricalCost
+                      }
+                      className="mt-4 rounded-xl bg-amber-600 px-5 py-3 font-black text-white disabled:opacity-50"
+                    >
+                      💰{' '}
+                      {t(
+                        'Historical Cost Finalize လုပ်မည်',
+                        'Finalize Historical Cost'
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

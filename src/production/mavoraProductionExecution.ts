@@ -685,3 +685,135 @@ export const completeProductionOrder =
 
     return result;
   };
+
+
+export interface MavoraProductionOrderCost {
+  id: string;
+  tenant_id: string;
+  site_id: string;
+  production_order_id: string;
+  costing_method: 'actual_material_wac_v1';
+  material_cost: number;
+  conversion_cost: number;
+  overhead_cost: number;
+  total_cost: number;
+  actual_output_qty: number;
+  output_unit_cost: number;
+  is_backfill: boolean;
+  finalized_by: string | null;
+  finalized_at: string;
+  created_at: string;
+}
+
+export interface FinalizeCompletedProductionOrderCostInput {
+  tenantId: string;
+  productionOrderId: string;
+}
+
+export interface FinalizeCompletedProductionOrderCostResult {
+  ok: boolean;
+  idempotent: boolean;
+  production_order_id: string;
+  order_no: string;
+  cost_id: string;
+  costing_method: 'actual_material_wac_v1';
+  material_cost: number;
+  conversion_cost: number;
+  overhead_cost: number;
+  total_cost: number;
+  actual_output_qty: number;
+  output_unit_cost: number;
+  is_backfill: boolean;
+  revalued_balance_count: number;
+}
+
+export const loadProductionOrderCost =
+  async (
+    tenantId: string,
+    productionOrderId: string
+  ): Promise<MavoraProductionOrderCost | null> => {
+    const normalizedTenantId =
+      requireId(
+        tenantId,
+        'Tenant'
+      );
+
+    const normalizedOrderId =
+      requireId(
+        productionOrderId,
+        'Production Order'
+      );
+
+    const { data, error } =
+      await mavoraSupabase
+        .from('production_order_costs')
+        .select(
+          'id, tenant_id, site_id, production_order_id, costing_method, material_cost, conversion_cost, overhead_cost, total_cost, actual_output_qty, output_unit_cost, is_backfill, finalized_by, finalized_at, created_at'
+        )
+        .eq(
+          'tenant_id',
+          normalizedTenantId
+        )
+        .eq(
+          'production_order_id',
+          normalizedOrderId
+        )
+        .maybeSingle();
+
+    throwIfError(
+      error,
+      'Unable to load Production Order cost'
+    );
+
+    return (
+      data as MavoraProductionOrderCost | null
+    );
+  };
+
+export const finalizeCompletedProductionOrderCost =
+  async (
+    input: FinalizeCompletedProductionOrderCostInput
+  ): Promise<FinalizeCompletedProductionOrderCostResult> => {
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'finalize_completed_production_order_cost',
+        {
+          p_tenant_id:
+            requireId(
+              input.tenantId,
+              'Tenant'
+            ),
+          p_production_order_id:
+            requireId(
+              input.productionOrderId,
+              'Production Order'
+            ),
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to finalize Production Order cost'
+    );
+
+    const result =
+      data as
+        | FinalizeCompletedProductionOrderCostResult
+        | null;
+
+    if (
+      !result?.ok ||
+      !result.cost_id ||
+      !Number.isFinite(
+        Number(
+          result.output_unit_cost
+        )
+      )
+    ) {
+      throw new Error(
+        'Production cost finalization returned an invalid result'
+      );
+    }
+
+    return result;
+  };
