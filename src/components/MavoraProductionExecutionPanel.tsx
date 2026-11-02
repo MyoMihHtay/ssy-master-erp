@@ -14,6 +14,7 @@ import type {
 } from '../production/mavoraProduction';
 
 import {
+  cancelProductionOrder,
   completeProductionOrder,
   consumeProductionMaterial,
   createProductionExecutionPostingKey,
@@ -111,6 +112,12 @@ export const MavoraProductionExecutionPanel:
       useState<MavoraProductionOrderCost | null>(
         null
       );
+
+    const [cancelDialogOpen, setCancelDialogOpen] =
+      useState(false);
+
+    const [cancelReason, setCancelReason] =
+      useState('');
 
     const [releaseReason, setReleaseReason] =
       useState('');
@@ -331,6 +338,41 @@ export const MavoraProductionExecutionPanel:
         setWorking(false);
       }
     };
+
+    const handleCancel = () =>
+      runAction(async () => {
+        const reason =
+          cancelReason.trim();
+
+        if (!reason) {
+          throw new Error(
+            t(
+              'Cancel လုပ်ရသည့် အကြောင်းရင်းကို မဖြစ်မနေ ဖြည့်ပါ။',
+              'Cancellation reason is required.'
+            )
+          );
+        }
+
+        const result =
+          await cancelProductionOrder({
+            tenantId,
+            productionOrderId:
+              order.id,
+            reason,
+          });
+
+        setCancelDialogOpen(false);
+        setCancelReason('');
+
+        setSuccessMessage(
+          t(
+            `${result.order_no} ကို Cancelled အဖြစ် ပိတ်ပြီးပါပြီ။`,
+            `${result.order_no} was cancelled successfully.`
+          )
+        );
+
+        await refreshAll();
+      });
 
     const handleRelease = () =>
       runAction(async () => {
@@ -848,6 +890,113 @@ This derives cost from actual material consumption and restores output inventory
 
     return (
       <div className="rounded-2xl border-2 border-orange-200 bg-orange-50/40 overflow-hidden">
+        {cancelDialogOpen &&
+          order.status ===
+            'draft' && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4">
+              <div className="w-full max-w-xl rounded-2xl border border-red-200 bg-white shadow-2xl">
+                <div className="border-b border-red-100 p-5">
+                  <div className="text-xs font-black tracking-widest text-red-600">
+                    CONTROLLED CANCELLATION
+                  </div>
+
+                  <div className="text-xl font-black text-slate-800 mt-1">
+                    ⛔{' '}
+                    {t(
+                      'Production Order Cancel လုပ်ရန်',
+                      'Cancel Production Order'
+                    )}
+                  </div>
+
+                  <div className="text-sm font-bold text-slate-500 mt-2">
+                    {t(
+                      `${order.order_no} ကို Draft အဆင့်မှ Cancelled အဖြစ်ပိတ်ပါမည်။ ဒီလုပ်ဆောင်ချက်ပြီးပါက Order ကို ပြန်လည် Execute မလုပ်နိုင်ပါ။`,
+                      `${order.order_no} will move from Draft to Cancelled. A cancelled order cannot be executed again.`
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2">
+                      {t(
+                        'Cancel လုပ်ရသည့် အကြောင်းရင်း *',
+                        'Cancellation reason *'
+                      )}
+                    </label>
+
+                    <textarea
+                      value={cancelReason}
+                      onChange={(event) =>
+                        setCancelReason(
+                          event.target.value
+                        )
+                      }
+                      rows={4}
+                      maxLength={2000}
+                      autoFocus
+                      placeholder={t(
+                        'ဥပမာ - Production plan ပြောင်းလဲခြင်း၊ Order မှားယွင်းဖန်တီးခြင်း...',
+                        'Example: Production plan changed, order created by mistake...'
+                      )}
+                      className="w-full rounded-xl border border-red-200 p-3 font-bold outline-none focus:border-red-500"
+                    />
+
+                    <div className="mt-1 text-right text-xs font-bold text-slate-400">
+                      {cancelReason.length}/2000
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                    ⚠️{' '}
+                    {t(
+                      'Draft Order များကိုသာ Cancel လုပ်နိုင်ပါသည်။ Released / In Progress / Completed Order များကို ဤနေရာမှ Cancel မလုပ်နိုင်ပါ။',
+                      'Only Draft Orders can be cancelled. Released, In Progress and Completed Orders cannot be cancelled here.'
+                    )}
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={working}
+                      onClick={() => {
+                        setCancelDialogOpen(false);
+                        setCancelReason('');
+                      }}
+                      className="rounded-xl border bg-white px-5 py-3 font-black text-slate-600 disabled:opacity-50"
+                    >
+                      {t(
+                        'မလုပ်တော့ပါ',
+                        'Keep Order'
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        working ||
+                        !cancelReason.trim()
+                      }
+                      onClick={handleCancel}
+                      className="rounded-xl bg-red-600 px-5 py-3 font-black text-white disabled:opacity-50"
+                    >
+                      ⛔{' '}
+                      {working
+                        ? t(
+                            'ဆောင်ရွက်နေသည်...',
+                            'Cancelling...'
+                          )
+                        : t(
+                            'Order ကို Cancel လုပ်မည်',
+                            'Cancel Order'
+                          )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
         <div className="bg-white border-b p-4 md:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <div className="text-xs font-black tracking-widest text-orange-600">
@@ -947,18 +1096,35 @@ This derives cost from actual material consumption and restores output inventory
                   className="w-full rounded-xl border p-3 font-bold"
                 />
 
-                <button
-                  type="button"
-                  disabled={working}
-                  onClick={handleRelease}
-                  className="rounded-xl bg-amber-500 px-5 py-3 font-black text-white disabled:opacity-50"
-                >
-                  🔓{' '}
-                  {t(
-                    'Release လုပ်မည်',
-                    'Release Order'
-                  )}
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    disabled={working}
+                    onClick={handleRelease}
+                    className="rounded-xl bg-amber-500 px-5 py-3 font-black text-white disabled:opacity-50"
+                  >
+                    🔓{' '}
+                    {t(
+                      'Release လုပ်မည်',
+                      'Release Order'
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={working}
+                    onClick={() =>
+                      setCancelDialogOpen(true)
+                    }
+                    className="rounded-xl border border-red-200 bg-red-50 px-5 py-3 font-black text-red-700 disabled:opacity-50"
+                  >
+                    ⛔{' '}
+                    {t(
+                      'Order Cancel',
+                      'Cancel Order'
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 

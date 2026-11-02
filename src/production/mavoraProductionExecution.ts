@@ -77,6 +77,22 @@ export interface MavoraProductionExecutionSnapshot {
   outputs: MavoraProductionOutput[];
 }
 
+export interface CancelProductionOrderInput {
+  tenantId: string;
+  productionOrderId: string;
+  reason: string;
+}
+
+export interface CancelProductionOrderResult {
+  ok: boolean;
+  idempotent: boolean;
+  production_order_id: string;
+  order_no: string;
+  status: 'cancelled';
+  cancelled_at: string;
+  cancelled_by: string | null;
+}
+
 export interface ReleaseProductionOrderInput {
   tenantId: string;
   productionOrderId: string;
@@ -402,6 +418,60 @@ export const loadMavoraProductionExecutionSnapshot =
         (outputsResult.data as MavoraProductionOutput[]) ??
         [],
     };
+  };
+
+export const cancelProductionOrder =
+  async (
+    input: CancelProductionOrderInput
+  ): Promise<CancelProductionOrderResult> => {
+    const reason =
+      optionalText(
+        input.reason,
+        'Cancellation reason'
+      );
+
+    if (!reason) {
+      throw new Error(
+        'Cancellation reason is required'
+      );
+    }
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'cancel_production_order',
+        {
+          p_tenant_id:
+            requireId(
+              input.tenantId,
+              'Tenant'
+            ),
+          p_production_order_id:
+            requireId(
+              input.productionOrderId,
+              'Production Order'
+            ),
+          p_reason: reason,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to cancel Production Order'
+    );
+
+    const result =
+      data as CancelProductionOrderResult | null;
+
+    if (
+      !result?.ok ||
+      result.status !== 'cancelled'
+    ) {
+      throw new Error(
+        'Cancel Production Order returned an invalid result'
+      );
+    }
+
+    return result;
   };
 
 export const releaseProductionOrder =
