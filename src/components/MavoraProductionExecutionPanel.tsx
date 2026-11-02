@@ -7,6 +7,12 @@ import React, {
 
 import type { AppLanguage } from '../i18n';
 
+import {
+  changeMavoraInventoryLotStatus,
+  createInventoryPostingKey,
+  postMavoraInventoryTransfer,
+} from '../inventory/mavoraInventory';
+
 import type {
   MavoraProductionOrder,
   MavoraProductionOrderMaterial,
@@ -63,6 +69,21 @@ interface OutputLotForm {
   notes: string;
 }
 
+interface PostProductionForm {
+  qcReason: string;
+  destinationWarehouseId: string;
+  putawayReason: string;
+  postingKey: string;
+}
+
+interface PostProductionOutputGroup {
+  key: string;
+  lotId: string;
+  sourceWarehouseId: string;
+  recordedQty: number;
+  quarantineQty: number;
+}
+
 const EMPTY_EXECUTION: MavoraProductionExecutionSnapshot = {
   warehouses: [],
   lots: [],
@@ -94,6 +115,13 @@ const EMPTY_OUTPUT_LOT_FORM: OutputLotForm = {
   manufacturedAt: '',
   expiresAt: '',
   notes: '',
+};
+
+const EMPTY_POST_PRODUCTION_FORM: PostProductionForm = {
+  qcReason: '',
+  destinationWarehouseId: '',
+  putawayReason: '',
+  postingKey: '',
 };
 
 export const MavoraProductionExecutionPanel:
@@ -166,6 +194,13 @@ export const MavoraProductionExecutionPanel:
     ] = useState<OutputLotForm>(
       EMPTY_OUTPUT_LOT_FORM
     );
+
+    const [
+      postProductionForms,
+      setPostProductionForms,
+    ] = useState<
+      Record<string, PostProductionForm>
+    >({});
 
     const refreshExecution =
       useCallback(async () => {
@@ -728,6 +763,334 @@ export const MavoraProductionExecutionPanel:
         order.output_product_id,
       ]
     );
+
+    const putawayWarehouses =
+      useMemo(
+        () =>
+          execution.warehouses.filter(
+            (item) =>
+              item.is_active &&
+              item.site_id ===
+                order.site_id &&
+              (
+                item.warehouse_type ===
+                  'SFG' ||
+                item.warehouse_type ===
+                  'FG'
+              )
+          ),
+        [
+          execution.warehouses,
+          order.site_id,
+        ]
+      );
+
+    const postProductionOutputGroups =
+      useMemo(() => {
+        const groups =
+          new Map<
+            string,
+            PostProductionOutputGroup
+          >();
+
+        for (const output of orderOutputs) {
+          if (!output.lot_id) {
+            continue;
+          }
+
+          const key =
+            `${output.lot_id}:${output.warehouse_id}`;
+
+          const existing =
+            groups.get(key);
+
+          if (existing) {
+            existing.recordedQty +=
+              Number(output.actual_qty);
+          } else {
+            groups.set(key, {
+              key,
+              lotId: output.lot_id,
+              sourceWarehouseId:
+                output.warehouse_id,
+              recordedQty:
+                Number(output.actual_qty),
+              quarantineQty: 0,
+            });
+          }
+        }
+
+        for (const group of groups.values()) {
+          group.quarantineQty =
+            execution.balances
+              .filter(
+                (balance) =>
+                  balance.product_id ===
+                    order.output_product_id &&
+                  balance.lot_id ===
+                    group.lotId &&
+                  balance.warehouse_id ===
+                    group.sourceWarehouseId
+              )
+              .reduce(
+                (sum, balance) =>
+                  sum +
+                  Number(balance.quantity),
+                0
+              );
+        }
+
+        return Array.from(
+          groups.values()
+        );
+      }, [
+        orderOutputs,
+        execution.balances,
+        order.output_product_id,
+      ]);
+
+    const updatePostProductionForm = (
+      key: string,
+      patch: Partial<PostProductionForm>
+    ) => {
+      setPostProductionForms(
+        (current) => ({
+          ...current,
+          [key]: {
+            ...EMPTY_POST_PRODUCTION_FORM,
+            ...(current[key] || {}),
+            ...patch,
+          },
+        })
+      );
+    };
+
+    const handleProductionQcRelease = (
+      group: PostProductionOutputGroup
+    ) =>
+      runAction(async () => {
+        const lot =
+          lotsById.get(
+            group.lotId
+          );
+
+        if (!lot) {
+          throw new Error(
+            t(
+              'Production Output Lot/Batch ကို မတွေ့ပါ။',
+              'Production output Lot/Batch was not found.'
+            )
+          );
+        }
+
+        if (!productionCost) {
+          throw new Error(
+            t(
+              'Production Cost Finalized မဖြစ်သေးသဖြင့် QC Release မလုပ်နိုင်သေးပါ။',
+              'QC Release is not available until Production cost is finalized.'
+            )
+          );
+        }
+
+        if (
+          lot.status !==
+            'quarantine'
+        ) {
+          throw new Error(
+            t(
+              'Quarantine Lot/Batch ကိုသာ QC Release လုပ်နိုင်ပါသည်။',
+              'Only a Quarantine Lot/Batch can be QC released.'
+            )
+          );
+        }
+
+        const form = {
+          ...EMPTY_POST_PRODUCTION_FORM,
+          ...(postProductionForms[
+            group.key
+          ] || {}),
+        };
+
+        const reason =
+          form.qcReason.trim();
+
+        if (!reason) {
+          throw new Error(
+            t(
+              'QC Release Reason ကို ဖြည့်ပါ။',
+              'QC Release reason is required.'
+            )
+          );
+        }
+
+        await changeMavoraInventoryLotStatus({
+          tenantId,
+          lotId: group.lotId,
+          newStatus: 'released',
+          reason,
+        });
+
+        updatePostProductionForm(
+          group.key,
+          { qcReason: '' }
+        );
+
+        setSuccessMessage(
+          t(
+            `${lot.lot_no} ကို QC Released အဖြစ်ပြောင်းပြီးပါပြီ။`,
+            `${lot.lot_no} was QC released successfully.`
+          )
+        );
+
+        await refreshAll();
+      });
+
+    const handleProductionPutaway = (
+      group: PostProductionOutputGroup
+    ) =>
+      runAction(async () => {
+        const lot =
+          lotsById.get(
+            group.lotId
+          );
+
+        const sourceWarehouse =
+          warehousesById.get(
+            group.sourceWarehouseId
+          );
+
+        if (!lot) {
+          throw new Error(
+            t(
+              'Production Output Lot/Batch ကို မတွေ့ပါ။',
+              'Production output Lot/Batch was not found.'
+            )
+          );
+        }
+
+        if (
+          lot.status !==
+            'released'
+        ) {
+          throw new Error(
+            t(
+              'QC Released Lot/Batch ကိုသာ Put-away လုပ်နိုင်ပါသည်။',
+              'Only a QC Released Lot/Batch can be put away.'
+            )
+          );
+        }
+
+        if (
+          group.quarantineQty <= 0
+        ) {
+          throw new Error(
+            t(
+              'Quarantine Warehouse တွင် Put-away လုပ်ရန် လက်ကျန်မရှိပါ။',
+              'There is no remaining Quarantine stock to put away.'
+            )
+          );
+        }
+
+        const form = {
+          ...EMPTY_POST_PRODUCTION_FORM,
+          ...(postProductionForms[
+            group.key
+          ] || {}),
+        };
+
+        if (
+          !form.destinationWarehouseId
+        ) {
+          throw new Error(
+            t(
+              'Destination SFG / FG Warehouse ကို ရွေးပါ။',
+              'Select a destination SFG / FG warehouse.'
+            )
+          );
+        }
+
+        const destinationWarehouse =
+          warehousesById.get(
+            form.destinationWarehouseId
+          );
+
+        if (
+          !destinationWarehouse ||
+          !['SFG', 'FG'].includes(
+            destinationWarehouse.warehouse_type
+          )
+        ) {
+          throw new Error(
+            t(
+              'မှန်ကန်သော SFG / FG Warehouse ကို ရွေးပါ။',
+              'Select a valid SFG / FG warehouse.'
+            )
+          );
+        }
+
+        const postingKey =
+          form.postingKey ||
+          createInventoryPostingKey(
+            `production-putaway-${order.order_no}`
+          );
+
+        updatePostProductionForm(
+          group.key,
+          { postingKey }
+        );
+
+        const confirmed =
+          window.confirm(
+            t(
+              `${lot.lot_no} မှ ${group.quarantineQty.toLocaleString()} ကို ${sourceWarehouse?.code || 'QUARANTINE'} မှ ${destinationWarehouse.code} သို့ Put-away လုပ်မလား?`,
+              `Put away ${group.quarantineQty.toLocaleString()} of ${lot.lot_no} from ${sourceWarehouse?.code || 'QUARANTINE'} to ${destinationWarehouse.code}?`
+            )
+          );
+
+        if (!confirmed) {
+          return;
+        }
+
+        await postMavoraInventoryTransfer({
+          tenantId,
+          sourceWarehouseId:
+            group.sourceWarehouseId,
+          destinationWarehouseId:
+            destinationWarehouse.id,
+          productId:
+            order.output_product_id,
+          quantity:
+            group.quarantineQty,
+          postingKey,
+          lotId:
+            group.lotId,
+          referenceType:
+            'production_order',
+          referenceId:
+            order.id,
+          reason:
+            form.putawayReason.trim() ||
+            'Production output put-away',
+        });
+
+        setPostProductionForms(
+          (current) => ({
+            ...current,
+            [group.key]: {
+              ...EMPTY_POST_PRODUCTION_FORM,
+            },
+          })
+        );
+
+        setSuccessMessage(
+          t(
+            `${lot.lot_no} ကို ${destinationWarehouse.code} Warehouse သို့ Put-away ပြီးပါပြီ။`,
+            `${lot.lot_no} was put away to ${destinationWarehouse.code} successfully.`
+          )
+        );
+
+        await refreshAll();
+      });
 
     const handleCreateOutputLot = () =>
       runAction(async () => {
@@ -2387,6 +2750,276 @@ This derives cost from actual material consumption and restores output inventory
                     </button>
                   </div>
                 )}
+
+                {(outputProduct?.tracking_mode ===
+                  'lot' ||
+                  outputProduct?.tracking_mode ===
+                    'batch') &&
+                  postProductionOutputGroups.length >
+                    0 && (
+                    <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 space-y-4">
+                      <div>
+                        <div className="font-black text-purple-800 text-lg">
+                          🧪➡️📦{' '}
+                          {t(
+                            'QC Release & Put-away',
+                            'QC Release & Put-away'
+                          )}
+                        </div>
+
+                        <div className="text-sm font-bold text-purple-700 mt-1">
+                          {t(
+                            'Production Output Lot/Batch ကို QC Release လုပ်ပြီးမှ QUARANTINE မှ SFG/FG Warehouse သို့ Put-away လုပ်နိုင်ပါသည်။',
+                            'QC Release the Production output Lot/Batch before moving it from QUARANTINE to an SFG/FG warehouse.'
+                          )}
+                        </div>
+                      </div>
+
+                      {!productionCost && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                          ⚠️{' '}
+                          {t(
+                            'Production Cost Finalization မပြီးသေးသဖြင့် QC Release ကို Server မှခွင့်ပြုမည်မဟုတ်ပါ။',
+                            'QC Release remains locked until Production cost finalization is complete.'
+                          )}
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        {postProductionOutputGroups.map(
+                          (group) => {
+                            const lot =
+                              lotsById.get(
+                                group.lotId
+                              );
+
+                            const sourceWarehouse =
+                              warehousesById.get(
+                                group.sourceWarehouseId
+                              );
+
+                            const form = {
+                              ...EMPTY_POST_PRODUCTION_FORM,
+                              ...(postProductionForms[
+                                group.key
+                              ] || {}),
+                            };
+
+                            return (
+                              <div
+                                key={group.key}
+                                className="rounded-xl border bg-white p-4 space-y-4"
+                              >
+                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-3">
+                                  <div>
+                                    <div className="font-black text-slate-800">
+                                      {lot?.lot_no ||
+                                        '—'}
+                                      {lot?.batch_no
+                                        ? ` / ${lot.batch_no}`
+                                        : ''}
+                                    </div>
+
+                                    <div className="text-xs font-bold text-slate-500 mt-1">
+                                      Output Qty:{' '}
+                                      {group.recordedQty.toLocaleString()}
+                                      {' • '}
+                                      Quarantine Balance:{' '}
+                                      {group.quarantineQty.toLocaleString()}
+                                      {' • '}
+                                      {sourceWarehouse?.code ||
+                                        '—'}
+                                    </div>
+                                  </div>
+
+                                  <span className="rounded-full border px-3 py-1 text-xs font-black text-slate-600">
+                                    {lot?.status ||
+                                      'unknown'}
+                                  </span>
+                                </div>
+
+                                {lot?.status ===
+                                  'quarantine' && (
+                                  <div className="space-y-3">
+                                    <textarea
+                                      value={
+                                        form.qcReason
+                                      }
+                                      onChange={(
+                                        event
+                                      ) =>
+                                        updatePostProductionForm(
+                                          group.key,
+                                          {
+                                            qcReason:
+                                              event.target
+                                                .value,
+                                          }
+                                        )
+                                      }
+                                      rows={2}
+                                      maxLength={2000}
+                                      placeholder={t(
+                                        'QC Inspection / Release Reason *',
+                                        'QC inspection / release reason *'
+                                      )}
+                                      className="w-full rounded-xl border p-3 font-bold"
+                                    />
+
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        working ||
+                                        !productionCost ||
+                                        !form.qcReason.trim()
+                                      }
+                                      onClick={() =>
+                                        handleProductionQcRelease(
+                                          group
+                                        )
+                                      }
+                                      className="rounded-xl bg-emerald-600 px-4 py-2.5 font-black text-white disabled:opacity-50"
+                                    >
+                                      ✅{' '}
+                                      {t(
+                                        'QC Release လုပ်မည်',
+                                        'QC Release Lot'
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+
+                                {lot?.status ===
+                                  'released' &&
+                                  group.quarantineQty >
+                                    0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <select
+                                        value={
+                                          form.destinationWarehouseId
+                                        }
+                                        onChange={(
+                                          event
+                                        ) =>
+                                          updatePostProductionForm(
+                                            group.key,
+                                            {
+                                              destinationWarehouseId:
+                                                event.target
+                                                  .value,
+                                            }
+                                          )
+                                        }
+                                        className="rounded-xl border p-3 font-bold"
+                                      >
+                                        <option value="">
+                                          {t(
+                                            'Destination SFG / FG ရွေးပါ',
+                                            'Select destination SFG / FG'
+                                          )}
+                                        </option>
+
+                                        {putawayWarehouses.map(
+                                          (
+                                            warehouse
+                                          ) => (
+                                            <option
+                                              key={
+                                                warehouse.id
+                                              }
+                                              value={
+                                                warehouse.id
+                                              }
+                                            >
+                                              {
+                                                warehouse.code
+                                              }{' '}
+                                              —{' '}
+                                              {
+                                                warehouse.name
+                                              }
+                                            </option>
+                                          )
+                                        )}
+                                      </select>
+
+                                      <input
+                                        value={
+                                          form.putawayReason
+                                        }
+                                        onChange={(
+                                          event
+                                        ) =>
+                                          updatePostProductionForm(
+                                            group.key,
+                                            {
+                                              putawayReason:
+                                                event.target
+                                                  .value,
+                                            }
+                                          )
+                                        }
+                                        placeholder={t(
+                                          'Put-away မှတ်ချက် (Optional)',
+                                          'Put-away reason (optional)'
+                                        )}
+                                        className="rounded-xl border p-3 font-bold"
+                                      />
+
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          working ||
+                                          !form.destinationWarehouseId
+                                        }
+                                        onClick={() =>
+                                          handleProductionPutaway(
+                                            group
+                                          )
+                                        }
+                                        className="md:col-span-2 rounded-xl bg-purple-600 px-4 py-2.5 font-black text-white disabled:opacity-50"
+                                      >
+                                        📦{' '}
+                                        {t(
+                                          'Quarantine Stock အားလုံး Put-away လုပ်မည်',
+                                          'Put Away All Quarantine Stock'
+                                        )}
+                                      </button>
+                                    </div>
+                                  )}
+
+                                {lot?.status ===
+                                  'released' &&
+                                  group.quarantineQty <=
+                                    0 && (
+                                    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm font-bold text-emerald-700">
+                                      ✅{' '}
+                                      {t(
+                                        'QC Released ဖြစ်ပြီး Quarantine လက်ကျန်မရှိတော့ပါ။ Put-away ပြီးစီးထားပါသည်။',
+                                        'QC Released with no remaining Quarantine balance. Put-away is complete.'
+                                      )}
+                                    </div>
+                                  )}
+
+                                {(lot?.status ===
+                                  'blocked' ||
+                                  lot?.status ===
+                                    'expired') && (
+                                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
+                                    ⛔{' '}
+                                    {t(
+                                      `ဤ Lot/Batch သည် ${lot.status} ဖြစ်နေသဖြင့် Put-away မလုပ်နိုင်ပါ။`,
+                                      `This Lot/Batch is ${lot.status} and cannot be put away.`
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
 
