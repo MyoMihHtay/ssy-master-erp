@@ -146,6 +146,31 @@ export interface ConsumeProductionMaterialResult {
   actual_qty: number;
 }
 
+export interface CreateProductionOutputLotInput {
+  tenantId: string;
+  productionOrderId: string;
+  lotNo: string;
+  batchNo?: string | null;
+  manufacturedAt?: string | null;
+  expiresAt?: string | null;
+  notes?: string | null;
+}
+
+export interface CreateProductionOutputLotResult {
+  ok: boolean;
+  idempotent: boolean;
+  production_order_id: string;
+  order_no: string;
+  lot_id: string;
+  product_id: string;
+  tracking_mode: 'lot' | 'batch';
+  lot_no: string;
+  batch_no: string | null;
+  manufactured_at: string | null;
+  expires_at: string | null;
+  status: 'quarantine';
+}
+
 export interface RecordProductionOutputInput {
   tenantId: string;
   productionOrderId: string;
@@ -637,6 +662,81 @@ export const consumeProductionMaterial =
     ) {
       throw new Error(
         'Production material consumption returned an invalid result'
+      );
+    }
+
+    return result;
+  };
+
+export const createProductionOutputLot =
+  async (
+    input: CreateProductionOutputLotInput
+  ): Promise<CreateProductionOutputLotResult> => {
+    const lotNo =
+      optionalText(
+        input.lotNo,
+        'Output Lot number',
+        200
+      );
+
+    if (!lotNo) {
+      throw new Error(
+        'Output Lot number is required'
+      );
+    }
+
+    const batchNo =
+      optionalText(
+        input.batchNo,
+        'Output Batch number',
+        200
+      );
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'create_production_output_lot',
+        {
+          p_tenant_id:
+            requireId(
+              input.tenantId,
+              'Tenant'
+            ),
+          p_production_order_id:
+            requireId(
+              input.productionOrderId,
+              'Production Order'
+            ),
+          p_lot_no: lotNo,
+          p_batch_no: batchNo,
+          p_manufactured_at:
+            input.manufacturedAt?.trim() ||
+            null,
+          p_expires_at:
+            input.expiresAt?.trim() ||
+            null,
+          p_notes:
+            optionalText(
+              input.notes,
+              'Output Lot notes'
+            ),
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to create Production output Lot / Batch'
+    );
+
+    const result =
+      data as CreateProductionOutputLotResult | null;
+
+    if (
+      !result?.ok ||
+      !result.lot_id ||
+      result.status !== 'quarantine'
+    ) {
+      throw new Error(
+        'Production output Lot creation returned an invalid result'
       );
     }
 

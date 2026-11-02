@@ -18,6 +18,7 @@ import {
   completeProductionOrder,
   consumeProductionMaterial,
   createProductionExecutionPostingKey,
+  createProductionOutputLot,
   finalizeCompletedProductionOrderCost,
   loadMavoraProductionExecutionSnapshot,
   loadProductionOrderCost,
@@ -54,6 +55,14 @@ interface OutputForm {
   postingKey: string;
 }
 
+interface OutputLotForm {
+  lotNo: string;
+  batchNo: string;
+  manufacturedAt: string;
+  expiresAt: string;
+  notes: string;
+}
+
 const EMPTY_EXECUTION: MavoraProductionExecutionSnapshot = {
   warehouses: [],
   lots: [],
@@ -77,6 +86,14 @@ const EMPTY_OUTPUT_FORM: OutputForm = {
   actualQty: '',
   reason: '',
   postingKey: '',
+};
+
+const EMPTY_OUTPUT_LOT_FORM: OutputLotForm = {
+  lotNo: '',
+  batchNo: '',
+  manufacturedAt: '',
+  expiresAt: '',
+  notes: '',
 };
 
 export const MavoraProductionExecutionPanel:
@@ -137,6 +154,18 @@ export const MavoraProductionExecutionPanel:
       useState<OutputForm>(
         EMPTY_OUTPUT_FORM
       );
+
+    const [
+      outputLotDialogOpen,
+      setOutputLotDialogOpen,
+    ] = useState(false);
+
+    const [
+      outputLotForm,
+      setOutputLotForm,
+    ] = useState<OutputLotForm>(
+      EMPTY_OUTPUT_LOT_FORM
+    );
 
     const refreshExecution =
       useCallback(async () => {
@@ -700,6 +729,107 @@ export const MavoraProductionExecutionPanel:
       ]
     );
 
+    const handleCreateOutputLot = () =>
+      runAction(async () => {
+        const tracked =
+          outputProduct?.tracking_mode ===
+            'lot' ||
+          outputProduct?.tracking_mode ===
+            'batch';
+
+        if (!tracked) {
+          throw new Error(
+            t(
+              'ဒီ Output Product သည် Lot / Batch Tracking မသုံးပါ။',
+              'This output product does not use Lot / Batch tracking.'
+            )
+          );
+        }
+
+        const lotNo =
+          outputLotForm.lotNo.trim();
+
+        const batchNo =
+          outputLotForm.batchNo.trim();
+
+        if (!lotNo) {
+          throw new Error(
+            t(
+              'Output Lot Number ကို ဖြည့်ပါ။',
+              'Output Lot number is required.'
+            )
+          );
+        }
+
+        if (
+          outputProduct?.tracking_mode ===
+            'batch' &&
+          !batchNo
+        ) {
+          throw new Error(
+            t(
+              'ဒီ Product သည် Batch Tracking ဖြစ်သဖြင့် Batch Number ကို ဖြည့်ပါ။',
+              'Batch number is required for this batch-tracked product.'
+            )
+          );
+        }
+
+        if (
+          outputLotForm.manufacturedAt &&
+          outputLotForm.expiresAt &&
+          outputLotForm.expiresAt <
+            outputLotForm.manufacturedAt
+        ) {
+          throw new Error(
+            t(
+              'Expiry Date သည် Manufacture Date ထက် မစောရပါ။',
+              'Expiry date cannot be earlier than manufacture date.'
+            )
+          );
+        }
+
+        const result =
+          await createProductionOutputLot({
+            tenantId,
+            productionOrderId:
+              order.id,
+            lotNo,
+            batchNo:
+              batchNo || null,
+            manufacturedAt:
+              outputLotForm.manufacturedAt ||
+              null,
+            expiresAt:
+              outputLotForm.expiresAt ||
+              null,
+            notes:
+              outputLotForm.notes.trim() ||
+              null,
+          });
+
+        await refreshAll();
+
+        setOutputForm(
+          (current) => ({
+            ...current,
+            lotId: result.lot_id,
+          })
+        );
+
+        setOutputLotDialogOpen(false);
+
+        setOutputLotForm(
+          EMPTY_OUTPUT_LOT_FORM
+        );
+
+        setSuccessMessage(
+          t(
+            `Output Lot/Batch ${result.lot_no}${result.batch_no ? ` / ${result.batch_no}` : ''} ကို Quarantine အဖြစ်ဖန်တီးပြီး Auto-select လုပ်ပြီးပါပြီ။`,
+            `Output Lot/Batch ${result.lot_no}${result.batch_no ? ` / ${result.batch_no}` : ''} was created in Quarantine and auto-selected.`
+          )
+        );
+      });
+
     const handleOutput = () =>
       runAction(async () => {
         const qty =
@@ -742,8 +872,8 @@ export const MavoraProductionExecutionPanel:
         ) {
           throw new Error(
             t(
-              'Output Quarantine Lot / Batch ရွေးပါ။ Lot/Batch မရှိသေးပါက Lot Management မှ အရင်ဖန်တီးပါ။',
-              'Select an output Quarantine Lot / Batch. Create it in Lot Management first if none exists.'
+              'Output Quarantine Lot / Batch ရွေးပါ။ မရှိသေးပါက Create Output Lot / Batch ခလုတ်ဖြင့် Controlled Workflow မှ ဖန်တီးပါ။',
+              'Select an output Quarantine Lot / Batch. If none exists, use Create Output Lot / Batch to create one through the controlled workflow.'
             )
           );
         }
@@ -989,6 +1119,247 @@ This derives cost from actual material consumption and restores output inventory
                         : t(
                             'Order ကို Cancel လုပ်မည်',
                             'Cancel Order'
+                          )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        {outputLotDialogOpen &&
+          order.status ===
+            'in_progress' && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-4">
+              <div className="w-full max-w-2xl rounded-2xl border border-purple-200 bg-white shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="border-b border-purple-100 p-5">
+                  <div className="text-xs font-black tracking-widest text-purple-600">
+                    CONTROLLED OUTPUT LOT
+                  </div>
+
+                  <div className="text-xl font-black text-slate-800 mt-1">
+                    🧬{' '}
+                    {t(
+                      'Production Output Lot / Batch ဖန်တီးရန်',
+                      'Create Production Output Lot / Batch'
+                    )}
+                  </div>
+
+                  <div className="text-sm font-bold text-slate-500 mt-2">
+                    {t(
+                      `${order.order_no} ၏ ${outputProduct?.sku || 'Output'} အတွက်သာ ဖန်တီးပါမည်။ Lot/Batch အသစ်သည် Quarantine Status ဖြင့်စတင်ပြီး ဖန်တီးပြီးသည်နှင့် Output Form တွင် Auto-select ဖြစ်ပါမည်။`,
+                      `Create a Lot/Batch only for ${outputProduct?.sku || 'this output'} on ${order.order_no}. The new Lot/Batch starts in Quarantine and will be auto-selected in the Output form.`
+                    )}
+                  </div>
+                </div>
+
+                <div className="p-5 space-y-4">
+                  {errorMessage && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
+                      ❌ {errorMessage}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-black text-slate-700 mb-2">
+                        Lot Number *
+                      </label>
+
+                      <input
+                        value={
+                          outputLotForm.lotNo
+                        }
+                        onChange={(event) =>
+                          setOutputLotForm(
+                            (current) => ({
+                              ...current,
+                              lotNo:
+                                event.target
+                                  .value,
+                            })
+                          )
+                        }
+                        maxLength={200}
+                        autoFocus
+                        placeholder="LOT-20261102-001"
+                        className="w-full rounded-xl border p-3 font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-black text-slate-700 mb-2">
+                        {outputProduct?.tracking_mode ===
+                        'batch'
+                          ? 'Batch Number *'
+                          : 'Batch Number (Optional)'}
+                      </label>
+
+                      <input
+                        value={
+                          outputLotForm.batchNo
+                        }
+                        onChange={(event) =>
+                          setOutputLotForm(
+                            (current) => ({
+                              ...current,
+                              batchNo:
+                                event.target
+                                  .value,
+                            })
+                          )
+                        }
+                        maxLength={200}
+                        placeholder="BATCH-20261102-001"
+                        className="w-full rounded-xl border p-3 font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-black text-slate-700 mb-2">
+                        {t(
+                          'ထုတ်လုပ်သည့်ရက်',
+                          'Manufacture Date'
+                        )}
+                      </label>
+
+                      <input
+                        type="date"
+                        value={
+                          outputLotForm.manufacturedAt
+                        }
+                        onChange={(event) =>
+                          setOutputLotForm(
+                            (current) => ({
+                              ...current,
+                              manufacturedAt:
+                                event.target
+                                  .value,
+                            })
+                          )
+                        }
+                        className="w-full rounded-xl border p-3 font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-black text-slate-700 mb-2">
+                        {t(
+                          'သက်တမ်းကုန်ရက်',
+                          'Expiry Date'
+                        )}
+                      </label>
+
+                      <input
+                        type="date"
+                        value={
+                          outputLotForm.expiresAt
+                        }
+                        onChange={(event) =>
+                          setOutputLotForm(
+                            (current) => ({
+                              ...current,
+                              expiresAt:
+                                event.target
+                                  .value,
+                            })
+                          )
+                        }
+                        className="w-full rounded-xl border p-3 font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-black text-slate-700 mb-2">
+                      {t(
+                        'မှတ်ချက်',
+                        'Notes'
+                      )}
+                    </label>
+
+                    <textarea
+                      value={
+                        outputLotForm.notes
+                      }
+                      onChange={(event) =>
+                        setOutputLotForm(
+                          (current) => ({
+                            ...current,
+                            notes:
+                              event.target
+                                .value,
+                          })
+                        )
+                      }
+                      rows={3}
+                      maxLength={2000}
+                      placeholder={t(
+                        'Output Lot / Batch မှတ်ချက် (Optional)',
+                        'Output Lot / Batch notes (optional)'
+                      )}
+                      className="w-full rounded-xl border p-3 font-bold"
+                    />
+
+                    <div className="mt-1 text-right text-xs font-bold text-slate-400">
+                      {outputLotForm.notes.length}/2000
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">
+                    ⚠️{' '}
+                    {t(
+                      'လက်ရှိ In Progress Production Order ၏ Output Product အတွက်သာ Lot/Batch ဖန်တီးနိုင်ပြီး Quarantine Status ဖြင့် စတင်ပါမည်။',
+                      'A Lot/Batch can be created only for the current In Progress Production Order output product and will start in Quarantine.'
+                    )}
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                    <button
+                      type="button"
+                      disabled={working}
+                      onClick={() => {
+                        setOutputLotDialogOpen(
+                          false
+                        );
+                        setOutputLotForm(
+                          EMPTY_OUTPUT_LOT_FORM
+                        );
+                        setErrorMessage('');
+                      }}
+                      className="rounded-xl border bg-white px-5 py-3 font-black text-slate-600 disabled:opacity-50"
+                    >
+                      {t(
+                        'မဖန်တီးတော့ပါ',
+                        'Close'
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        working ||
+                        !outputLotForm.lotNo.trim() ||
+                        (
+                          outputProduct?.tracking_mode ===
+                            'batch' &&
+                          !outputLotForm.batchNo.trim()
+                        )
+                      }
+                      onClick={
+                        handleCreateOutputLot
+                      }
+                      className="rounded-xl bg-purple-600 px-5 py-3 font-black text-white disabled:opacity-50"
+                    >
+                      🧬{' '}
+                      {working
+                        ? t(
+                            'ဖန်တီးနေသည်...',
+                            'Creating...'
+                          )
+                        : t(
+                            'ဖန်တီးပြီး Auto-select လုပ်မည်',
+                            'Create & Auto-select'
                           )}
                     </button>
                   </div>
@@ -1632,46 +2003,66 @@ This derives cost from actual material consumption and restores output inventory
                       'lot' ||
                       outputProduct?.tracking_mode ===
                         'batch') && (
-                      <select
-                        value={
-                          outputForm.lotId
-                        }
-                        onChange={(
-                          event
-                        ) =>
-                          setOutputForm(
-                            (current) => ({
-                              ...current,
-                              lotId:
-                                event
-                                  .target
-                                  .value,
-                            })
-                          )
-                        }
-                        className="rounded-xl border p-3 font-bold"
-                      >
-                        <option value="">
-                          {t(
-                            'Quarantine Lot / Batch ရွေးပါ',
-                            'Select Quarantine Lot / Batch'
-                          )}
-                        </option>
+                      <div className="space-y-2">
+                        <select
+                          value={
+                            outputForm.lotId
+                          }
+                          onChange={(
+                            event
+                          ) =>
+                            setOutputForm(
+                              (current) => ({
+                                ...current,
+                                lotId:
+                                  event
+                                    .target
+                                    .value,
+                              })
+                            )
+                          }
+                          className="w-full rounded-xl border p-3 font-bold"
+                        >
+                          <option value="">
+                            {t(
+                              'Quarantine Lot / Batch ရွေးပါ',
+                              'Select Quarantine Lot / Batch'
+                            )}
+                          </option>
 
-                        {outputLots.map(
-                          (lot) => (
-                            <option
-                              key={lot.id}
-                              value={lot.id}
-                            >
-                              {lot.lot_no}
-                              {lot.batch_no
-                                ? ` / ${lot.batch_no}`
-                                : ''}
-                            </option>
-                          )
-                        )}
-                      </select>
+                          {outputLots.map(
+                            (lot) => (
+                              <option
+                                key={lot.id}
+                                value={lot.id}
+                              >
+                                {lot.lot_no}
+                                {lot.batch_no
+                                  ? ` / ${lot.batch_no}`
+                                  : ''}
+                              </option>
+                            )
+                          )}
+                        </select>
+
+                        <button
+                          type="button"
+                          disabled={working}
+                          onClick={() => {
+                            setErrorMessage('');
+                            setOutputLotDialogOpen(
+                              true
+                            );
+                          }}
+                          className="w-full rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-sm font-black text-purple-700 disabled:opacity-50"
+                        >
+                          ➕{' '}
+                          {t(
+                            'Output Lot / Batch အသစ်ဖန်တီးရန်',
+                            'Create Output Lot / Batch'
+                          )}
+                        </button>
+                      </div>
                     )}
 
                     <input
@@ -1729,8 +2120,8 @@ This derives cost from actual material consumption and restores output inventory
                       <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-700">
                         ⚠️{' '}
                         {t(
-                          'Output အတွက် Quarantine Lot/Batch မရှိသေးပါ။ Lot/Batch Management မှ အရင်ဖန်တီးပါ။',
-                          'No Quarantine Lot/Batch exists for this output product. Create one in Lot/Batch Management first.'
+                          'Output အတွက် Quarantine Lot/Batch မရှိသေးပါ။ အပေါ်ရှိ Create Output Lot / Batch ခလုတ်ဖြင့် Controlled Workflow မှ တိုက်ရိုက်ဖန်တီးနိုင်ပါသည်။',
+                          'No Quarantine Lot/Batch exists for this output product. Use Create Output Lot / Batch above to create one through the controlled workflow.'
                         )}
                       </div>
                     )}
