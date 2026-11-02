@@ -15,11 +15,13 @@ import { MavoraProductionExecutionPanel } from './MavoraProductionExecutionPanel
 import {
   loadMavoraProductionSnapshot,
   type MavoraProductionSnapshot,
+  type MavoraRecipeProcessType,
 } from '../production/mavoraProduction';
 
 interface Props {
   tenantId: string;
   language: AppLanguage;
+  processTypeFilter?: MavoraRecipeProcessType;
 }
 
 type AdvancedTab =
@@ -45,6 +47,7 @@ const EMPTY_SNAPSHOT: MavoraProductionSnapshot = {
 export const MavoraProduction: React.FC<Props> = ({
   tenantId,
   language,
+  processTypeFilter,
 }) => {
   const t = (my: string, en: string) =>
     language === 'my' ? my : en;
@@ -96,6 +99,88 @@ export const MavoraProduction: React.FC<Props> = ({
     refresh();
   }, [refresh]);
 
+  const packagingMode =
+    processTypeFilter === 'packaging';
+
+  const viewSnapshot =
+    useMemo<MavoraProductionSnapshot>(() => {
+      if (!processTypeFilter) {
+        return snapshot;
+      }
+
+      const recipes =
+        snapshot.recipes.filter(
+          (recipe) =>
+            recipe.process_type ===
+            processTypeFilter
+        );
+
+      const recipeIds =
+        new Set(
+          recipes.map(
+            (recipe) => recipe.id
+          )
+        );
+
+      const recipeVersions =
+        snapshot.recipeVersions.filter(
+          (version) =>
+            recipeIds.has(
+              version.recipe_id
+            )
+        );
+
+      const versionIds =
+        new Set(
+          recipeVersions.map(
+            (version) => version.id
+          )
+        );
+
+      const recipeComponents =
+        snapshot.recipeComponents.filter(
+          (component) =>
+            versionIds.has(
+              component.recipe_version_id
+            )
+        );
+
+      const orders =
+        snapshot.orders.filter(
+          (order) =>
+            versionIds.has(
+              order.recipe_version_id
+            )
+        );
+
+      const orderIds =
+        new Set(
+          orders.map(
+            (order) => order.id
+          )
+        );
+
+      const orderMaterials =
+        snapshot.orderMaterials.filter(
+          (material) =>
+            orderIds.has(
+              material.production_order_id
+            )
+        );
+
+      return {
+        ...snapshot,
+        recipes,
+        recipeVersions,
+        recipeComponents,
+        orders,
+        orderMaterials,
+      };
+    }, [
+      snapshot,
+      processTypeFilter,
+    ]);
+
   const productCounts = useMemo(() => {
     const count = (
       type: string
@@ -114,7 +199,7 @@ export const MavoraProduction: React.FC<Props> = ({
   }, [snapshot.products]);
 
   const approvedRecipeCount =
-    snapshot.recipeVersions.filter(
+    viewSnapshot.recipeVersions.filter(
       (version) =>
         version.status === 'approved'
     ).length;
@@ -129,13 +214,24 @@ export const MavoraProduction: React.FC<Props> = ({
       snapshot.productionLines.length > 0,
 
     inputProducts:
-      productCounts.RM > 0 ||
-      productCounts.SFG > 0 ||
-      productCounts.PKG > 0,
+      packagingMode
+        ? (
+            productCounts.SFG > 0 &&
+            productCounts.PKG > 0
+          )
+        : (
+            productCounts.RM > 0 ||
+            productCounts.SFG > 0 ||
+            productCounts.PKG > 0
+          ),
 
     outputProducts:
-      productCounts.SFG > 0 ||
-      productCounts.FG > 0,
+      packagingMode
+        ? productCounts.FG > 0
+        : (
+            productCounts.SFG > 0 ||
+            productCounts.FG > 0
+          ),
 
     recipes:
       approvedRecipeCount > 0,
@@ -179,13 +275,13 @@ export const MavoraProduction: React.FC<Props> = ({
   const selectedExecutionOrder =
     useMemo(
       () =>
-        snapshot.orders.find(
+        viewSnapshot.orders.find(
           (order) =>
             order.id ===
             selectedExecutionOrderId
         ) || null,
       [
-        snapshot.orders,
+        viewSnapshot.orders,
         selectedExecutionOrderId,
       ]
     );
@@ -193,10 +289,10 @@ export const MavoraProduction: React.FC<Props> = ({
   const versionsByRecipe = useMemo(() => {
     const map = new Map<
       string,
-      typeof snapshot.recipeVersions
+      typeof viewSnapshot.recipeVersions
     >();
 
-    snapshot.recipeVersions.forEach(
+    viewSnapshot.recipeVersions.forEach(
       (version) => {
         const current =
           map.get(version.recipe_id) || [];
@@ -210,7 +306,7 @@ export const MavoraProduction: React.FC<Props> = ({
     );
 
     return map;
-  }, [snapshot.recipeVersions]);
+  }, [viewSnapshot.recipeVersions]);
 
   if (loading) {
     return (
@@ -236,22 +332,34 @@ export const MavoraProduction: React.FC<Props> = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="text-xs font-black tracking-widest text-orange-600">
-            MAVORA MANUFACTURING ERP
+            {packagingMode
+              ? 'MAVORA CONTROLLED PACKAGING'
+              : 'MAVORA MANUFACTURING ERP'}
           </div>
 
           <h2 className="text-2xl md:text-3xl font-black text-slate-800 mt-1">
-            🏭{' '}
-            {t(
-              'ထုတ်လုပ်မှု စီမံခန့်ခွဲမှု',
-              'Production Management'
-            )}
+            {packagingMode ? '📦' : '🏭'}{' '}
+            {packagingMode
+              ? t(
+                  'ထုပ်ပိုးမှု စီမံခန့်ခွဲမှု',
+                  'Packaging Management'
+                )
+              : t(
+                  'ထုတ်လုပ်မှု စီမံခန့်ခွဲမှု',
+                  'Production Management'
+                )}
           </h2>
 
           <p className="text-sm font-bold text-slate-500 mt-1">
-            {t(
-              'Formula, BOM, Work Center နှင့် Production Order များကို စနစ်တကျ ချိတ်ဆက်စီမံပါသည်။',
-              'Controlled Recipes, BOM, Work Centers and Production Orders.'
-            )}
+            {packagingMode
+              ? t(
+                  'SFG + Packaging Materials ကို Controlled BOM ဖြင့်သုံးပြီး Finished Goods (FG) အဖြစ် ထုတ်လုပ်စီမံပါသည်။',
+                  'Controlled SFG + Packaging Material BOM to Finished Goods (FG).'
+                )
+              : t(
+                  'Formula, BOM, Work Center နှင့် Production Order များကို စနစ်တကျ ချိတ်ဆက်စီမံပါသည်။',
+                  'Controlled Recipes, BOM, Work Centers and Production Orders.'
+                )}
           </p>
         </div>
 
@@ -550,7 +658,7 @@ export const MavoraProduction: React.FC<Props> = ({
                     'Formula',
                     'Recipes'
                   ),
-                  snapshot.recipes.length,
+                  viewSnapshot.recipes.length,
                 ],
                 [
                   t(
@@ -561,7 +669,7 @@ export const MavoraProduction: React.FC<Props> = ({
                 ],
                 [
                   'Production Orders',
-                  snapshot.orders.length,
+                  viewSnapshot.orders.length,
                 ],
                 [
                   t(
@@ -600,8 +708,11 @@ export const MavoraProduction: React.FC<Props> = ({
             <MavoraRecipeSetup
               tenantId={tenantId}
               language={language}
-              snapshot={snapshot}
+              snapshot={viewSnapshot}
               onRefresh={refresh}
+              fixedProcessType={
+                processTypeFilter
+              }
             />
           )}
 
@@ -610,7 +721,7 @@ export const MavoraProduction: React.FC<Props> = ({
               <MavoraProductionOrderSetup
                 tenantId={tenantId}
                 language={language}
-                snapshot={snapshot}
+                snapshot={viewSnapshot}
                 onRefresh={refresh}
               />
 
@@ -642,7 +753,7 @@ export const MavoraProduction: React.FC<Props> = ({
                   </thead>
 
                   <tbody>
-                    {snapshot.orders.map(
+                    {viewSnapshot.orders.map(
                       (order) => {
                         const product =
                           productsById.get(
@@ -703,7 +814,7 @@ export const MavoraProduction: React.FC<Props> = ({
                       }
                     )}
 
-                    {snapshot.orders.length ===
+                    {viewSnapshot.orders.length ===
                       0 && (
                       <tr>
                         <td
@@ -726,7 +837,7 @@ export const MavoraProduction: React.FC<Props> = ({
                 <MavoraProductionExecutionPanel
                   tenantId={tenantId}
                   language={language}
-                  snapshot={snapshot}
+                  snapshot={viewSnapshot}
                   order={selectedExecutionOrder}
                   onClose={() =>
                     setSelectedExecutionOrderId(

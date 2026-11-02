@@ -20,6 +20,7 @@ interface Props {
   language: AppLanguage;
   snapshot: MavoraProductionSnapshot;
   onRefresh: () => Promise<void>;
+  fixedProcessType?: MavoraRecipeProcessType;
 }
 
 export const MavoraRecipeSetup: React.FC<
@@ -29,6 +30,7 @@ export const MavoraRecipeSetup: React.FC<
   language,
   snapshot,
   onRefresh,
+  fixedProcessType,
 }) => {
   const t = (my: string, en: string) =>
     language === 'my' ? my : en;
@@ -46,10 +48,17 @@ export const MavoraRecipeSetup: React.FC<
     () =>
       snapshot.products.filter(
         (product) =>
-          product.product_type === 'SFG' ||
-          product.product_type === 'FG'
+          fixedProcessType === 'packaging'
+            ? product.product_type === 'FG'
+            : (
+                product.product_type === 'SFG' ||
+                product.product_type === 'FG'
+              )
       ),
-    [snapshot.products]
+    [
+      snapshot.products,
+      fixedProcessType,
+    ]
   );
 
   const productsById = useMemo(
@@ -83,7 +92,8 @@ export const MavoraRecipeSetup: React.FC<
       code: '',
       name: '',
       processType:
-        'manufacturing' as MavoraRecipeProcessType,
+        fixedProcessType ??
+        ('manufacturing' as MavoraRecipeProcessType),
       outputProductId: '',
     });
 
@@ -94,6 +104,23 @@ export const MavoraRecipeSetup: React.FC<
       standardOutputQty: '',
       outputUnitId: '',
     });
+
+  useEffect(() => {
+    if (!fixedProcessType) {
+      return;
+    }
+
+    setRecipeForm((current) =>
+      current.processType ===
+      fixedProcessType
+        ? current
+        : {
+            ...current,
+            processType:
+              fixedProcessType,
+          }
+    );
+  }, [fixedProcessType]);
 
   useEffect(() => {
     if (
@@ -222,6 +249,7 @@ export const MavoraRecipeSetup: React.FC<
           code: recipeForm.code,
           name: recipeForm.name,
           processType:
+            fixedProcessType ??
             recipeForm.processType,
           outputProductId:
             recipeForm.outputProductId,
@@ -452,7 +480,10 @@ export const MavoraRecipeSetup: React.FC<
               value={
                 recipeForm.processType
               }
-              disabled={working}
+              disabled={
+                working ||
+                Boolean(fixedProcessType)
+              }
               onChange={(event) =>
                 setRecipeForm(
                   (current) => ({

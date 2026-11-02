@@ -163,12 +163,21 @@ export const MavoraBomSetup: React.FC<
     () =>
       snapshot.products.filter(
         (product) =>
-          [
-            'RM',
-            'SFG',
-            'PKG',
-            'CONSUMABLE',
-          ].includes(
+          (
+            selectedRecipe?.process_type ===
+              'packaging'
+              ? [
+                  'SFG',
+                  'PKG',
+                  'CONSUMABLE',
+                ]
+              : [
+                  'RM',
+                  'SFG',
+                  'PKG',
+                  'CONSUMABLE',
+                ]
+          ).includes(
             product.product_type
           ) &&
           product.id !==

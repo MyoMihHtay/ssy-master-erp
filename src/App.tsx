@@ -4,7 +4,6 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { MavoraInventory } from './components/MavoraInventory';
 import { MavoraProduction } from './components/MavoraProduction';
-import { Packaging } from './components/Packaging';
 import { FinishedGoods } from './components/FinishedGoods';
 import { Sales } from './components/Sales';
 import { Expenses } from './components/Expenses';
@@ -545,7 +544,13 @@ export default function App() {
             tenantId={user.tenantId}
           />
         )}
-        {activeTab === 'packaging' && <Packaging language={language} userRole={user.role} inventoryItems={inventoryItems} packageRecipes={packageRecipes} setPackageRecipes={setPackageRecipes} onPackagingConfirm={handleConfirmPackaging} />}
+        {activeTab === 'packaging' && (
+          <MavoraProduction
+            language={language}
+            tenantId={user.tenantId}
+            processTypeFilter="packaging"
+          />
+        )}
         {finishedGoods && activeTab === 'finished_goods' && <FinishedGoods language={language} userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
         {activeTab === 'expenses' && <Expenses language={language} userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
 
