@@ -1170,7 +1170,11 @@ export const MavoraProductionExecutionPanel:
               null,
           });
 
-        await refreshAll();
+        // Refresh only the execution snapshot here.
+        // Calling refreshAll() also refreshes the parent Production
+        // snapshot and can remount this panel, which loses the local
+        // Output form selection immediately after Lot/Batch creation.
+        await refreshExecution();
 
         setOutputForm(
           (current) => ({

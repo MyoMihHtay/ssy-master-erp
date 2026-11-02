@@ -512,9 +512,23 @@ export const MavoraInventory: React.FC<
   };
 
   const handlePostMovement = async (
-    event: React.FormEvent
+    event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
+
+    const submittedForm =
+      new FormData(event.currentTarget);
+
+    const submittedWarehouseId =
+      String(
+        submittedForm.get('warehouseId') ||
+        movementForm.warehouseId
+      );
+
+    const submittedWarehouse =
+      warehousesById.get(
+        submittedWarehouseId
+      );
 
     const quantity = Number(
       movementForm.quantity
@@ -535,7 +549,10 @@ export const MavoraInventory: React.FC<
       return;
     }
 
-    if (!movementForm.warehouseId) {
+    if (
+      !submittedWarehouseId ||
+      !submittedWarehouse
+    ) {
       setErrorMessage(
         t(
           'Warehouse ရွေးပါ။',
@@ -608,7 +625,7 @@ export const MavoraInventory: React.FC<
       await postMavoraInventoryMovement({
         tenantId,
         warehouseId:
-          movementForm.warehouseId,
+          submittedWarehouseId,
         productId: movementForm.productId,
         movementType:
           movementForm.movementType,
@@ -629,13 +646,15 @@ export const MavoraInventory: React.FC<
 
       setSuccessMessage(
         t(
-          'Inventory Movement ကို အောင်မြင်စွာ Post လုပ်ပြီးပါပြီ။',
-          'Inventory movement posted successfully.'
+          `Inventory Movement ကို ${submittedWarehouse.code} Warehouse သို့ အောင်မြင်စွာ Post လုပ်ပြီးပါပြီ။`,
+          `Inventory movement posted successfully to ${submittedWarehouse.code} warehouse.`
         )
       );
 
       setMovementForm((current) => ({
         ...current,
+        warehouseId:
+          submittedWarehouseId,
         quantity: '',
         unitCost: '',
         referenceId: '',
@@ -1568,6 +1587,7 @@ export const MavoraInventory: React.FC<
                 Warehouse
               </label>
               <select
+                name="warehouseId"
                 value={movementForm.warehouseId}
                 onChange={(event) =>
                   setMovementForm((current) => ({
