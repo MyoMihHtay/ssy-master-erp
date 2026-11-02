@@ -4,7 +4,7 @@ import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { MavoraInventory } from './components/MavoraInventory';
 import { MavoraProduction } from './components/MavoraProduction';
-import { FinishedGoods } from './components/FinishedGoods';
+import { MavoraFinishedGoods } from './components/MavoraFinishedGoods';
 import { Sales } from './components/Sales';
 import { Expenses } from './components/Expenses';
 import { Procurement } from './components/Procurement';
@@ -551,7 +551,12 @@ export default function App() {
             processTypeFilter="packaging"
           />
         )}
-        {finishedGoods && activeTab === 'finished_goods' && <FinishedGoods language={language} userRole={user.role} products={finishedGoods} setProducts={setFinishedGoods} />}
+        {activeTab === 'finished_goods' && (
+          <MavoraFinishedGoods
+            language={language}
+            tenantId={user.tenantId}
+          />
+        )}
         {activeTab === 'expenses' && <Expenses language={language} userRole={user.role} userName={user.name} expenses={expenses} setExpenses={setExpenses} />}
 
         {activeTab === 'hr' && (
