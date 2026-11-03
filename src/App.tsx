@@ -5,7 +5,7 @@ import { Login } from './components/Login';
 import { MavoraInventory } from './components/MavoraInventory';
 import { MavoraProduction } from './components/MavoraProduction';
 import { MavoraFinishedGoods } from './components/MavoraFinishedGoods';
-import { Sales } from './components/Sales';
+import { MavoraSales } from './sales/MavoraSales';
 import { Expenses } from './components/Expenses';
 import { Procurement } from './components/Procurement';
 
@@ -513,21 +513,16 @@ export default function App() {
            />
         )}
 
-        {/* 🌟 Sales Component သို့ handleReturnSale ခေါ်ယူမှုကို ပို့ပေးထားပါသည် 🌟 */}
+        {/* Controlled MAVORA Sales uses UUID products, server pricing,
+            FEFO allocation, atomic stock issue and server-calculated COGS.
+            Legacy Sales data remains available to Dashboard / Reports
+            until the controlled reporting cutover is completed. */}
         {activeTab === 'sales' && (
-          <Sales
+          <MavoraSales
             language={language}
-            userRole={user.role}
+            tenantId={user.tenantId}
             userName={user.name}
-            finishedGoods={finishedGoods}
-            sales={salesRecords}
-            customers={customers}
-            onCheckout={handleCheckoutSale}
-            onMarkAsPaid={handleMarkAsPaid}
-            onDeleteSale={(id) => setSalesRecords(salesRecords.filter(s => s.id !== id))}
-            highlightSaleId={highlightSaleId}
-            setHighlightSaleId={setHighlightSaleId}
-            onReturnSale={handleReturnSale}
+            roleCode={user.roleCode}
           />
         )}
 
