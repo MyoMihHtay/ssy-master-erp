@@ -622,3 +622,313 @@ export const checkoutMavoraSalesOrder =
 
     return data as MavoraSalesCheckoutResult;
   };
+
+/* =========================================================
+ * CONTROLLED SALES HISTORY / INVOICE
+ * Phase 2P-6N-4D UI service layer
+ * ========================================================= */
+
+export interface MavoraSalesHistoryWarehouse {
+  id: string;
+  site_id: string;
+  code: string;
+  name: string;
+  timezone: string;
+}
+
+export interface MavoraSalesHistoryOrder {
+  sales_order_id: string;
+  invoice_no: string;
+
+  customer_ref: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_shop_type: string | null;
+  customer_address: string | null;
+  customer_gps: string | null;
+
+  payment_method: string;
+  credit_terms: string | null;
+  is_paid: boolean;
+  status: string;
+
+  subtotal: number;
+  discount_percent: number;
+  discount_amount: number;
+  tax_percent: number;
+  tax_amount: number;
+  grand_total: number;
+
+  price_list_id: string | null;
+  price_list_code: string | null;
+  price_list_name: string | null;
+  currency_code: string | null;
+
+  line_count: number;
+  total_quantity: number;
+
+  sold_at: string;
+  created_at: string;
+}
+
+export interface MavoraSalesHistoryResult {
+  ok: boolean;
+
+  warehouse: MavoraSalesHistoryWarehouse;
+
+  filters: {
+    search: string | null;
+    from_date: string | null;
+    to_date: string | null;
+  };
+
+  limit: number;
+  offset: number;
+  total_count: number;
+
+  orders: MavoraSalesHistoryOrder[];
+}
+
+export interface LoadMavoraSalesHistoryInput {
+  tenantId: string;
+  warehouseId: string;
+
+  limit?: number;
+  offset?: number;
+
+  search?: string | null;
+
+  fromDate?: string | null;
+  toDate?: string | null;
+}
+
+export interface MavoraSalesInvoiceAllocation {
+  allocation_id: string;
+
+  lot_id: string | null;
+  lot_no: string | null;
+  batch_no: string | null;
+
+  manufactured_at: string | null;
+  expires_at: string | null;
+
+  quantity: number;
+
+  inventory_movement_id: string;
+}
+
+export interface MavoraSalesInvoiceProduct {
+  id: string;
+  sku: string;
+  barcode: string | null;
+  name: string;
+
+  tracking_mode: MavoraSalesTrackingMode;
+
+  unit_code: string;
+  unit_symbol: string | null;
+}
+
+export interface MavoraSalesInvoiceLine {
+  line_id: string;
+  line_no: number;
+
+  product: MavoraSalesInvoiceProduct;
+
+  quantity: number;
+  unit_price: number;
+
+  discount_amount: number;
+  tax_amount: number;
+  line_total: number;
+
+  allocations: MavoraSalesInvoiceAllocation[];
+}
+
+export interface MavoraSalesInvoiceOrder {
+  sales_order_id: string;
+  invoice_no: string;
+  status: string;
+
+  customer_ref: string | null;
+  customer_name: string | null;
+  customer_phone: string | null;
+  customer_shop_type: string | null;
+  customer_address: string | null;
+  customer_gps: string | null;
+
+  payment_method: string;
+  credit_terms: string | null;
+  is_paid: boolean;
+
+  subtotal: number;
+  discount_percent: number;
+  discount_amount: number;
+  tax_percent: number;
+  tax_amount: number;
+  grand_total: number;
+
+  sold_at: string;
+  created_at: string;
+  sold_by: string;
+
+  warehouse: MavoraSalesHistoryWarehouse;
+
+  price_list: {
+    id: string | null;
+    code: string | null;
+    name: string | null;
+    currency_code: string | null;
+  };
+}
+
+export interface MavoraSalesInvoiceDetail {
+  ok: boolean;
+
+  order: MavoraSalesInvoiceOrder;
+
+  lines: MavoraSalesInvoiceLine[];
+}
+
+export const loadMavoraSalesHistory =
+  async (
+    input: LoadMavoraSalesHistoryInput
+  ): Promise<MavoraSalesHistoryResult> => {
+    if (!input.tenantId) {
+      throw new Error(
+        'Sales tenant is required'
+      );
+    }
+
+    if (!input.warehouseId) {
+      throw new Error(
+        'Sales warehouse is required'
+      );
+    }
+
+    const limit =
+      input.limit ?? 50;
+
+    const offset =
+      input.offset ?? 0;
+
+    if (
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 200
+    ) {
+      throw new Error(
+        'Sales History limit must be between 1 and 200'
+      );
+    }
+
+    if (
+      !Number.isInteger(offset) ||
+      offset < 0
+    ) {
+      throw new Error(
+        'Sales History offset cannot be negative'
+      );
+    }
+
+    const search =
+      input.search?.trim() ||
+      null;
+
+    const fromDate =
+      input.fromDate?.trim() ||
+      null;
+
+    const toDate =
+      input.toDate?.trim() ||
+      null;
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'get_sales_history',
+        {
+          p_tenant_id:
+            input.tenantId,
+
+          p_warehouse_id:
+            input.warehouseId,
+
+          p_limit:
+            limit,
+
+          p_offset:
+            offset,
+
+          p_search:
+            search,
+
+          p_from_date:
+            fromDate,
+
+          p_to_date:
+            toDate,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to load controlled Sales History'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid controlled Sales History response'
+      );
+    }
+
+    return data as MavoraSalesHistoryResult;
+  };
+
+export const loadMavoraSalesInvoiceDetail =
+  async (
+    tenantId: string,
+    salesOrderId: string
+  ): Promise<MavoraSalesInvoiceDetail> => {
+    if (!tenantId) {
+      throw new Error(
+        'Sales tenant is required'
+      );
+    }
+
+    if (!salesOrderId) {
+      throw new Error(
+        'Sales Order is required'
+      );
+    }
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'get_sales_invoice_detail',
+        {
+          p_tenant_id:
+            tenantId,
+
+          p_sales_order_id:
+            salesOrderId,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to load controlled Sales Invoice'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid controlled Sales Invoice response'
+      );
+    }
+
+    return data as MavoraSalesInvoiceDetail;
+  };

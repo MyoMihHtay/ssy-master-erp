@@ -6,18 +6,24 @@ import React, {
   useState,
 } from 'react';
 
+import html2canvas from 'html2canvas';
+
 import type { AppLanguage } from '../i18n';
 
 import {
   checkoutMavoraSalesOrder,
   createSalesPostingKey,
   loadMavoraSalesCatalog,
+  loadMavoraSalesHistory,
+  loadMavoraSalesInvoiceDetail,
   loadMavoraSalesWarehouses,
   setMavoraSalesProductPrice,
   upsertMavoraSalesPriceList,
   type MavoraSalesCatalog,
   type MavoraSalesCatalogProduct,
   type MavoraSalesCheckoutResult,
+  type MavoraSalesHistoryResult,
+  type MavoraSalesInvoiceDetail,
   type MavoraSalesWarehouse,
 } from './mavoraSalesService';
 
@@ -50,6 +56,54 @@ const formatNumber = (
   value.toLocaleString(undefined, {
     maximumFractionDigits,
   });
+
+const formatDateTime = (
+  value: string | null | undefined
+): string => {
+  if (!value) {
+    return '-';
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
+    return value;
+  }
+
+  return date.toLocaleString();
+};
+
+const escapeHtml = (
+  value: unknown
+): string =>
+  String(
+    value ?? ''
+  )
+    .replaceAll(
+      '&',
+      '&amp;'
+    )
+    .replaceAll(
+      '<',
+      '&lt;'
+    )
+    .replaceAll(
+      '>',
+      '&gt;'
+    )
+    .replaceAll(
+      '"',
+      '&quot;'
+    )
+    .replaceAll(
+      "'",
+      '&#039;'
+    );
 
 export const MavoraSales: React.FC<
   MavoraSalesProps
@@ -201,6 +255,89 @@ export const MavoraSales: React.FC<
   ] = useState<
     MavoraSalesCheckoutResult | null
   >(null);
+
+  const [
+    salesView,
+    setSalesView,
+  ] = useState<
+    'pos' | 'records'
+  >('pos');
+
+  const [
+    history,
+    setHistory,
+  ] = useState<
+    MavoraSalesHistoryResult | null
+  >(null);
+
+  const [
+    historyLoading,
+    setHistoryLoading,
+  ] = useState(false);
+
+  const [
+    historyError,
+    setHistoryError,
+  ] = useState('');
+
+  const [
+    historySearch,
+    setHistorySearch,
+  ] = useState('');
+
+  const [
+    historyFromDate,
+    setHistoryFromDate,
+  ] = useState('');
+
+  const [
+    historyToDate,
+    setHistoryToDate,
+  ] = useState('');
+
+  const [
+    invoiceDetail,
+    setInvoiceDetail,
+  ] = useState<
+    MavoraSalesInvoiceDetail | null
+  >(null);
+
+  const [
+    invoiceOpen,
+    setInvoiceOpen,
+  ] = useState(false);
+
+  const [
+    invoiceLoading,
+    setInvoiceLoading,
+  ] = useState(false);
+
+  const [
+    invoiceError,
+    setInvoiceError,
+  ] = useState('');
+
+  const [
+    outputOpen,
+    setOutputOpen,
+  ] = useState(false);
+
+  const [
+    thermalPaperSize,
+    setThermalPaperSize,
+  ] = useState<
+    '55mm' | '58mm' | '80mm'
+  >('80mm');
+
+  const [
+    imageSaving,
+    setImageSaving,
+  ] = useState(false);
+
+  const invoiceImageRef =
+    useRef<HTMLDivElement>(
+      null
+    );
 
   const postingKeyRef =
     useRef<string | null>(null);
@@ -851,6 +988,1160 @@ export const MavoraSales: React.FC<
       }
     };
 
+  const refreshSalesHistory =
+    async () => {
+      if (
+        !selectedWarehouseId
+      ) {
+        return;
+      }
+
+      setHistoryLoading(
+        true
+      );
+
+      setHistoryError('');
+
+      try {
+        const result =
+          await loadMavoraSalesHistory(
+            {
+              tenantId,
+              warehouseId:
+                selectedWarehouseId,
+
+              limit:
+                50,
+
+              offset:
+                0,
+
+              search:
+                historySearch,
+
+              fromDate:
+                historyFromDate ||
+                null,
+
+              toDate:
+                historyToDate ||
+                null,
+            }
+          );
+
+        setHistory(
+          result
+        );
+      } catch (error) {
+        setHistory(null);
+
+        setHistoryError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load Sales History'
+        );
+      } finally {
+        setHistoryLoading(
+          false
+        );
+      }
+    };
+
+  const openInvoiceDetail =
+    async (
+      salesOrderId: string
+    ) => {
+      setInvoiceLoading(
+        true
+      );
+
+      setInvoiceError('');
+
+      try {
+        const result =
+          await loadMavoraSalesInvoiceDetail(
+            tenantId,
+            salesOrderId
+          );
+
+        setInvoiceDetail(
+          result
+        );
+
+        setInvoiceOpen(
+          true
+        );
+      } catch (error) {
+        setInvoiceDetail(
+          null
+        );
+
+        setInvoiceError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load Sales Invoice'
+        );
+      } finally {
+        setInvoiceLoading(
+          false
+        );
+      }
+    };
+
+  const closeInvoiceDetail =
+    () => {
+      setOutputOpen(
+        false
+      );
+
+      setInvoiceOpen(
+        false
+      );
+
+      setInvoiceDetail(
+        null
+      );
+
+      setInvoiceError('');
+    };
+
+  const buildInvoicePrintHtml =
+    (
+      mode:
+        | 'A4'
+        | 'THERMAL'
+    ): string => {
+      if (!invoiceDetail) {
+        return '';
+      }
+
+      const order =
+        invoiceDetail.order;
+
+      const currency =
+        order.price_list
+          .currency_code ??
+        'MMK';
+
+      const isThermal =
+        mode === 'THERMAL';
+
+      const rows =
+        invoiceDetail.lines
+          .map(
+            (line) => {
+              const trace =
+                line.allocations
+                  .map(
+                    (
+                      allocation
+                    ) => {
+                      const lot =
+                        allocation.lot_no ??
+                        '-';
+
+                      const batch =
+                        allocation.batch_no
+                          ? ` / ${allocation.batch_no}`
+                          : '';
+
+                      return `${escapeHtml(
+                        lot
+                      )}${escapeHtml(
+                        batch
+                      )}`;
+                    }
+                  )
+                  .join(
+                    '<br />'
+                  );
+
+              if (isThermal) {
+                return `
+                  <div class="thermal-line">
+                    <div class="thermal-product">
+                      ${escapeHtml(
+                        line.product.sku
+                      )} — ${escapeHtml(
+                        line.product.name
+                      )}
+                    </div>
+
+                    <div class="thermal-row">
+                      <span>
+                        ${escapeHtml(
+                          formatNumber(
+                            line.quantity,
+                            3
+                          )
+                        )}
+                        ×
+                        ${escapeHtml(
+                          formatNumber(
+                            line.unit_price
+                          )
+                        )}
+                      </span>
+
+                      <strong>
+                        ${escapeHtml(
+                          formatNumber(
+                            line.line_total
+                          )
+                        )}
+                      </strong>
+                    </div>
+
+                    ${
+                      trace &&
+                      trace !== '-'
+                        ? `
+                          <div class="trace">
+                            Lot/Batch:
+                            ${trace}
+                          </div>
+                        `
+                        : ''
+                    }
+                  </div>
+                `;
+              }
+
+              return `
+                <tr>
+                  <td>
+                    <strong>
+                      ${escapeHtml(
+                        line.product.sku
+                      )}
+                    </strong>
+
+                    <br />
+
+                    ${escapeHtml(
+                      line.product.name
+                    )}
+                  </td>
+
+                  <td class="num">
+                    ${escapeHtml(
+                      formatNumber(
+                        line.quantity,
+                        3
+                      )
+                    )}
+                  </td>
+
+                  <td class="num">
+                    ${escapeHtml(
+                      formatNumber(
+                        line.unit_price
+                      )
+                    )}
+                  </td>
+
+                  <td class="num">
+                    ${escapeHtml(
+                      formatNumber(
+                        line.line_total
+                      )
+                    )}
+                  </td>
+
+                  <td>
+                    ${trace || '-'}
+                  </td>
+                </tr>
+              `;
+            }
+          )
+          .join('');
+
+      if (isThermal) {
+        return `
+          <!doctype html>
+          <html>
+            <head>
+              <meta charset="utf-8" />
+
+              <title>
+                ${escapeHtml(
+                  order.invoice_no
+                )}
+              </title>
+
+              <style>
+                @page {
+                  size:
+                    ${thermalPaperSize}
+                    auto;
+
+                  margin: 2mm;
+                }
+
+                * {
+                  box-sizing:
+                    border-box;
+                }
+
+                body {
+                  width:
+                    ${thermalPaperSize};
+
+                  margin: 0;
+                  padding: 2mm;
+
+                  font-family:
+                    "Pyidaungsu",
+                    "Myanmar Text",
+                    Arial,
+                    sans-serif;
+
+                  color: #000;
+
+                  font-size: 11px;
+                }
+
+                .center {
+                  text-align:
+                    center;
+                }
+
+                .title {
+                  font-size:
+                    16px;
+
+                  font-weight:
+                    900;
+                }
+
+                .sub {
+                  margin-top:
+                    2px;
+
+                  font-weight:
+                    700;
+                }
+
+                .divider {
+                  margin:
+                    6px 0;
+
+                  border-top:
+                    1px dashed
+                    #000;
+                }
+
+                .info-row,
+                .thermal-row,
+                .total-row {
+                  display:
+                    flex;
+
+                  justify-content:
+                    space-between;
+
+                  gap: 6px;
+                }
+
+                .info-row span:first-child {
+                  white-space:
+                    nowrap;
+                }
+
+                .info-row span:last-child {
+                  text-align:
+                    right;
+                }
+
+                .thermal-line {
+                  padding:
+                    5px 0;
+
+                  border-bottom:
+                    1px dashed
+                    #999;
+                }
+
+                .thermal-product {
+                  font-weight:
+                    800;
+                }
+
+                .trace {
+                  margin-top:
+                    2px;
+
+                  font-size:
+                    9px;
+                }
+
+                .grand {
+                  margin-top:
+                    5px;
+
+                  padding-top:
+                    5px;
+
+                  border-top:
+                    2px solid
+                    #000;
+
+                  font-size:
+                    14px;
+
+                  font-weight:
+                    900;
+                }
+
+                .footer {
+                  margin-top:
+                    9px;
+
+                  text-align:
+                    center;
+
+                  font-size:
+                    9px;
+                }
+              </style>
+            </head>
+
+            <body>
+              <div class="center title">
+                MAVORA ERP
+              </div>
+
+              <div class="center sub">
+                SALES RECEIPT
+              </div>
+
+              <div class="center">
+                ${escapeHtml(
+                  order.invoice_no
+                )}
+              </div>
+
+              <div class="divider"></div>
+
+              <div class="info-row">
+                <span>Date</span>
+                <span>
+                  ${escapeHtml(
+                    formatDateTime(
+                      order.sold_at
+                    )
+                  )}
+                </span>
+              </div>
+
+              <div class="info-row">
+                <span>Customer</span>
+                <span>
+                  ${escapeHtml(
+                    order.customer_name ??
+                    '-'
+                  )}
+                </span>
+              </div>
+
+              <div class="info-row">
+                <span>Phone</span>
+                <span>
+                  ${escapeHtml(
+                    order.customer_phone ??
+                    '-'
+                  )}
+                </span>
+              </div>
+
+              <div class="info-row">
+                <span>Payment</span>
+                <span>
+                  ${escapeHtml(
+                    order.payment_method
+                  )}
+                </span>
+              </div>
+
+              <div class="info-row">
+                <span>Sold By</span>
+                <span>
+                  ${escapeHtml(
+                    order.sold_by
+                  )}
+                </span>
+              </div>
+
+              <div class="divider"></div>
+
+              ${rows}
+
+              <div class="divider"></div>
+
+              <div class="total-row">
+                <span>Subtotal</span>
+
+                <strong>
+                  ${escapeHtml(
+                    formatNumber(
+                      order.subtotal
+                    )
+                  )}
+                </strong>
+              </div>
+
+              ${
+                order.discount_amount >
+                0
+                  ? `
+                    <div class="total-row">
+                      <span>
+                        Discount
+                        (${escapeHtml(
+                          formatNumber(
+                            order.discount_percent
+                          )
+                        )}%)
+                      </span>
+
+                      <strong>
+                        -
+                        ${escapeHtml(
+                          formatNumber(
+                            order.discount_amount
+                          )
+                        )}
+                      </strong>
+                    </div>
+                  `
+                  : ''
+              }
+
+              ${
+                order.tax_amount >
+                0
+                  ? `
+                    <div class="total-row">
+                      <span>
+                        Tax
+                        (${escapeHtml(
+                          formatNumber(
+                            order.tax_percent
+                          )
+                        )}%)
+                      </span>
+
+                      <strong>
+                        ${escapeHtml(
+                          formatNumber(
+                            order.tax_amount
+                          )
+                        )}
+                      </strong>
+                    </div>
+                  `
+                  : ''
+              }
+
+              <div class="total-row grand">
+                <span>
+                  TOTAL
+                </span>
+
+                <span>
+                  ${escapeHtml(
+                    formatNumber(
+                      order.grand_total
+                    )
+                  )}
+                  ${escapeHtml(
+                    currency
+                  )}
+                </span>
+              </div>
+
+              <div class="footer">
+                Thank you.
+                <br />
+                MAVORA ERP
+              </div>
+
+              <script>
+                window.addEventListener(
+                  'load',
+                  function () {
+                    setTimeout(
+                      function () {
+                        window.print();
+                      },
+                      250
+                    );
+                  }
+                );
+              </script>
+            </body>
+          </html>
+        `;
+      }
+
+      return `
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+
+            <title>
+              ${escapeHtml(
+                order.invoice_no
+              )}
+            </title>
+
+            <style>
+              @page {
+                size: A4;
+                margin: 12mm;
+              }
+
+              * {
+                box-sizing:
+                  border-box;
+              }
+
+              body {
+                margin: 0;
+
+                font-family:
+                  "Pyidaungsu",
+                  "Myanmar Text",
+                  Arial,
+                  sans-serif;
+
+                color:
+                  #111827;
+
+                font-size:
+                  12px;
+              }
+
+              .header {
+                display:
+                  flex;
+
+                justify-content:
+                  space-between;
+
+                gap:
+                  20px;
+
+                padding-bottom:
+                  15px;
+
+                border-bottom:
+                  2px solid
+                  #111827;
+              }
+
+              h1 {
+                margin: 0;
+
+                font-size:
+                  24px;
+              }
+
+              .invoice-no {
+                font-size:
+                  18px;
+
+                font-weight:
+                  900;
+              }
+
+              .muted {
+                color:
+                  #64748b;
+              }
+
+              .customer {
+                display:
+                  grid;
+
+                grid-template-columns:
+                  1fr 1fr;
+
+                gap:
+                  7px 22px;
+
+                margin:
+                  17px 0;
+              }
+
+              table {
+                width:
+                  100%;
+
+                border-collapse:
+                  collapse;
+              }
+
+              th,
+              td {
+                border:
+                  1px solid
+                  #cbd5e1;
+
+                padding:
+                  7px;
+
+                vertical-align:
+                  top;
+              }
+
+              th {
+                background:
+                  #f1f5f9;
+
+                text-align:
+                  left;
+              }
+
+              .num {
+                text-align:
+                  right;
+
+                white-space:
+                  nowrap;
+              }
+
+              .totals {
+                width:
+                  330px;
+
+                margin:
+                  15px 0 0 auto;
+              }
+
+              .total-row {
+                display:
+                  flex;
+
+                justify-content:
+                  space-between;
+
+                gap:
+                  10px;
+
+                padding:
+                  5px 0;
+              }
+
+              .grand {
+                margin-top:
+                  5px;
+
+                padding-top:
+                  9px;
+
+                border-top:
+                  2px solid
+                  #111827;
+
+                font-size:
+                  16px;
+
+                font-weight:
+                  900;
+              }
+
+              .footer {
+                margin-top:
+                  30px;
+
+                padding-top:
+                  10px;
+
+                border-top:
+                  1px solid
+                  #cbd5e1;
+
+                color:
+                  #64748b;
+
+                font-size:
+                  10px;
+              }
+            </style>
+          </head>
+
+          <body>
+            <div class="header">
+              <div>
+                <h1>
+                  MAVORA ERP
+                </h1>
+
+                <div>
+                  Controlled Sales Invoice
+                </div>
+
+                <div class="muted">
+                  ${escapeHtml(
+                    order.warehouse.code
+                  )}
+                  —
+                  ${escapeHtml(
+                    order.warehouse.name
+                  )}
+                </div>
+              </div>
+
+              <div style="text-align:right">
+                <div class="invoice-no">
+                  ${escapeHtml(
+                    order.invoice_no
+                  )}
+                </div>
+
+                <div>
+                  ${escapeHtml(
+                    formatDateTime(
+                      order.sold_at
+                    )
+                  )}
+                </div>
+
+                <div class="muted">
+                  ${escapeHtml(
+                    order.status
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div class="customer">
+              <div>
+                <strong>
+                  Customer:
+                </strong>
+
+                ${escapeHtml(
+                  order.customer_name ??
+                  '-'
+                )}
+              </div>
+
+              <div>
+                <strong>
+                  Phone:
+                </strong>
+
+                ${escapeHtml(
+                  order.customer_phone ??
+                  '-'
+                )}
+              </div>
+
+              <div>
+                <strong>
+                  Shop Type:
+                </strong>
+
+                ${escapeHtml(
+                  order.customer_shop_type ??
+                  '-'
+                )}
+              </div>
+
+              <div>
+                <strong>
+                  Payment:
+                </strong>
+
+                ${escapeHtml(
+                  order.payment_method
+                )}
+              </div>
+
+              <div>
+                <strong>
+                  Address:
+                </strong>
+
+                ${escapeHtml(
+                  order.customer_address ??
+                  '-'
+                )}
+              </div>
+
+              <div>
+                <strong>
+                  Sold By:
+                </strong>
+
+                ${escapeHtml(
+                  order.sold_by
+                )}
+              </div>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>
+                    Product
+                  </th>
+
+                  <th class="num">
+                    Qty
+                  </th>
+
+                  <th class="num">
+                    Unit Price
+                  </th>
+
+                  <th class="num">
+                    Amount
+                  </th>
+
+                  <th>
+                    Lot / Batch
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                ${rows}
+              </tbody>
+            </table>
+
+            <div class="totals">
+              <div class="total-row">
+                <span>
+                  Subtotal
+                </span>
+
+                <strong>
+                  ${escapeHtml(
+                    formatNumber(
+                      order.subtotal
+                    )
+                  )}
+                </strong>
+              </div>
+
+              <div class="total-row">
+                <span>
+                  Discount
+                  (${escapeHtml(
+                    formatNumber(
+                      order.discount_percent
+                    )
+                  )}%)
+                </span>
+
+                <strong>
+                  -
+                  ${escapeHtml(
+                    formatNumber(
+                      order.discount_amount
+                    )
+                  )}
+                </strong>
+              </div>
+
+              <div class="total-row">
+                <span>
+                  Tax
+                  (${escapeHtml(
+                    formatNumber(
+                      order.tax_percent
+                    )
+                  )}%)
+                </span>
+
+                <strong>
+                  ${escapeHtml(
+                    formatNumber(
+                      order.tax_amount
+                    )
+                  )}
+                </strong>
+              </div>
+
+              <div class="total-row grand">
+                <span>
+                  Grand Total
+                </span>
+
+                <span>
+                  ${escapeHtml(
+                    formatNumber(
+                      order.grand_total
+                    )
+                  )}
+                  ${escapeHtml(
+                    currency
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div class="footer">
+              Controlled invoice generated by MAVORA ERP.
+            </div>
+
+            <script>
+              window.addEventListener(
+                'load',
+                function () {
+                  setTimeout(
+                    function () {
+                      window.print();
+                    },
+                    250
+                  );
+                }
+              );
+            </script>
+          </body>
+        </html>
+      `;
+    };
+
+  const openPrintWindow =
+    (
+      mode:
+        | 'A4'
+        | 'THERMAL'
+    ) => {
+      if (!invoiceDetail) {
+        return;
+      }
+
+      const popup =
+        window.open(
+          '',
+          '_blank',
+          'width=900,height=900'
+        );
+
+      if (!popup) {
+        setInvoiceError(
+          t(
+            'Browser Pop-up ပိတ်ထားပါသည်။ Pop-up ကို Allow လုပ်ပြီး ပြန်စမ်းပါ။',
+            'The browser blocked the print window. Allow pop-ups and try again.'
+          )
+        );
+
+        return;
+      }
+
+      popup.document.open();
+
+      popup.document.write(
+        buildInvoicePrintHtml(
+          mode
+        )
+      );
+
+      popup.document.close();
+
+      popup.focus();
+
+      setOutputOpen(
+        false
+      );
+    };
+
+  const handleUsbPrint =
+    () => {
+      openPrintWindow(
+        'A4'
+      );
+    };
+
+  const handleBluetoothPrint =
+    () => {
+      openPrintWindow(
+        'THERMAL'
+      );
+    };
+
+  const handleSaveInvoiceImage =
+    async () => {
+      if (
+        !invoiceDetail ||
+        !invoiceImageRef.current
+      ) {
+        return;
+      }
+
+      setImageSaving(
+        true
+      );
+
+      setInvoiceError('');
+
+      try {
+        const canvas =
+          await html2canvas(
+            invoiceImageRef.current,
+            {
+              scale:
+                2,
+
+              useCORS:
+                true,
+
+              logging:
+                false,
+
+              backgroundColor:
+                '#ffffff',
+            }
+          );
+
+        const dataUrl =
+          canvas.toDataURL(
+            'image/png',
+            1
+          );
+
+        const anchor =
+          document.createElement(
+            'a'
+          );
+
+        anchor.href =
+          dataUrl;
+
+        anchor.download =
+          `${invoiceDetail.order.invoice_no}.png`;
+
+        document.body.appendChild(
+          anchor
+        );
+
+        anchor.click();
+
+        anchor.remove();
+
+        setOutputOpen(
+          false
+        );
+      } catch (error) {
+        setInvoiceError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to save Invoice image'
+        );
+      } finally {
+        setImageSaving(
+          false
+        );
+      }
+    };
+
   const modifyCheckoutField =
     <T,>(
       setter:
@@ -873,16 +2164,21 @@ export const MavoraSales: React.FC<
 
           <h2 className="text-2xl md:text-3xl font-black text-slate-900">
             {t(
-              'Controlled Sales POS',
-              'Controlled Sales POS'
+              'Controlled Sales',
+              'Controlled Sales'
             )}
           </h2>
 
           <p className="text-xs md:text-sm text-slate-500 mt-1">
-            {t(
-              'Server Price • FEFO • COGS • Atomic Stock Issue',
-              'Server Price • FEFO • COGS • Atomic Stock Issue'
-            )}
+            {salesView === 'pos'
+              ? t(
+                  'Server Price • FEFO • COGS • Atomic Stock Issue',
+                  'Server Price • FEFO • COGS • Atomic Stock Issue'
+                )
+              : t(
+                  'Sales History • Invoice • Lot / Batch Trace',
+                  'Sales History • Invoice • Lot / Batch Trace'
+                )}
           </p>
         </div>
 
@@ -922,7 +2218,9 @@ export const MavoraSales: React.FC<
               !selectedWarehouseId
             }
             onClick={() =>
-              void refreshCatalog()
+              salesView === 'records'
+                ? void refreshSalesHistory()
+                : void refreshCatalog()
             }
             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 disabled:opacity-50"
           >
@@ -935,11 +2233,74 @@ export const MavoraSales: React.FC<
         </div>
       </div>
 
+      <div className="flex gap-2 rounded-2xl border border-slate-200 bg-white p-2">
+        <button
+          type="button"
+          onClick={() => {
+            setSalesView(
+              'pos'
+            );
+
+            setInvoiceOpen(
+              false
+            );
+
+            setOutputOpen(
+              false
+            );
+          }}
+          className={`flex-1 rounded-xl px-4 py-2 text-sm font-black transition ${
+            salesView === 'pos'
+              ? 'bg-emerald-600 text-white shadow'
+              : 'text-slate-500 hover:bg-slate-50'
+          }`}
+        >
+          🛒{' '}
+          {t(
+            'POS / Sale',
+            'POS / Sale'
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setCheckoutOpen(
+              false
+            );
+
+            setSalesView(
+              'records'
+            );
+
+            setErrorMessage(
+              ''
+            );
+
+            void refreshSalesHistory();
+          }}
+          className={`flex-1 rounded-xl px-4 py-2 text-sm font-black transition ${
+            salesView === 'records'
+              ? 'bg-slate-900 text-white shadow'
+              : 'text-slate-500 hover:bg-slate-50'
+          }`}
+        >
+          📄{' '}
+          {t(
+            'Sales Records',
+            'Sales Records'
+          )}
+        </button>
+      </div>
+
       {errorMessage && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
           {errorMessage}
         </div>
       )}
+
+      {salesView === 'pos' && (
+        <>
 
       {priceSetupRequired && (
         <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-4 md:p-6">
@@ -1910,7 +3271,1233 @@ export const MavoraSales: React.FC<
         </div>
       )}
 
-      {loading && (
+        </>
+      )}
+
+      {/* CONTROLLED SALES HISTORY UI START */}
+
+      {salesView === 'records' && (
+        <div className="space-y-4">
+          {historyError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+              {historyError}
+            </div>
+          )}
+
+          {invoiceError && (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+              {invoiceError}
+            </div>
+          )}
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-end">
+              <label className="flex-1 space-y-1">
+                <span className="text-xs font-black text-slate-500">
+                  Invoice / Customer / Phone
+                </span>
+
+                <input
+                  value={
+                    historySearch
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setHistorySearch(
+                      event.target.value
+                    )
+                  }
+                  onKeyDown={(
+                    event
+                  ) => {
+                    if (
+                      event.key ===
+                      'Enter'
+                    ) {
+                      void refreshSalesHistory();
+                    }
+                  }}
+                  placeholder="Invoice No., Customer Name, Phone..."
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-black text-slate-500">
+                  From Date
+                </span>
+
+                <input
+                  type="date"
+                  value={
+                    historyFromDate
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setHistoryFromDate(
+                      event.target.value
+                    )
+                  }
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className="text-xs font-black text-slate-500">
+                  To Date
+                </span>
+
+                <input
+                  type="date"
+                  value={
+                    historyToDate
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    setHistoryToDate(
+                      event.target.value
+                    )
+                  }
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
+
+              <button
+                type="button"
+                disabled={
+                  historyLoading ||
+                  !selectedWarehouseId
+                }
+                onClick={() =>
+                  void refreshSalesHistory()
+                }
+                className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-black text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                🔎 Search
+              </button>
+
+              <button
+                type="button"
+                disabled={
+                  historyLoading
+                }
+                onClick={() => {
+                  setHistorySearch(
+                    ''
+                  );
+
+                  setHistoryFromDate(
+                    ''
+                  );
+
+                  setHistoryToDate(
+                    ''
+                  );
+
+                  setHistory(
+                    null
+                  );
+                }}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-black text-slate-600"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-900">
+                  📄 Controlled Sales Records
+                </h3>
+
+                <div className="text-xs text-slate-500">
+                  {history
+                    ? `${history.total_count} records`
+                    : t(
+                        'Refresh သို့ Search လုပ်၍ Sales Records ကိုဖတ်ပါ။',
+                        'Refresh or search to load Sales records.'
+                      )}
+                </div>
+              </div>
+
+              {history && (
+                <div className="text-xs font-bold text-slate-500">
+                  {
+                    history
+                      .warehouse
+                      .code
+                  }
+                  {' • '}
+                  {
+                    history
+                      .warehouse
+                      .timezone
+                  }
+                </div>
+              )}
+            </div>
+
+            {historyLoading ? (
+              <div className="py-16 text-center text-sm font-bold text-slate-400">
+                Loading Sales Records...
+              </div>
+            ) : history &&
+              history.orders.length >
+                0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3 text-left">
+                        Invoice
+                      </th>
+
+                      <th className="px-4 py-3 text-left">
+                        Customer
+                      </th>
+
+                      <th className="px-4 py-3 text-left">
+                        Payment
+                      </th>
+
+                      <th className="px-4 py-3 text-right">
+                        Qty
+                      </th>
+
+                      <th className="px-4 py-3 text-right">
+                        Total
+                      </th>
+
+                      <th className="px-4 py-3 text-left">
+                        Date
+                      </th>
+
+                      <th className="px-4 py-3 text-center">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100">
+                    {history.orders.map(
+                      (order) => (
+                        <tr
+                          key={
+                            order.sales_order_id
+                          }
+                          className="hover:bg-slate-50"
+                        >
+                          <td className="px-4 py-3">
+                            <div className="font-black text-slate-900">
+                              {
+                                order.invoice_no
+                              }
+                            </div>
+
+                            <div className="text-[11px] text-slate-400">
+                              {
+                                order.status
+                              }
+                              {' • '}
+                              {
+                                order.line_count
+                              }
+                              {' lines'}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-800">
+                              {
+                                order.customer_name ??
+                                '-'
+                              }
+                            </div>
+
+                            <div className="text-xs text-slate-400">
+                              {
+                                order.customer_phone ??
+                                '-'
+                              }
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-700">
+                              {
+                                order.payment_method
+                              }
+                            </div>
+
+                            <div
+                              className={`text-xs font-black ${
+                                order.is_paid
+                                  ? 'text-emerald-600'
+                                  : 'text-amber-600'
+                              }`}
+                            >
+                              {order.is_paid
+                                ? 'PAID'
+                                : 'UNPAID'}
+                            </div>
+                          </td>
+
+                          <td className="px-4 py-3 text-right font-black">
+                            {formatNumber(
+                              order.total_quantity,
+                              3
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3 text-right">
+                            <div className="font-black text-emerald-600">
+                              {formatNumber(
+                                order.grand_total
+                              )}
+                            </div>
+
+                            <div className="text-[11px] text-slate-400">
+                              {
+                                order.currency_code ??
+                                'MMK'
+                              }
+                            </div>
+                          </td>
+
+                          <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
+                            {formatDateTime(
+                              order.sold_at
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              type="button"
+                              disabled={
+                                invoiceLoading
+                              }
+                              onClick={() =>
+                                void openInvoiceDetail(
+                                  order.sales_order_id
+                                )
+                              }
+                              className="rounded-lg bg-indigo-50 px-3 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                            >
+                              View Invoice
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : history ? (
+              <div className="py-16 text-center text-sm font-bold text-slate-400">
+                No Sales Records found.
+              </div>
+            ) : (
+              <div className="py-16 text-center text-sm font-bold text-slate-400">
+                Refresh or Search to load Sales Records.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+
+      {/* =====================================================
+          CONTROLLED INVOICE DETAIL
+          ===================================================== */}
+
+      {invoiceOpen &&
+        invoiceDetail && (
+          <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm">
+            <div className="max-h-[95vh] w-full max-w-5xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
+              <div className="sticky top-0 z-10 flex items-center justify-between gap-3 bg-slate-900 px-4 py-3 text-white">
+                <div>
+                  <div className="text-xs font-bold text-slate-300">
+                    Controlled Sales Invoice
+                  </div>
+
+                  <div className="text-lg font-black">
+                    {
+                      invoiceDetail
+                        .order
+                        .invoice_no
+                    }
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOutputOpen(
+                        true
+                      )
+                    }
+                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-black text-white hover:bg-emerald-700"
+                  >
+                    🖨️ Output Invoice
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      closeInvoiceDetail
+                    }
+                    className="rounded-lg bg-white/10 px-3 py-2 font-black text-white hover:bg-white/20"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-5 p-4 md:p-6">
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl bg-slate-50 p-3">
+                    <div className="text-xs font-bold text-slate-400">
+                      Customer
+                    </div>
+
+                    <div className="font-black text-slate-800">
+                      {
+                        invoiceDetail
+                          .order
+                          .customer_name ??
+                        '-'
+                      }
+                    </div>
+
+                    <div className="text-xs text-slate-500">
+                      {
+                        invoiceDetail
+                          .order
+                          .customer_phone ??
+                        '-'
+                      }
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 p-3">
+                    <div className="text-xs font-bold text-slate-400">
+                      Payment
+                    </div>
+
+                    <div className="font-black text-slate-800">
+                      {
+                        invoiceDetail
+                          .order
+                          .payment_method
+                      }
+                    </div>
+
+                    <div
+                      className={`text-xs font-black ${
+                        invoiceDetail
+                          .order
+                          .is_paid
+                          ? 'text-emerald-600'
+                          : 'text-amber-600'
+                      }`}
+                    >
+                      {invoiceDetail
+                        .order
+                        .is_paid
+                        ? 'PAID'
+                        : 'UNPAID'}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 p-3">
+                    <div className="text-xs font-bold text-slate-400">
+                      Warehouse
+                    </div>
+
+                    <div className="font-black text-slate-800">
+                      {
+                        invoiceDetail
+                          .order
+                          .warehouse
+                          .code
+                      }
+                    </div>
+
+                    <div className="text-xs text-slate-500">
+                      {
+                        invoiceDetail
+                          .order
+                          .warehouse
+                          .name
+                      }
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-slate-50 p-3">
+                    <div className="text-xs font-bold text-slate-400">
+                      Sold At
+                    </div>
+
+                    <div className="font-black text-slate-800">
+                      {formatDateTime(
+                        invoiceDetail
+                          .order
+                          .sold_at
+                      )}
+                    </div>
+
+                    <div className="text-xs text-slate-500">
+                      {
+                        invoiceDetail
+                          .order
+                          .sold_by
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <div className="text-xs font-black text-slate-400">
+                      Shop Type
+                    </div>
+
+                    <div className="font-bold text-slate-700">
+                      {
+                        invoiceDetail
+                          .order
+                          .customer_shop_type ??
+                        '-'
+                      }
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <div className="text-xs font-black text-slate-400">
+                      Address
+                    </div>
+
+                    <div className="font-bold text-slate-700">
+                      {
+                        invoiceDetail
+                          .order
+                          .customer_address ??
+                        '-'
+                      }
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                      <tr>
+                        <th className="px-4 py-3 text-left">
+                          Product
+                        </th>
+
+                        <th className="px-4 py-3 text-right">
+                          Qty
+                        </th>
+
+                        <th className="px-4 py-3 text-right">
+                          Unit Price
+                        </th>
+
+                        <th className="px-4 py-3 text-right">
+                          Amount
+                        </th>
+
+                        <th className="px-4 py-3 text-left">
+                          Lot / Batch
+                        </th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-slate-100">
+                      {invoiceDetail.lines.map(
+                        (line) => (
+                          <tr
+                            key={
+                              line.line_id
+                            }
+                          >
+                            <td className="px-4 py-3">
+                              <div className="text-xs font-black text-indigo-600">
+                                {
+                                  line
+                                    .product
+                                    .sku
+                                }
+                              </div>
+
+                              <div className="font-black text-slate-800">
+                                {
+                                  line
+                                    .product
+                                    .name
+                                }
+                              </div>
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-black">
+                              {formatNumber(
+                                line.quantity,
+                                3
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-bold">
+                              {formatNumber(
+                                line.unit_price
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3 text-right font-black text-emerald-600">
+                              {formatNumber(
+                                line.line_total
+                              )}
+                            </td>
+
+                            <td className="px-4 py-3">
+                              {line.allocations.map(
+                                (
+                                  allocation
+                                ) => (
+                                  <div
+                                    key={
+                                      allocation.allocation_id
+                                    }
+                                    className="mb-1 rounded-lg bg-slate-50 px-2 py-1 text-xs"
+                                  >
+                                    <span className="font-black">
+                                      {
+                                        allocation.lot_no ??
+                                        '-'
+                                      }
+                                    </span>
+
+                                    {allocation.batch_no && (
+                                      <span className="text-slate-400">
+                                        {' / '}
+                                        {
+                                          allocation.batch_no
+                                        }
+                                      </span>
+                                    )}
+
+                                    <span className="ml-2 text-slate-500">
+                                      ×{' '}
+                                      {formatNumber(
+                                        allocation.quantity,
+                                        3
+                                      )}
+                                    </span>
+                                  </div>
+                                )
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="ml-auto w-full max-w-md space-y-2 rounded-2xl bg-slate-50 p-4">
+                  <div className="flex justify-between">
+                    <span>
+                      Subtotal
+                    </span>
+
+                    <strong>
+                      {formatNumber(
+                        invoiceDetail
+                          .order
+                          .subtotal
+                      )}
+                    </strong>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span>
+                      Discount
+                    </span>
+
+                    <strong className="text-rose-600">
+                      -
+                      {formatNumber(
+                        invoiceDetail
+                          .order
+                          .discount_amount
+                      )}
+                    </strong>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span>
+                      Tax
+                    </span>
+
+                    <strong>
+                      {formatNumber(
+                        invoiceDetail
+                          .order
+                          .tax_amount
+                      )}
+                    </strong>
+                  </div>
+
+                  <div className="flex justify-between border-t border-slate-300 pt-3 text-lg">
+                    <span className="font-black">
+                      Grand Total
+                    </span>
+
+                    <span className="font-black text-emerald-600">
+                      {formatNumber(
+                        invoiceDetail
+                          .order
+                          .grand_total
+                      )}{' '}
+                      {
+                        invoiceDetail
+                          .order
+                          .price_list
+                          .currency_code ??
+                        'MMK'
+                      }
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-700">
+                  🔒 Customer-facing Invoice တွင်
+                  Inventory Cost / COGS မဖော်ပြပါ။
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+      {/* =====================================================
+          OUTPUT INVOICE MODAL
+          ===================================================== */}
+
+      {outputOpen &&
+        invoiceDetail && (
+          <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm">
+            <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="flex items-center justify-between bg-slate-900 px-4 py-3 text-white">
+                <div>
+                  <div className="text-xs font-bold text-slate-300">
+                    Invoice Output
+                  </div>
+
+                  <div className="font-black">
+                    {
+                      invoiceDetail
+                        .order
+                        .invoice_no
+                    }
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOutputOpen(
+                      false
+                    )
+                  }
+                  className="text-xl font-black"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4 p-4 md:p-6">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    disabled={
+                      imageSaving
+                    }
+                    onClick={() =>
+                      void handleSaveInvoiceImage()
+                    }
+                    className="rounded-2xl bg-blue-600 px-3 py-5 text-white shadow hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <div className="text-3xl">
+                      🖼️
+                    </div>
+
+                    <div className="mt-2 font-black">
+                      Save Image
+                    </div>
+
+                    <div className="mt-1 text-[10px] text-blue-100">
+                      PNG High Resolution
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleUsbPrint
+                    }
+                    className="rounded-2xl bg-indigo-600 px-3 py-5 text-white shadow hover:bg-indigo-700"
+                  >
+                    <div className="text-3xl">
+                      🖨️
+                    </div>
+
+                    <div className="mt-2 font-black">
+                      USB Printer
+                    </div>
+
+                    <div className="mt-1 text-[10px] text-indigo-100">
+                      A4 / System Printer
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={
+                      handleBluetoothPrint
+                    }
+                    className="rounded-2xl bg-orange-500 px-3 py-5 text-white shadow hover:bg-orange-600"
+                  >
+                    <div className="flex justify-center">
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="h-8 w-8"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M6 7l12 10-6 5V2l6 5L6 17" />
+                      </svg>
+                    </div>
+
+                    <div className="mt-2 font-black">
+                      Bluetooth Printer
+                    </div>
+
+                    <div className="mt-1 text-[10px] text-orange-100">
+                      NEXORA BT Print
+                    </div>
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+                  <div className="text-xs font-black text-orange-800">
+                    Bluetooth Thermal Paper
+                  </div>
+
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {[
+                      '55mm',
+                      '58mm',
+                      '80mm',
+                    ].map(
+                      (
+                        size
+                      ) => (
+                        <button
+                          type="button"
+                          key={
+                            size
+                          }
+                          onClick={() =>
+                            setThermalPaperSize(
+                              size as
+                                | '55mm'
+                                | '58mm'
+                                | '80mm'
+                            )
+                          }
+                          className={`rounded-lg border px-3 py-2 text-sm font-black ${
+                            thermalPaperSize ===
+                            size
+                              ? 'border-orange-500 bg-orange-500 text-white'
+                              : 'border-orange-200 bg-white text-orange-700'
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <div className="mt-3 text-xs leading-5 text-orange-800">
+                    Bluetooth Printer ကိုနှိပ်ပြီး
+                    System Print Dialog ပေါ်လာပါက
+                    <strong>
+                      {' '}
+                      NEXORA BT Print
+                    </strong>
+                    {' '}
+                    ကိုရွေးပြီး paired Bluetooth
+                    printer သို့ထုတ်ပါ။
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+                  USB Printer သည် A4 invoice layout ကို
+                  အသုံးပြုသည်။ Bluetooth Printer သည်
+                  compact thermal receipt layout ကို
+                  အသုံးပြုသည်။
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setOutputOpen(
+                      false
+                    )
+                  }
+                  className="w-full rounded-xl bg-slate-100 px-4 py-3 font-black text-slate-600"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+      {/* =====================================================
+          SAVE IMAGE TEMPLATE
+          Off-screen only — customer-facing, no COGS
+          ===================================================== */}
+
+      {invoiceDetail && (
+        <div
+          className="fixed left-[10000px] top-0 -z-50 w-[800px] bg-white"
+          aria-hidden="true"
+        >
+          <div
+            ref={
+              invoiceImageRef
+            }
+            className="w-[800px] bg-white p-10 text-slate-900"
+            style={{
+              fontFamily:
+                '"Pyidaungsu", "Myanmar Text", Arial, sans-serif',
+            }}
+          >
+            <div className="flex justify-between gap-6 border-b-2 border-slate-900 pb-5">
+              <div>
+                <div className="text-3xl font-black">
+                  MAVORA ERP
+                </div>
+
+                <div className="font-bold text-slate-600">
+                  Controlled Sales Invoice
+                </div>
+
+                <div className="mt-1 text-xs text-slate-500">
+                  {
+                    invoiceDetail
+                      .order
+                      .warehouse
+                      .code
+                  }
+                  {' — '}
+                  {
+                    invoiceDetail
+                      .order
+                      .warehouse
+                      .name
+                  }
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-xl font-black">
+                  {
+                    invoiceDetail
+                      .order
+                      .invoice_no
+                  }
+                </div>
+
+                <div className="mt-1 text-sm">
+                  {formatDateTime(
+                    invoiceDetail
+                      .order
+                      .sold_at
+                  )}
+                </div>
+
+                <div className="text-xs uppercase text-slate-500">
+                  {
+                    invoiceDetail
+                      .order
+                      .status
+                  }
+                </div>
+              </div>
+            </div>
+
+            <div className="my-5 grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+              <div>
+                <span className="font-black">
+                  Customer:
+                </span>{' '}
+                {
+                  invoiceDetail
+                    .order
+                    .customer_name ??
+                  '-'
+                }
+              </div>
+
+              <div>
+                <span className="font-black">
+                  Phone:
+                </span>{' '}
+                {
+                  invoiceDetail
+                    .order
+                    .customer_phone ??
+                  '-'
+                }
+              </div>
+
+              <div>
+                <span className="font-black">
+                  Shop Type:
+                </span>{' '}
+                {
+                  invoiceDetail
+                    .order
+                    .customer_shop_type ??
+                  '-'
+                }
+              </div>
+
+              <div>
+                <span className="font-black">
+                  Payment:
+                </span>{' '}
+                {
+                  invoiceDetail
+                    .order
+                    .payment_method
+                }
+              </div>
+
+              <div>
+                <span className="font-black">
+                  Address:
+                </span>{' '}
+                {
+                  invoiceDetail
+                    .order
+                    .customer_address ??
+                  '-'
+                }
+              </div>
+
+              <div>
+                <span className="font-black">
+                  Sold By:
+                </span>{' '}
+                {
+                  invoiceDetail
+                    .order
+                    .sold_by
+                }
+              </div>
+            </div>
+
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-900 text-white">
+                  <th className="border border-slate-900 px-3 py-2 text-left">
+                    Product
+                  </th>
+
+                  <th className="border border-slate-900 px-3 py-2 text-right">
+                    Qty
+                  </th>
+
+                  <th className="border border-slate-900 px-3 py-2 text-right">
+                    Unit Price
+                  </th>
+
+                  <th className="border border-slate-900 px-3 py-2 text-right">
+                    Amount
+                  </th>
+
+                  <th className="border border-slate-900 px-3 py-2 text-left">
+                    Lot / Batch
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {invoiceDetail.lines.map(
+                  (
+                    line
+                  ) => (
+                    <tr
+                      key={
+                        line.line_id
+                      }
+                    >
+                      <td className="border border-slate-300 px-3 py-2">
+                        <div className="font-black">
+                          {
+                            line
+                              .product
+                              .sku
+                          }
+                        </div>
+
+                        <div>
+                          {
+                            line
+                              .product
+                              .name
+                          }
+                        </div>
+                      </td>
+
+                      <td className="border border-slate-300 px-3 py-2 text-right">
+                        {formatNumber(
+                          line.quantity,
+                          3
+                        )}
+                      </td>
+
+                      <td className="border border-slate-300 px-3 py-2 text-right">
+                        {formatNumber(
+                          line.unit_price
+                        )}
+                      </td>
+
+                      <td className="border border-slate-300 px-3 py-2 text-right font-black">
+                        {formatNumber(
+                          line.line_total
+                        )}
+                      </td>
+
+                      <td className="border border-slate-300 px-3 py-2 text-xs">
+                        {line.allocations
+                          .map(
+                            (
+                              allocation
+                            ) =>
+                              `${
+                                allocation.lot_no ??
+                                '-'
+                              }${
+                                allocation.batch_no
+                                  ? ` / ${allocation.batch_no}`
+                                  : ''
+                              }`
+                          )
+                          .join(
+                            ', '
+                          )}
+                      </td>
+                    </tr>
+                  )
+                )}
+              </tbody>
+            </table>
+
+            <div className="ml-auto mt-5 w-[330px] space-y-2">
+              <div className="flex justify-between">
+                <span>
+                  Subtotal
+                </span>
+
+                <strong>
+                  {formatNumber(
+                    invoiceDetail
+                      .order
+                      .subtotal
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex justify-between">
+                <span>
+                  Discount
+                </span>
+
+                <strong>
+                  -
+                  {formatNumber(
+                    invoiceDetail
+                      .order
+                      .discount_amount
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex justify-between">
+                <span>
+                  Tax
+                </span>
+
+                <strong>
+                  {formatNumber(
+                    invoiceDetail
+                      .order
+                      .tax_amount
+                  )}
+                </strong>
+              </div>
+
+              <div className="flex justify-between border-t-2 border-slate-900 pt-3 text-lg font-black">
+                <span>
+                  Grand Total
+                </span>
+
+                <span>
+                  {formatNumber(
+                    invoiceDetail
+                      .order
+                      .grand_total
+                  )}{' '}
+                  {
+                    invoiceDetail
+                      .order
+                      .price_list
+                      .currency_code ??
+                    'MMK'
+                  }
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-8 border-t border-slate-300 pt-3 text-center text-xs text-slate-500">
+              Controlled invoice generated by MAVORA ERP.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CONTROLLED SALES HISTORY UI END */}
+
+      {(loading ||
+        historyLoading ||
+        invoiceLoading ||
+        imageSaving) && (
         <div className="fixed bottom-4 right-4 z-[130] rounded-full bg-slate-900 px-4 py-2 text-xs font-black text-white shadow-lg">
           {t(
             'Loading...',
