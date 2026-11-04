@@ -15,6 +15,7 @@ import {
   createMavoraPrivateMediaSignedUrl,
   createSalesPostingKey,
   addMavoraSalesCustomerActivity,
+  loadMavoraCustomerReceivable,
   loadMavoraProductMedia,
   loadMavoraSalesCatalog,
   loadMavoraSalesCustomerActivities,
@@ -24,11 +25,14 @@ import {
   loadMavoraSalesHistory,
   loadMavoraSalesInvoiceDetail,
   loadMavoraSalesWarehouses,
+  postMavoraReceivablePayment,
   setMavoraSalesProductPrice,
   updateMavoraSalesCustomerCrm,
   uploadMavoraSalesCustomerMedia,
   upsertMavoraSalesPriceList,
   type MavoraCustomerMediaKind,
+  type MavoraCustomerReceivableResult,
+  type MavoraReceivablePaymentMethod,
   type MavoraSalesCatalog,
   type MavoraSalesCatalogProduct,
   type MavoraSalesCustomerActivity,
@@ -312,6 +316,66 @@ export const MavoraSales: React.FC<
   ] = useState('');
 
 
+  /* =====================================================
+   * PHASE 2P-6N-8 — CUSTOMER AR UI
+   * ===================================================== */
+
+  const [
+    customerReceivable,
+    setCustomerReceivable,
+  ] = useState<
+    MavoraCustomerReceivableResult | null
+  >(null);
+
+  const [
+    arOpen,
+    setArOpen,
+  ] = useState(false);
+
+  const [
+    arLoading,
+    setArLoading,
+  ] = useState(false);
+
+  const [
+    arPosting,
+    setArPosting,
+  ] = useState(false);
+
+  const [
+    arError,
+    setArError,
+  ] = useState('');
+
+  const [
+    arSuccess,
+    setArSuccess,
+  ] = useState('');
+
+  const [
+    arPaymentMethod,
+    setArPaymentMethod,
+  ] = useState<
+    MavoraReceivablePaymentMethod
+  >('CASH');
+
+  const [
+    arReferenceNo,
+    setArReferenceNo,
+  ] = useState('');
+
+  const [
+    arPaymentNote,
+    setArPaymentNote,
+  ] = useState('');
+
+  const [
+    arAllocations,
+    setArAllocations,
+  ] = useState<
+    Record<string, string>
+  >({});
+
   const [
     checkoutGpsBusy,
     setCheckoutGpsBusy,
@@ -523,6 +587,29 @@ export const MavoraSales: React.FC<
   const postingKeyRef =
     useRef<string | null>(null);
 
+  const arPostingKeyRef =
+    useRef<string | null>(null);
+
+  const selectedSalesSiteId =
+    useMemo(
+      () =>
+        warehouses.find(
+          (warehouse) =>
+            warehouse.id ===
+            selectedWarehouseId
+        )?.site_id ?? '',
+      [
+        warehouses,
+        selectedWarehouseId,
+      ]
+    );
+
+  const invalidateArPostingKey =
+    useCallback(() => {
+      arPostingKeyRef.current =
+        null;
+    }, []);
+
   const invalidatePostingKey =
     useCallback(() => {
       postingKeyRef.current =
@@ -581,6 +668,66 @@ export const MavoraSales: React.FC<
         tenantId,
       ]
     );
+
+  const refreshCustomerReceivable =
+    useCallback(
+      async (
+        customerId =
+          selectedCustomerId
+      ) => {
+        if (
+          !customerId ||
+          !selectedSalesSiteId
+        ) {
+          setCustomerReceivable(
+            null
+          );
+
+          return;
+        }
+
+        setArLoading(true);
+        setArError('');
+
+        try {
+          const result =
+            await loadMavoraCustomerReceivable(
+              {
+                tenantId,
+                customerId,
+
+                siteId:
+                  selectedSalesSiteId,
+
+                asOf:
+                  null,
+              }
+            );
+
+          setCustomerReceivable(
+            result
+          );
+        } catch (error) {
+          setCustomerReceivable(
+            null
+          );
+
+          setArError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to load Customer Receivable'
+          );
+        } finally {
+          setArLoading(false);
+        }
+      },
+      [
+        tenantId,
+        selectedCustomerId,
+        selectedSalesSiteId,
+      ]
+    );
+
 
   const refreshCatalog =
     useCallback(
@@ -745,6 +892,36 @@ export const MavoraSales: React.FC<
   ]);
 
   useEffect(() => {
+    setArSuccess('');
+    setArAllocations({});
+
+    arPostingKeyRef.current =
+      null;
+
+    if (
+      !selectedCustomerId ||
+      !selectedSalesSiteId
+    ) {
+      setCustomerReceivable(
+        null
+      );
+
+      setArError('');
+
+      return;
+    }
+
+    void refreshCustomerReceivable(
+      selectedCustomerId
+    );
+  }, [
+    selectedCustomerId,
+    selectedSalesSiteId,
+    refreshCustomerReceivable,
+  ]);
+
+
+  useEffect(() => {
     let cancelled = false;
 
     const loadPrimaryProductPhotos =
@@ -907,6 +1084,38 @@ export const MavoraSales: React.FC<
   const grandTotal =
     taxableAmount +
     taxAmount;
+
+  const arPaymentTotal =
+    useMemo(
+      () =>
+        Object.values(
+          arAllocations
+        ).reduce(
+          (
+            total,
+            rawValue
+          ) => {
+            const value =
+              Number(rawValue);
+
+            return (
+              total +
+              (
+                Number.isFinite(
+                  value
+                ) &&
+                value > 0
+                  ? value
+                  : 0
+              )
+            );
+          },
+          0
+        ),
+      [
+        arAllocations,
+      ]
+    );
 
   const addToCart = (
     product:
@@ -1276,6 +1485,247 @@ export const MavoraSales: React.FC<
       );
 
       setErrorMessage('');
+    };
+
+
+  const openCustomerReceivable =
+    async () => {
+      if (
+        !selectedCustomerId ||
+        !selectedSalesSiteId
+      ) {
+        setErrorMessage(
+          t(
+            'Customer Master နှင့် Warehouse ကို အရင်ရွေးပါ။',
+            'Select a Customer Master record and Warehouse first.'
+          )
+        );
+
+        return;
+      }
+
+      setArOpen(true);
+      setArSuccess('');
+      setArError('');
+
+      await refreshCustomerReceivable(
+        selectedCustomerId
+      );
+    };
+
+
+  const updateArAllocation =
+    (
+      salesOrderId: string,
+      value: string
+    ) => {
+      invalidateArPostingKey();
+
+      setArAllocations(
+        (current) => ({
+          ...current,
+          [salesOrderId]:
+            value,
+        })
+      );
+
+      setArSuccess('');
+    };
+
+
+  const submitReceivablePayment =
+    async () => {
+      if (
+        !selectedCustomerId ||
+        !selectedSalesSiteId ||
+        !customerReceivable
+      ) {
+        return;
+      }
+
+      const invoiceMap =
+        new Map(
+          customerReceivable
+            .invoices
+            .map(
+              (invoice) => [
+                invoice.sales_order_id,
+                invoice,
+              ]
+            )
+        );
+
+      const allocations =
+        Object.entries(
+          arAllocations
+        )
+          .map(
+            ([
+              salesOrderId,
+              rawValue,
+            ]) => ({
+              salesOrderId,
+
+              allocatedAmount:
+                Number(rawValue),
+            })
+          )
+          .filter(
+            (allocation) =>
+              Number.isFinite(
+                allocation
+                  .allocatedAmount
+              ) &&
+              allocation
+                .allocatedAmount >
+                0
+          );
+
+      if (!allocations.length) {
+        setArError(
+          t(
+            'Payment ခွဲဝေမည့် Invoice အနည်းဆုံးတစ်ခု ထည့်ပါ။',
+            'Allocate payment to at least one invoice.'
+          )
+        );
+
+        return;
+      }
+
+      for (
+        const allocation
+        of allocations
+      ) {
+        const invoice =
+          invoiceMap.get(
+            allocation
+              .salesOrderId
+          );
+
+        if (!invoice) {
+          setArError(
+            'Receivable invoice is no longer available.'
+          );
+
+          return;
+        }
+
+        if (
+          allocation
+            .allocatedAmount >
+          invoice.outstanding +
+            0.000001
+        ) {
+          setArError(
+            `${invoice.invoice_no}: allocation exceeds outstanding balance.`
+          );
+
+          return;
+        }
+      }
+
+      const amount =
+        allocations.reduce(
+          (
+            total,
+            allocation
+          ) =>
+            total +
+            allocation
+              .allocatedAmount,
+          0
+        );
+
+      if (
+        !Number.isFinite(
+          amount
+        ) ||
+        amount <= 0
+      ) {
+        setArError(
+          'Payment amount must be greater than zero.'
+        );
+
+        return;
+      }
+
+      if (
+        !arPostingKeyRef.current
+      ) {
+        arPostingKeyRef.current =
+          createSalesPostingKey(
+            'ar-payment'
+          );
+      }
+
+      setArPosting(true);
+      setArError('');
+      setArSuccess('');
+
+      try {
+        const result =
+          await postMavoraReceivablePayment(
+            {
+              tenantId,
+
+              siteId:
+                selectedSalesSiteId,
+
+              customerId:
+                selectedCustomerId,
+
+              postingKey:
+                arPostingKeyRef.current,
+
+              paymentMethod:
+                arPaymentMethod,
+
+              amount,
+
+              allocations,
+
+              referenceNo:
+                arReferenceNo,
+
+              note:
+                arPaymentNote,
+
+              receivedAt:
+                null,
+            }
+          );
+
+        setArSuccess(
+          `${
+            result.already_posted
+              ? 'Existing'
+              : 'Posted'
+          } receipt ${
+            result.receipt_no
+          } — ${formatNumber(
+            result.amount
+          )}`
+        );
+
+        setArAllocations({});
+        setArReferenceNo('');
+        setArPaymentNote('');
+
+        arPostingKeyRef.current =
+          null;
+
+        await refreshCustomerReceivable(
+          selectedCustomerId
+        );
+      } catch (error) {
+        setArError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to post Receivable Payment'
+        );
+      } finally {
+        setArPosting(false);
+      }
     };
 
 
@@ -4850,6 +5300,117 @@ export const MavoraSales: React.FC<
                 </label>
               </div>
 
+              {selectedCustomer && (
+                <div className="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-wide text-cyan-700">
+                        Customer Accounts Receivable
+                      </div>
+
+                      <div className="mt-1 text-[11px] text-cyan-700">
+                        Outstanding is server-derived and cannot be edited.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={
+                        arLoading ||
+                        !selectedSalesSiteId
+                      }
+                      onClick={() =>
+                        void openCustomerReceivable()
+                      }
+                      className="rounded-lg bg-cyan-700 px-3 py-2 text-xs font-black text-white hover:bg-cyan-800 disabled:opacity-50"
+                    >
+                      💳 AR / Collect Payment
+                    </button>
+                  </div>
+
+                  {arLoading ? (
+                    <div className="mt-3 text-xs font-bold text-cyan-700">
+                      Loading receivable...
+                    </div>
+                  ) : customerReceivable ? (
+                    <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+
+                      <div className="rounded-xl bg-white p-2">
+                        <div className="text-[10px] font-black text-slate-400">
+                          Outstanding
+                        </div>
+
+                        <div className="font-black text-rose-600">
+                          {formatNumber(
+                            customerReceivable
+                              .summary
+                              .outstanding_balance
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-white p-2">
+                        <div className="text-[10px] font-black text-slate-400">
+                          Available Credit
+                        </div>
+
+                        <div className="font-black text-emerald-600">
+                          {formatNumber(
+                            customerReceivable
+                              .summary
+                              .available_credit
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-white p-2">
+                        <div className="text-[10px] font-black text-slate-400">
+                          New Credit Available
+                        </div>
+
+                        <div
+                          className={`font-black ${
+                            customerReceivable
+                              .summary
+                              .credit_available_for_new_sales >
+                            0
+                              ? 'text-emerald-600'
+                              : 'text-rose-600'
+                          }`}
+                        >
+                          {formatNumber(
+                            customerReceivable
+                              .summary
+                              .credit_available_for_new_sales
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl bg-white p-2">
+                        <div className="text-[10px] font-black text-slate-400">
+                          Overdue
+                        </div>
+
+                        <div className="font-black text-amber-600">
+                          {formatNumber(
+                            customerReceivable
+                              .summary
+                              .overdue_balance
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+                  ) : null}
+
+                  {arError && (
+                    <div className="mt-2 text-xs font-bold text-rose-600">
+                      {arError}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <div className="mb-2 text-xs font-black text-slate-500">
                   Payment Method
@@ -5077,6 +5638,711 @@ export const MavoraSales: React.FC<
 
         </>
       )}
+
+      {/* =====================================================
+          PHASE 2P-6N-8 — CUSTOMER AR MODAL
+          ===================================================== */}
+
+      {arOpen && (
+        <div className="fixed inset-0 z-[180] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm">
+          <div className="max-h-[95vh] w-full max-w-7xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+
+            <div className="sticky top-0 z-20 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 md:px-6">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-700">
+                  MAVORA ACCOUNTS RECEIVABLE
+                </div>
+
+                <h3 className="mt-1 text-xl font-black text-slate-900 md:text-2xl">
+                  {customerReceivable
+                    ?.customer
+                    .name ??
+                    selectedCustomer
+                      ?.name ??
+                    'Customer Receivable'}
+                </h3>
+
+                <div className="mt-1 text-xs font-bold text-slate-500">
+                  {customerReceivable
+                    ?.customer
+                    .customer_code ??
+                    selectedCustomer
+                      ?.customer_code ??
+                    '-'}
+                  {' • '}
+                  As of{' '}
+                  {customerReceivable
+                    ?.as_of ??
+                    '-'}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setArOpen(false)
+                }
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-black text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-5 p-4 md:p-6">
+
+              {arError && (
+                <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+                  {arError}
+                </div>
+              )}
+
+              {arSuccess && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
+                  ✅ {arSuccess}
+                </div>
+              )}
+
+              {arLoading && (
+                <div className="rounded-xl bg-slate-50 px-4 py-8 text-center text-sm font-black text-slate-500">
+                  Loading Accounts Receivable...
+                </div>
+              )}
+
+              {!arLoading &&
+                customerReceivable && (
+                  <>
+
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+
+                      {[
+                        [
+                          'Outstanding',
+                          customerReceivable
+                            .summary
+                            .outstanding_balance,
+                        ],
+                        [
+                          'Available Credit',
+                          customerReceivable
+                            .summary
+                            .available_credit,
+                        ],
+                        [
+                          'New Credit',
+                          customerReceivable
+                            .summary
+                            .credit_available_for_new_sales,
+                        ],
+                        [
+                          'Credit Limit',
+                          customerReceivable
+                            .summary
+                            .credit_limit,
+                        ],
+                        [
+                          'Overdue',
+                          customerReceivable
+                            .summary
+                            .overdue_balance,
+                        ],
+                        [
+                          'Payments',
+                          customerReceivable
+                            .summary
+                            .total_payments,
+                        ],
+                        [
+                          'Customer Credit',
+                          customerReceivable
+                            .summary
+                            .customer_credit_balance,
+                        ],
+                      ].map(
+                        ([
+                          label,
+                          value,
+                        ]) => (
+                          <div
+                            key={
+                              String(
+                                label
+                              )
+                            }
+                            className="rounded-2xl border border-slate-200 bg-white p-3"
+                          >
+                            <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">
+                              {label}
+                            </div>
+
+                            <div className="mt-1 text-lg font-black text-slate-900">
+                              {formatNumber(
+                                Number(
+                                  value
+                                )
+                              )}
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+
+
+                    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+
+                        <div>
+                          <h4 className="font-black text-slate-900">
+                            Aging
+                          </h4>
+
+                          <div className="text-xs text-slate-500">
+                            Controlled Credit Terms and report-date aging.
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={
+                            arLoading
+                          }
+                          onClick={() =>
+                            void refreshCustomerReceivable(
+                              selectedCustomerId
+                            )
+                          }
+                          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-black text-slate-600"
+                        >
+                          ↻ Refresh
+                        </button>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+                        {(
+                          [
+                            'CURRENT',
+                            '1-30',
+                            '31-60',
+                            '61-90',
+                            '90+',
+                            'UNKNOWN',
+                          ] as const
+                        ).map(
+                          (
+                            bucket
+                          ) => (
+                            <div
+                              key={
+                                bucket
+                              }
+                              className="rounded-xl bg-white p-3"
+                            >
+                              <div className="text-[10px] font-black text-slate-400">
+                                {bucket}
+                              </div>
+
+                              <div className="mt-1 font-black text-slate-800">
+                                {formatNumber(
+                                  customerReceivable
+                                    .aging[
+                                    bucket
+                                  ]
+                                )}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </section>
+
+
+                    <section className="overflow-hidden rounded-2xl border border-slate-200">
+
+                      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <h4 className="font-black text-slate-900">
+                          Open Credit Invoices / Payment Allocation
+                        </h4>
+
+                        <div className="mt-1 text-xs text-slate-500">
+                          Payment total is calculated from invoice allocations.
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full min-w-[900px] text-sm">
+
+                          <thead className="bg-slate-900 text-white">
+                            <tr>
+                              <th className="px-3 py-2 text-left">
+                                Invoice
+                              </th>
+                              <th className="px-3 py-2 text-left">
+                                Due
+                              </th>
+                              <th className="px-3 py-2 text-left">
+                                Aging
+                              </th>
+                              <th className="px-3 py-2 text-right">
+                                Invoice
+                              </th>
+                              <th className="px-3 py-2 text-right">
+                                Credit Note
+                              </th>
+                              <th className="px-3 py-2 text-right">
+                                Paid
+                              </th>
+                              <th className="px-3 py-2 text-right">
+                                Outstanding
+                              </th>
+                              <th className="px-3 py-2 text-right">
+                                Allocate
+                              </th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+
+                            {customerReceivable
+                              .invoices
+                              .filter(
+                                (
+                                  invoice
+                                ) =>
+                                  invoice
+                                    .outstanding >
+                                  0
+                              )
+                              .map(
+                                (
+                                  invoice
+                                ) => (
+                                  <tr
+                                    key={
+                                      invoice
+                                        .sales_order_id
+                                    }
+                                    className="border-b border-slate-100"
+                                  >
+
+                                    <td className="px-3 py-2">
+                                      <div className="font-black text-slate-800">
+                                        {
+                                          invoice
+                                            .invoice_no
+                                        }
+                                      </div>
+
+                                      <div className="text-[10px] text-slate-400">
+                                        {
+                                          invoice
+                                            .sold_date
+                                        }
+                                      </div>
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                      {
+                                        invoice
+                                          .due_date ??
+                                        '-'
+                                      }
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
+                                        {
+                                          invoice
+                                            .aging_bucket
+                                        }
+                                      </span>
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right">
+                                      {formatNumber(
+                                        invoice
+                                          .grand_total
+                                      )}
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right text-violet-600">
+                                      -
+                                      {formatNumber(
+                                        invoice
+                                          .credit_note_total
+                                      )}
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right text-blue-600">
+                                      -
+                                      {formatNumber(
+                                        invoice
+                                          .payment_total
+                                      )}
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right font-black text-rose-600">
+                                      {formatNumber(
+                                        invoice
+                                          .outstanding
+                                      )}
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max={
+                                          invoice
+                                            .outstanding
+                                        }
+                                        step="0.01"
+                                        value={
+                                          arAllocations[
+                                            invoice
+                                              .sales_order_id
+                                          ] ??
+                                          ''
+                                        }
+                                        onChange={(
+                                          event
+                                        ) =>
+                                          updateArAllocation(
+                                            invoice
+                                              .sales_order_id,
+                                            event
+                                              .target
+                                              .value
+                                          )
+                                        }
+                                        placeholder="0"
+                                        className="w-32 rounded-lg border border-slate-300 px-2 py-1.5 text-right font-black"
+                                      />
+                                    </td>
+
+                                  </tr>
+                                )
+                              )}
+
+                            {customerReceivable
+                              .invoices
+                              .filter(
+                                (
+                                  invoice
+                                ) =>
+                                  invoice
+                                    .outstanding >
+                                  0
+                              )
+                              .length ===
+                              0 && (
+                              <tr>
+                                <td
+                                  colSpan={
+                                    8
+                                  }
+                                  className="px-4 py-8 text-center font-bold text-slate-400"
+                                >
+                                  No open Credit invoices.
+                                </td>
+                              </tr>
+                            )}
+
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+
+
+                    <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
+
+                      <div className="grid gap-3 lg:grid-cols-[180px_1fr_1fr_220px]">
+
+                        <label className="space-y-1">
+                          <span className="text-xs font-black text-slate-500">
+                            Payment Method
+                          </span>
+
+                          <select
+                            value={
+                              arPaymentMethod
+                            }
+                            onChange={(
+                              event
+                            ) => {
+                              invalidateArPostingKey();
+
+                              setArPaymentMethod(
+                                event
+                                  .target
+                                  .value as MavoraReceivablePaymentMethod
+                              );
+
+                              setArSuccess('');
+                            }}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 font-bold"
+                          >
+                            {[
+                              'CASH',
+                              'BANK',
+                              'MOBILE',
+                              'CHEQUE',
+                              'OTHER',
+                            ].map(
+                              (
+                                method
+                              ) => (
+                                <option
+                                  key={
+                                    method
+                                  }
+                                  value={
+                                    method
+                                  }
+                                >
+                                  {method}
+                                </option>
+                              )
+                            )}
+                          </select>
+                        </label>
+
+
+                        <label className="space-y-1">
+                          <span className="text-xs font-black text-slate-500">
+                            Reference No.
+                          </span>
+
+                          <input
+                            value={
+                              arReferenceNo
+                            }
+                            onChange={(
+                              event
+                            ) => {
+                              invalidateArPostingKey();
+
+                              setArReferenceNo(
+                                event
+                                  .target
+                                  .value
+                              );
+
+                              setArSuccess('');
+                            }}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2"
+                            placeholder="Bank / Mobile / Cheque reference"
+                          />
+                        </label>
+
+
+                        <label className="space-y-1">
+                          <span className="text-xs font-black text-slate-500">
+                            Payment Note
+                          </span>
+
+                          <input
+                            value={
+                              arPaymentNote
+                            }
+                            onChange={(
+                              event
+                            ) => {
+                              invalidateArPostingKey();
+
+                              setArPaymentNote(
+                                event
+                                  .target
+                                  .value
+                              );
+
+                              setArSuccess('');
+                            }}
+                            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2"
+                            placeholder="Optional payment note"
+                          />
+                        </label>
+
+
+                        <div className="rounded-xl bg-white p-3">
+                          <div className="text-[10px] font-black uppercase text-slate-400">
+                            Payment Total
+                          </div>
+
+                          <div className="mt-1 text-xl font-black text-emerald-600">
+                            {formatNumber(
+                              arPaymentTotal
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+
+                        <div className="text-xs text-emerald-800">
+                          Amount must equal invoice allocations. Server rejects overpayment.
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={
+                            arPosting ||
+                            arPaymentTotal <=
+                              0
+                          }
+                          onClick={() =>
+                            void submitReceivablePayment()
+                          }
+                          className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          {arPosting
+                            ? 'Posting Payment...'
+                            : '💳 Collect Payment'}
+                        </button>
+
+                      </div>
+                    </section>
+
+
+                    <section className="overflow-hidden rounded-2xl border border-slate-200">
+
+                      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <h4 className="font-black text-slate-900">
+                          Customer Statement
+                        </h4>
+
+                        <div className="mt-1 text-xs text-slate-500">
+                          Invoice = Debit • Credit Note / Payment = Credit
+                        </div>
+                      </div>
+
+                      <div className="max-h-[420px] overflow-auto">
+                        <table className="w-full min-w-[900px] text-sm">
+
+                          <thead className="sticky top-0 bg-slate-900 text-white">
+                            <tr>
+                              <th className="px-3 py-2 text-left">Date</th>
+                              <th className="px-3 py-2 text-left">Type</th>
+                              <th className="px-3 py-2 text-left">Document</th>
+                              <th className="px-3 py-2 text-right">Debit</th>
+                              <th className="px-3 py-2 text-right">Credit</th>
+                              <th className="px-3 py-2 text-right">Balance</th>
+                              <th className="px-3 py-2 text-left">Position</th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+
+                            {customerReceivable
+                              .statement
+                              .map(
+                                (
+                                  event
+                                ) => (
+                                  <tr
+                                    key={`${event.event_type}-${event.source_id}-${event.event_at}`}
+                                    className="border-b border-slate-100"
+                                  >
+
+                                    <td className="px-3 py-2 text-xs">
+                                      {formatDateTime(
+                                        event
+                                          .event_at
+                                      )}
+                                    </td>
+
+                                    <td className="px-3 py-2 font-black">
+                                      {
+                                        event
+                                          .event_type
+                                      }
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                      {
+                                        event
+                                          .document_no ??
+                                        event
+                                          .related_invoice_no ??
+                                        '-'
+                                      }
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right">
+                                      {event.debit >
+                                      0
+                                        ? formatNumber(
+                                            event
+                                              .debit
+                                          )
+                                        : '-'}
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right">
+                                      {event.credit >
+                                      0
+                                        ? formatNumber(
+                                            event
+                                              .credit
+                                          )
+                                        : '-'}
+                                    </td>
+
+                                    <td className="px-3 py-2 text-right font-black">
+                                      {formatNumber(
+                                        Math.abs(
+                                          event
+                                            .running_net_balance
+                                        )
+                                      )}
+                                    </td>
+
+                                    <td className="px-3 py-2">
+                                      <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-black">
+                                        {
+                                          event
+                                            .running_balance_type
+                                        }
+                                      </span>
+                                    </td>
+
+                                  </tr>
+                                )
+                              )}
+
+                            {customerReceivable
+                              .statement
+                              .length ===
+                              0 && (
+                              <tr>
+                                <td
+                                  colSpan={
+                                    7
+                                  }
+                                  className="px-4 py-8 text-center font-bold text-slate-400"
+                                >
+                                  No statement activity.
+                                </td>
+                              </tr>
+                            )}
+
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+
+
+                    <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs font-bold text-cyan-800">
+                      🔒 Outstanding Balance = Credit Sales − posted Credit Notes / Returns − Payment Allocations.
+                      It is not editable and does not use the legacy is_paid flag as AR authority.
+                    </div>
+
+                  </>
+                )}
+
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* CONTROLLED SALES HISTORY UI START */}
 

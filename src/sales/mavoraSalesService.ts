@@ -306,9 +306,248 @@ export interface MavoraSalesCheckoutResult {
   invoice_remark?: string | null;
   checkout_version?: 'legacy' | 'v2';
 
+  credit_limit_check?:
+    | 'passed'
+    | 'historical_retry';
+
+  credit_limit?: number;
+  outstanding_after_checkout?: number;
+  available_credit_after_checkout?: number;
+
   movement_group_id: string | null;
 
   lines: MavoraSalesCheckoutLineResult[];
+}
+
+
+/* =========================================================
+ * CUSTOMER ACCOUNTS RECEIVABLE / PAYMENT COLLECTION
+ * Phase 2P-6N-8 client service layer
+ *
+ * Outstanding Balance is DERIVED by the server:
+ *
+ *   CREDIT Sales
+ *   - Credit Notes / Returns
+ *   - Payment Allocations
+ *
+ * No editable or locally persisted outstanding balance.
+ * ========================================================= */
+
+export type MavoraReceivablePaymentMethod =
+  | 'CASH'
+  | 'BANK'
+  | 'MOBILE'
+  | 'CHEQUE'
+  | 'OTHER';
+
+export interface MavoraReceivableCustomer {
+  id: string;
+  customer_code: string;
+  name: string;
+
+  phone: string | null;
+  address: string | null;
+
+  is_active: boolean;
+
+  credit_enabled: boolean;
+  credit_hold: boolean;
+
+  credit_limit: number;
+  credit_days: number;
+}
+
+export interface MavoraReceivableSummary {
+  invoice_count: number;
+  open_invoice_count: number;
+
+  total_credit_sales: number;
+  total_credit_notes: number;
+  total_payments: number;
+
+  outstanding_balance: number;
+  customer_credit_balance: number;
+  net_account_position: number;
+
+  overdue_balance: number;
+
+  credit_limit: number;
+  available_credit: number;
+  credit_available_for_new_sales: number;
+}
+
+export interface MavoraReceivableAging {
+  CURRENT: number;
+  '1-30': number;
+  '31-60': number;
+  '61-90': number;
+  '90+': number;
+  UNKNOWN: number;
+}
+
+export interface MavoraReceivableInvoice {
+  sales_order_id: string;
+  site_id: string;
+
+  invoice_no: string;
+
+  sales_status: string;
+  ar_status:
+    | 'OPEN'
+    | 'PARTIAL'
+    | 'SETTLED'
+    | 'CUSTOMER_CREDIT'
+    | string;
+
+  customer_ref: string | null;
+  invoice_customer_name: string | null;
+
+  sold_at: string;
+  sold_date: string;
+
+  credit_terms: string | null;
+  credit_days: number | null;
+  due_date: string | null;
+
+  grand_total: number;
+
+  credit_note_total: number;
+  payment_total: number;
+
+  outstanding: number;
+  customer_credit: number;
+
+  days_past_due: number | null;
+
+  aging_bucket:
+    | 'CURRENT'
+    | '1-30'
+    | '31-60'
+    | '61-90'
+    | '90+'
+    | 'UNKNOWN'
+    | 'SETTLED'
+    | string;
+}
+
+export interface MavoraReceivableStatementEvent {
+  event_at: string;
+
+  event_type:
+    | 'INVOICE'
+    | 'CREDIT_NOTE'
+    | 'PAYMENT'
+    | string;
+
+  source_id: string;
+  site_id: string;
+
+  document_no: string | null;
+  related_invoice_no: string | null;
+
+  debit: number;
+  credit: number;
+
+  reference_no: string | null;
+  note: string | null;
+
+  running_net_balance: number;
+
+  running_balance_type:
+    | 'DUE'
+    | 'CUSTOMER_CREDIT'
+    | 'SETTLED'
+    | string;
+}
+
+export interface MavoraCustomerReceivableResult {
+  as_of: string;
+  timezone: string;
+
+  site_id: string | null;
+
+  customer: MavoraReceivableCustomer;
+
+  summary: MavoraReceivableSummary;
+  aging: MavoraReceivableAging;
+
+  invoices: MavoraReceivableInvoice[];
+
+  statement: MavoraReceivableStatementEvent[];
+}
+
+export interface LoadMavoraCustomerReceivableInput {
+  tenantId: string;
+  customerId: string;
+
+  siteId?: string | null;
+  asOf?: string | null;
+}
+
+export interface MavoraReceivablePaymentAllocationInput {
+  salesOrderId: string;
+  allocatedAmount: number;
+}
+
+export interface PostMavoraReceivablePaymentInput {
+  tenantId: string;
+  siteId: string;
+  customerId: string;
+
+  postingKey: string;
+
+  paymentMethod: MavoraReceivablePaymentMethod;
+
+  amount: number;
+
+  allocations: MavoraReceivablePaymentAllocationInput[];
+
+  referenceNo?: string | null;
+  note?: string | null;
+
+  receivedAt?: string | null;
+}
+
+export interface MavoraReceivablePaymentAllocationResult {
+  sales_order_id: string;
+  invoice_no: string;
+
+  invoice_total: number;
+
+  credit_note_total: number;
+  prior_payment_total: number;
+
+  outstanding_before: number;
+  allocated_amount: number;
+  outstanding_after: number;
+}
+
+export interface MavoraReceivablePaymentResult {
+  payment_id: string;
+  receipt_no: string;
+
+  tenant_id?: string;
+  site_id: string;
+
+  customer_id: string;
+  customer_code: string;
+  customer_name: string;
+
+  posting_key?: string;
+
+  payment_method: MavoraReceivablePaymentMethod;
+
+  amount: number;
+
+  reference_no: string | null;
+  note: string | null;
+
+  received_at: string;
+
+  already_posted: boolean;
+
+  allocations:
+    MavoraReceivablePaymentAllocationResult[];
 }
 
 const throwIfError = (
@@ -1092,6 +1331,259 @@ export const checkoutMavoraSalesOrder =
 
     return data as MavoraSalesCheckoutResult;
   };
+
+
+/* =========================================================
+ * CONTROLLED CUSTOMER RECEIVABLE RPC
+ * ========================================================= */
+
+export const loadMavoraCustomerReceivable =
+  async (
+    input: LoadMavoraCustomerReceivableInput
+  ): Promise<MavoraCustomerReceivableResult> => {
+    if (!input.tenantId) {
+      throw new Error(
+        'Receivable tenant is required'
+      );
+    }
+
+    if (!input.customerId) {
+      throw new Error(
+        'Receivable Customer is required'
+      );
+    }
+
+    const asOf =
+      input.asOf?.trim() ||
+      null;
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'get_customer_receivable',
+        {
+          p_tenant_id:
+            input.tenantId,
+
+          p_customer_id:
+            input.customerId,
+
+          p_site_id:
+            input.siteId ?? null,
+
+          p_as_of:
+            asOf,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to load Customer Receivable'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid Customer Receivable response'
+      );
+    }
+
+    return (
+      data as MavoraCustomerReceivableResult
+    );
+  };
+
+
+export const postMavoraReceivablePayment =
+  async (
+    input: PostMavoraReceivablePaymentInput
+  ): Promise<MavoraReceivablePaymentResult> => {
+    if (!input.tenantId) {
+      throw new Error(
+        'Payment tenant is required'
+      );
+    }
+
+    if (!input.siteId) {
+      throw new Error(
+        'Payment Site is required'
+      );
+    }
+
+    if (!input.customerId) {
+      throw new Error(
+        'Payment Customer is required'
+      );
+    }
+
+    const postingKey =
+      input.postingKey.trim();
+
+    if (!postingKey) {
+      throw new Error(
+        'Payment posting key is required'
+      );
+    }
+
+    requirePositiveNumber(
+      input.amount,
+      'Payment amount'
+    );
+
+    if (
+      input.amount !==
+      Number(
+        input.amount.toFixed(6)
+      )
+    ) {
+      throw new Error(
+        'Payment amount cannot exceed 6 decimal places'
+      );
+    }
+
+    if (!input.allocations.length) {
+      throw new Error(
+        'At least one invoice allocation is required'
+      );
+    }
+
+    const seen =
+      new Set<string>();
+
+    let allocationTotal =
+      0;
+
+    input.allocations.forEach(
+      (allocation) => {
+        if (!allocation.salesOrderId) {
+          throw new Error(
+            'Payment allocation Sales Order is required'
+          );
+        }
+
+        if (
+          seen.has(
+            allocation.salesOrderId
+          )
+        ) {
+          throw new Error(
+            'Duplicate invoice allocation is not allowed'
+          );
+        }
+
+        seen.add(
+          allocation.salesOrderId
+        );
+
+        requirePositiveNumber(
+          allocation.allocatedAmount,
+          'Payment allocation amount'
+        );
+
+        if (
+          allocation.allocatedAmount !==
+          Number(
+            allocation.allocatedAmount.toFixed(
+              6
+            )
+          )
+        ) {
+          throw new Error(
+            'Payment allocation cannot exceed 6 decimal places'
+          );
+        }
+
+        allocationTotal +=
+          allocation.allocatedAmount;
+      }
+    );
+
+    if (
+      Number(
+        allocationTotal.toFixed(6)
+      ) !==
+      Number(
+        input.amount.toFixed(6)
+      )
+    ) {
+      throw new Error(
+        'Payment amount must equal the total invoice allocation'
+      );
+    }
+
+    const referenceNo =
+      input.referenceNo?.trim() ||
+      null;
+
+    const note =
+      input.note?.trim() ||
+      null;
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'post_receivable_payment',
+        {
+          p_tenant_id:
+            input.tenantId,
+
+          p_site_id:
+            input.siteId,
+
+          p_customer_id:
+            input.customerId,
+
+          p_posting_key:
+            postingKey,
+
+          p_payment_method:
+            input.paymentMethod,
+
+          p_amount:
+            input.amount,
+
+          p_allocations:
+            input.allocations.map(
+              (allocation) => ({
+                sales_order_id:
+                  allocation.salesOrderId,
+
+                allocated_amount:
+                  allocation.allocatedAmount,
+              })
+            ),
+
+          p_reference_no:
+            referenceNo,
+
+          p_note:
+            note,
+
+          // Server owns the time when null.
+          p_received_at:
+            input.receivedAt ?? null,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to post Receivable Payment'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid Receivable Payment response'
+      );
+    }
+
+    return (
+      data as MavoraReceivablePaymentResult
+    );
+  };
+
 
 /* =========================================================
  * CONTROLLED SALES HISTORY / INVOICE
