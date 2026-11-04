@@ -14,6 +14,7 @@ import {
   checkoutMavoraSalesOrder,
   createSalesPostingKey,
   loadMavoraSalesCatalog,
+  loadMavoraSalesCustomers,
   loadMavoraSalesHistory,
   loadMavoraSalesInvoiceDetail,
   loadMavoraSalesWarehouses,
@@ -22,6 +23,7 @@ import {
   type MavoraSalesCatalog,
   type MavoraSalesCatalogProduct,
   type MavoraSalesCheckoutResult,
+  type MavoraSalesCustomer,
   type MavoraSalesHistoryResult,
   type MavoraSalesInvoiceDetail,
   type MavoraSalesWarehouse,
@@ -228,6 +230,45 @@ export const MavoraSales: React.FC<
   ] = useState('');
 
   const [
+    selectedCustomerId,
+    setSelectedCustomerId,
+  ] = useState('');
+
+  const [
+    selectedCustomer,
+    setSelectedCustomer,
+  ] = useState<
+    MavoraSalesCustomer | null
+  >(null);
+
+  const [
+    salesCustomers,
+    setSalesCustomers,
+  ] = useState<
+    MavoraSalesCustomer[]
+  >([]);
+
+  const [
+    customerSearch,
+    setCustomerSearch,
+  ] = useState('');
+
+  const [
+    customerLoading,
+    setCustomerLoading,
+  ] = useState(false);
+
+  const [
+    customerLoadError,
+    setCustomerLoadError,
+  ] = useState('');
+
+  const [
+    invoiceRemark,
+    setInvoiceRemark,
+  ] = useState('');
+
+  const [
     paymentMethod,
     setPaymentMethod,
   ] = useState('CASH');
@@ -347,6 +388,59 @@ export const MavoraSales: React.FC<
       postingKeyRef.current =
         null;
     }, []);
+
+  const refreshSalesCustomers =
+    useCallback(
+      async (
+        search = ''
+      ) => {
+        setCustomerLoading(
+          true
+        );
+
+        setCustomerLoadError(
+          ''
+        );
+
+        try {
+          const result =
+            await loadMavoraSalesCustomers(
+              {
+                tenantId,
+                limit: 200,
+                offset: 0,
+                search:
+                  search.trim() ||
+                  null,
+                isActive:
+                  true,
+              }
+            );
+
+          setSalesCustomers(
+            result.customers ??
+            []
+          );
+        } catch (error) {
+          setSalesCustomers(
+            []
+          );
+
+          setCustomerLoadError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to load Customer Master'
+          );
+        } finally {
+          setCustomerLoading(
+            false
+          );
+        }
+      },
+      [
+        tenantId,
+      ]
+    );
 
   const refreshCatalog =
     useCallback(
@@ -860,6 +954,103 @@ export const MavoraSales: React.FC<
       }
     };
 
+  const selectCheckoutCustomer =
+    (
+      customerId: string
+    ) => {
+      invalidatePostingKey();
+
+      if (!customerId) {
+        setSelectedCustomerId(
+          ''
+        );
+
+        setSelectedCustomer(
+          null
+        );
+
+        setCustomerName('');
+        setCustomerPhone('');
+        setCustomerShopType(
+          'Retail'
+        );
+        setCustomerAddress('');
+        setCustomerGps('');
+
+        setCreditTerms(
+          '7 Days'
+        );
+
+        return;
+      }
+
+      const customer =
+        salesCustomers.find(
+          (item) =>
+            item.customer_id ===
+            customerId
+        ) ??
+        null;
+
+      if (!customer) {
+        setSelectedCustomerId(
+          ''
+        );
+
+        setSelectedCustomer(
+          null
+        );
+
+        setErrorMessage(
+          t(
+            'Customer Master မှတ်တမ်းကို ပြန်ရွေးပေးပါ။',
+            'Please select the Customer Master record again.'
+          )
+        );
+
+        return;
+      }
+
+      setSelectedCustomerId(
+        customer.customer_id
+      );
+
+      setSelectedCustomer(
+        customer
+      );
+
+      setCustomerName(
+        customer.name
+      );
+
+      setCustomerPhone(
+        customer.phone ??
+        ''
+      );
+
+      setCustomerShopType(
+        customer.shop_type ??
+        ''
+      );
+
+      setCustomerAddress(
+        customer.address ??
+        ''
+      );
+
+      setCustomerGps(
+        customer.gps ??
+        ''
+      );
+
+      setCreditTerms(
+        `${customer.credit_days} Days`
+      );
+
+      setErrorMessage('');
+    };
+
+
   const submitCheckout =
     async () => {
       if (
@@ -871,6 +1062,7 @@ export const MavoraSales: React.FC<
       }
 
       if (
+        !selectedCustomerId &&
         !customerName.trim()
       ) {
         setErrorMessage(
@@ -886,12 +1078,59 @@ export const MavoraSales: React.FC<
       if (
         paymentMethod ===
           'CREDIT' &&
-        !creditTerms.trim()
+        !selectedCustomerId
       ) {
         setErrorMessage(
           t(
-            'Credit Terms လိုအပ်ပါသည်။',
-            'Credit terms are required.'
+            'CREDIT အရောင်းအတွက် Customer Master ကို မဖြစ်မနေရွေးပါ။',
+            'Customer Master selection is required for CREDIT Sales.'
+          )
+        );
+
+        return;
+      }
+
+      if (
+        paymentMethod ===
+          'CREDIT' &&
+        selectedCustomer &&
+        !selectedCustomer
+          .credit_enabled
+      ) {
+        setErrorMessage(
+          t(
+            'ရွေးထားသော Customer အတွက် Credit မဖွင့်ထားပါ။',
+            'Credit is not enabled for the selected Customer.'
+          )
+        );
+
+        return;
+      }
+
+      if (
+        paymentMethod ===
+          'CREDIT' &&
+        selectedCustomer
+          ?.credit_hold
+      ) {
+        setErrorMessage(
+          t(
+            'ရွေးထားသော Customer ကို Credit Hold ထားပါသည်။',
+            'The selected Customer is currently on Credit Hold.'
+          )
+        );
+
+        return;
+      }
+
+      if (
+        invoiceRemark.length >
+        500
+      ) {
+        setErrorMessage(
+          t(
+            'Invoice Remark သည် စာလုံး 500 ထက် မကျော်ရပါ။',
+            'Invoice Remark cannot exceed 500 characters.'
           )
         );
 
@@ -922,6 +1161,12 @@ export const MavoraSales: React.FC<
                 postingKeyRef.current,
 
               customerName,
+
+              customerId:
+                selectedCustomerId ||
+                null,
+
+              invoiceRemark,
 
               items:
                 cart.map(
@@ -963,10 +1208,29 @@ export const MavoraSales: React.FC<
         setCart([]);
         setCheckoutOpen(false);
 
+        setSelectedCustomerId(
+          ''
+        );
+
+        setSelectedCustomer(
+          null
+        );
+
+        setCustomerSearch('');
+
         setCustomerName('');
         setCustomerPhone('');
+        setCustomerShopType(
+          'Retail'
+        );
         setCustomerAddress('');
         setCustomerGps('');
+
+        setInvoiceRemark('');
+
+        setCreditTerms(
+          '7 Days'
+        );
 
         postingKeyRef.current =
           null;
@@ -1464,6 +1728,41 @@ export const MavoraSales: React.FC<
                 </span>
               </div>
 
+              ${
+                order.credit_terms
+                  ? `
+                    <div class="info-row">
+                      <span>Credit Terms</span>
+                      <span>
+                        ${escapeHtml(
+                          order.credit_terms
+                        )}
+                      </span>
+                    </div>
+                  `
+                  : ''
+              }
+
+              ${
+                order.invoice_remark
+                  ? `
+                    <div class="divider"></div>
+
+                    <div>
+                      <strong>
+                        Remark:
+                      </strong>
+
+                      ${escapeHtml(
+                        order.invoice_remark
+                      )}
+                    </div>
+
+                    <div class="divider"></div>
+                  `
+                  : ''
+              }
+
               <div class="info-row">
                 <span>Sold By</span>
                 <span>
@@ -1882,7 +2181,46 @@ export const MavoraSales: React.FC<
                   order.sold_by
                 )}
               </div>
+
+              ${
+                order.credit_terms
+                  ? `
+                    <div>
+                      <strong>
+                        Credit Terms:
+                      </strong>
+
+                      ${escapeHtml(
+                        order.credit_terms
+                      )}
+                    </div>
+                  `
+                  : ''
+              }
             </div>
+
+            ${
+              order.invoice_remark
+                ? `
+                  <div style="
+                    margin: 0 0 15px 0;
+                    padding: 10px 12px;
+                    border: 1px solid #c7d2fe;
+                    border-radius: 8px;
+                    background: #eef2ff;
+                    white-space: pre-wrap;
+                  ">
+                    <strong>
+                      Invoice Remark:
+                    </strong>
+
+                    ${escapeHtml(
+                      order.invoice_remark
+                    )}
+                  </div>
+                `
+                : ''
+            }
 
             <table>
               <thead>
@@ -2865,11 +3203,23 @@ export const MavoraSales: React.FC<
                     cart.length ===
                     0
                   }
-                  onClick={() =>
+                  onClick={() => {
                     setCheckoutOpen(
                       true
-                    )
-                  }
+                    );
+
+                    setCustomerSearch(
+                      ''
+                    );
+
+                    setCustomerLoadError(
+                      ''
+                    );
+
+                    void refreshSalesCustomers(
+                      ''
+                    );
+                  }}
                   className="mt-2 w-full rounded-xl bg-emerald-600 px-4 py-3 font-black text-white shadow hover:bg-emerald-700 disabled:opacity-50"
                 >
                   {t(
@@ -2975,6 +3325,169 @@ export const MavoraSales: React.FC<
             </div>
 
             <div className="p-4 md:p-6 space-y-4">
+              <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-3">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-wide text-indigo-700">
+                    Customer Master
+                  </div>
+
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    {t(
+                      'Credit Sale အတွက် Customer Master မဖြစ်မနေရွေးပါ။ Cash Sale အတွက် Walk-in Customer သုံးနိုင်ပါသည်။',
+                      'Customer Master is required for Credit Sales. Walk-in customers remain available for Cash Sales.'
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                  <input
+                    value={
+                      customerSearch
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setCustomerSearch(
+                        event.target.value
+                      )
+                    }
+                    onKeyDown={(
+                      event
+                    ) => {
+                      if (
+                        event.key ===
+                        'Enter'
+                      ) {
+                        event.preventDefault();
+
+                        void refreshSalesCustomers(
+                          customerSearch
+                        );
+                      }
+                    }}
+                    placeholder="Customer Code / Name / Phone / Address"
+                    className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm"
+                  />
+
+                  <button
+                    type="button"
+                    disabled={
+                      customerLoading
+                    }
+                    onClick={() =>
+                      void refreshSalesCustomers(
+                        customerSearch
+                      )
+                    }
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-black text-white hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {customerLoading
+                      ? 'Loading...'
+                      : 'Search'}
+                  </button>
+                </div>
+
+                <select
+                  value={
+                    selectedCustomerId
+                  }
+                  onChange={(
+                    event
+                  ) =>
+                    selectCheckoutCustomer(
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-xl border border-indigo-200 bg-white px-3 py-2 text-sm font-bold text-slate-700"
+                >
+                  <option value="">
+                    Walk-in / Ad-hoc Customer
+                  </option>
+
+                  {salesCustomers.map(
+                    (customer) => (
+                      <option
+                        key={
+                          customer.customer_id
+                        }
+                        value={
+                          customer.customer_id
+                        }
+                      >
+                        {
+                          customer.customer_code
+                        }
+                        {' — '}
+                        {
+                          customer.name
+                        }
+                        {customer.phone
+                          ? ` — ${customer.phone}`
+                          : ''}
+                      </option>
+                    )
+                  )}
+                </select>
+
+                {customerLoadError && (
+                  <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700">
+                    {
+                      customerLoadError
+                    }
+                  </div>
+                )}
+
+                {selectedCustomer && (
+                  <div className="grid gap-2 rounded-xl border border-indigo-100 bg-white p-3 text-xs md:grid-cols-3">
+                    <div>
+                      <div className="font-black text-slate-400">
+                        Customer Code
+                      </div>
+
+                      <div className="font-black text-slate-800">
+                        {
+                          selectedCustomer.customer_code
+                        }
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="font-black text-slate-400">
+                        Credit Policy
+                      </div>
+
+                      <div
+                        className={`font-black ${
+                          !selectedCustomer.credit_enabled
+                            ? 'text-slate-500'
+                            : selectedCustomer.credit_hold
+                              ? 'text-rose-600'
+                              : 'text-emerald-600'
+                        }`}
+                      >
+                        {!selectedCustomer.credit_enabled
+                          ? 'Credit Disabled'
+                          : selectedCustomer.credit_hold
+                            ? 'CREDIT HOLD'
+                            : `${selectedCustomer.credit_days} Days`}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="font-black text-slate-400">
+                        Credit Limit
+                      </div>
+
+                      <div className="font-black text-slate-800">
+                        {formatNumber(
+                          selectedCustomer.credit_limit
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="space-y-1">
                   <span className="text-xs font-black text-slate-500">
@@ -2992,7 +3505,16 @@ export const MavoraSales: React.FC<
                         event.target.value
                       )
                     }
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                    readOnly={
+                      Boolean(
+                        selectedCustomerId
+                      )
+                    }
+                    className={`w-full rounded-xl border border-slate-300 px-3 py-2 ${
+                      selectedCustomerId
+                        ? 'bg-slate-100 text-slate-600'
+                        : ''
+                    }`}
                   />
                 </label>
 
@@ -3012,7 +3534,16 @@ export const MavoraSales: React.FC<
                         event.target.value
                       )
                     }
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                    readOnly={
+                      Boolean(
+                        selectedCustomerId
+                      )
+                    }
+                    className={`w-full rounded-xl border border-slate-300 px-3 py-2 ${
+                      selectedCustomerId
+                        ? 'bg-slate-100 text-slate-600'
+                        : ''
+                    }`}
                   />
                 </label>
 
@@ -3032,7 +3563,16 @@ export const MavoraSales: React.FC<
                         event.target.value
                       )
                     }
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                    readOnly={
+                      Boolean(
+                        selectedCustomerId
+                      )
+                    }
+                    className={`w-full rounded-xl border border-slate-300 px-3 py-2 ${
+                      selectedCustomerId
+                        ? 'bg-slate-100 text-slate-600'
+                        : ''
+                    }`}
                   />
                 </label>
 
@@ -3052,7 +3592,16 @@ export const MavoraSales: React.FC<
                         event.target.value
                       )
                     }
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                    readOnly={
+                      Boolean(
+                        selectedCustomerId
+                      )
+                    }
+                    className={`w-full rounded-xl border border-slate-300 px-3 py-2 ${
+                      selectedCustomerId
+                        ? 'bg-slate-100 text-slate-600'
+                        : ''
+                    }`}
                   />
                 </label>
 
@@ -3072,7 +3621,16 @@ export const MavoraSales: React.FC<
                         event.target.value
                       )
                     }
-                    className="w-full rounded-xl border border-slate-300 px-3 py-2"
+                    readOnly={
+                      Boolean(
+                        selectedCustomerId
+                      )
+                    }
+                    className={`w-full rounded-xl border border-slate-300 px-3 py-2 ${
+                      selectedCustomerId
+                        ? 'bg-slate-100 text-slate-600'
+                        : ''
+                    }`}
                   />
                 </label>
               </div>
@@ -3117,27 +3675,58 @@ export const MavoraSales: React.FC<
 
               {paymentMethod ===
                 'CREDIT' && (
-                <label className="block space-y-1">
-                  <span className="text-xs font-black text-amber-700">
-                    Credit Terms *
+                <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-3">
+                  <div className="text-xs font-black text-amber-700">
+                    Credit Terms — Customer Master
+                  </div>
+
+                  <div className="mt-1 text-sm font-black text-slate-800">
+                    {selectedCustomer
+                      ? `${selectedCustomer.credit_days} Days`
+                      : 'Select Customer Master'}
+                  </div>
+
+                  <div className="mt-1 text-[11px] text-amber-700">
+                    {t(
+                      'Credit Terms ကို Customer Master မှ Server က သတ်မှတ်ပါသည်။',
+                      'Credit Terms are controlled by Customer Master.'
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <label className="block space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-black text-slate-500">
+                    Invoice Remark
                   </span>
 
-                  <input
-                    value={
-                      creditTerms
-                    }
-                    onChange={(
-                      event
-                    ) =>
-                      modifyCheckoutField(
-                        setCreditTerms,
-                        event.target.value
-                      )
-                    }
-                    className="w-full rounded-xl border border-amber-300 bg-amber-50 px-3 py-2"
-                  />
-                </label>
-              )}
+                  <span className="text-[10px] font-bold text-slate-400">
+                    {invoiceRemark.length}/500
+                  </span>
+                </div>
+
+                <textarea
+                  value={
+                    invoiceRemark
+                  }
+                  rows={3}
+                  maxLength={500}
+                  onChange={(
+                    event
+                  ) =>
+                    modifyCheckoutField(
+                      setInvoiceRemark,
+                      event.target.value
+                    )
+                  }
+                  placeholder={t(
+                    'Customer မြင်ရမည့် Invoice မှတ်ချက်...',
+                    'Customer-visible Invoice remark...'
+                  )}
+                  className="w-full resize-y rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                />
+              </label>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1">
@@ -3713,6 +4302,18 @@ export const MavoraSales: React.FC<
                         ? 'PAID'
                         : 'UNPAID'}
                     </div>
+
+                    {invoiceDetail
+                      .order
+                      .credit_terms && (
+                      <div className="mt-1 text-[11px] font-bold text-amber-700">
+                        {
+                          invoiceDetail
+                            .order
+                            .credit_terms
+                        }
+                      </div>
+                    )}
                   </div>
 
                   <div className="rounded-xl bg-slate-50 p-3">
@@ -3793,6 +4394,24 @@ export const MavoraSales: React.FC<
                     </div>
                   </div>
                 </div>
+
+                {invoiceDetail
+                  .order
+                  .invoice_remark && (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                    <div className="text-xs font-black uppercase tracking-wide text-indigo-600">
+                      Invoice Remark
+                    </div>
+
+                    <div className="mt-1 whitespace-pre-wrap text-sm font-bold text-slate-700">
+                      {
+                        invoiceDetail
+                          .order
+                          .invoice_remark
+                      }
+                    </div>
+                  </div>
+                )}
 
                 <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-full text-sm">

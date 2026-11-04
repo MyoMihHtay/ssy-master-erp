@@ -119,6 +119,120 @@ export interface MavoraSalesCheckoutItemInput {
   quantity: number;
 }
 
+/* =========================================================
+ * CONTROLLED CUSTOMER MASTER
+ * Phase 2P-6N-6I client service layer
+ * ========================================================= */
+
+export interface MavoraSalesCustomer {
+  customer_id: string;
+  customer_code: string;
+  name: string;
+
+  phone: string | null;
+  address: string | null;
+  shop_type: string | null;
+  gps: string | null;
+
+  is_active: boolean;
+
+  credit_enabled: boolean;
+  credit_limit: number;
+  credit_days: number;
+  credit_hold: boolean;
+
+  internal_note: string | null;
+
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MavoraSalesCustomerListResult {
+  ok: boolean;
+
+  filters: {
+    search: string | null;
+    is_active: boolean | null;
+    credit_enabled: boolean | null;
+  };
+
+  limit: number;
+  offset: number;
+  total_count: number;
+
+  customers: MavoraSalesCustomer[];
+}
+
+export interface LoadMavoraSalesCustomersInput {
+  tenantId: string;
+
+  limit?: number;
+  offset?: number;
+
+  search?: string | null;
+
+  isActive?: boolean | null;
+  creditEnabled?: boolean | null;
+}
+
+export interface MavoraSalesCustomerDetailResult {
+  ok: boolean;
+  customer: MavoraSalesCustomer;
+}
+
+export interface UpsertMavoraSalesCustomerInput {
+  tenantId: string;
+
+  customerCode: string;
+  name: string;
+
+  phone?: string | null;
+  address?: string | null;
+  shopType?: string | null;
+  gps?: string | null;
+
+  isActive?: boolean | null;
+  internalNote?: string | null;
+
+  customerId?: string | null;
+  reason?: string | null;
+}
+
+export interface MavoraSalesCustomerMutationResult {
+  ok: boolean;
+  action: string;
+  customer: MavoraSalesCustomer;
+}
+
+export interface SetMavoraSalesCustomerCreditPolicyInput {
+  tenantId: string;
+  customerId: string;
+
+  creditEnabled: boolean;
+  creditLimit: number;
+  creditDays: number;
+  creditHold: boolean;
+
+  reason?: string | null;
+}
+
+export interface MavoraSalesCustomerCreditPolicyResult {
+  ok: boolean;
+
+  customer_id: string;
+  customer_code: string;
+  name: string;
+
+  credit_policy: {
+    credit_enabled: boolean;
+    credit_limit: number;
+    credit_days: number;
+    credit_hold: boolean;
+  };
+
+  updated_at: string;
+}
+
 export interface CheckoutMavoraSalesOrderInput {
   tenantId: string;
   warehouseId: string;
@@ -126,6 +240,9 @@ export interface CheckoutMavoraSalesOrderInput {
   postingKey: string;
 
   customerName: string;
+
+  customerId?: string | null;
+  invoiceRemark?: string | null;
 
   items: MavoraSalesCheckoutItemInput[];
 
@@ -184,6 +301,10 @@ export interface MavoraSalesCheckoutResult {
 
   payment_method?: string;
   is_paid?: boolean;
+
+  customer_id?: string | null;
+  invoice_remark?: string | null;
+  checkout_version?: 'legacy' | 'v2';
 
   movement_group_id: string | null;
 
@@ -452,6 +573,317 @@ export const setMavoraSalesProductPrice =
     );
   };
 
+/* =========================================================
+ * CONTROLLED CUSTOMER MASTER RPC
+ * ========================================================= */
+
+export const loadMavoraSalesCustomers =
+  async (
+    input: LoadMavoraSalesCustomersInput
+  ): Promise<MavoraSalesCustomerListResult> => {
+    if (!input.tenantId) {
+      throw new Error(
+        'Sales customer tenant is required'
+      );
+    }
+
+    const limit =
+      input.limit ?? 50;
+
+    const offset =
+      input.offset ?? 0;
+
+    if (
+      !Number.isInteger(limit) ||
+      limit < 1 ||
+      limit > 200
+    ) {
+      throw new Error(
+        'Customer list limit must be between 1 and 200'
+      );
+    }
+
+    if (
+      !Number.isInteger(offset) ||
+      offset < 0
+    ) {
+      throw new Error(
+        'Customer list offset cannot be negative'
+      );
+    }
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'list_sales_customers',
+        {
+          p_tenant_id:
+            input.tenantId,
+
+          p_limit:
+            limit,
+
+          p_offset:
+            offset,
+
+          p_search:
+            input.search?.trim() ||
+            null,
+
+          p_is_active:
+            input.isActive ??
+            null,
+
+          p_credit_enabled:
+            input.creditEnabled ??
+            null,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to load controlled Customer Master'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid controlled Customer Master response'
+      );
+    }
+
+    return (
+      data as MavoraSalesCustomerListResult
+    );
+  };
+
+
+export const loadMavoraSalesCustomer =
+  async (
+    tenantId: string,
+    customerId: string
+  ): Promise<MavoraSalesCustomerDetailResult> => {
+    if (!tenantId) {
+      throw new Error(
+        'Sales customer tenant is required'
+      );
+    }
+
+    if (!customerId) {
+      throw new Error(
+        'Sales Customer is required'
+      );
+    }
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'get_sales_customer',
+        {
+          p_tenant_id:
+            tenantId,
+
+          p_customer_id:
+            customerId,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to load controlled Sales Customer'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid controlled Sales Customer response'
+      );
+    }
+
+    return (
+      data as MavoraSalesCustomerDetailResult
+    );
+  };
+
+
+export const upsertMavoraSalesCustomer =
+  async (
+    input: UpsertMavoraSalesCustomerInput
+  ): Promise<MavoraSalesCustomerMutationResult> => {
+    const customerCode =
+      input.customerCode.trim();
+
+    const name =
+      input.name.trim();
+
+    if (!input.tenantId) {
+      throw new Error(
+        'Sales customer tenant is required'
+      );
+    }
+
+    if (!customerCode) {
+      throw new Error(
+        'Customer Code is required'
+      );
+    }
+
+    if (!name) {
+      throw new Error(
+        'Customer name is required'
+      );
+    }
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'upsert_sales_customer',
+        {
+          p_tenant_id:
+            input.tenantId,
+
+          p_customer_code:
+            customerCode,
+
+          p_name:
+            name,
+
+          p_phone:
+            input.phone?.trim() ||
+            null,
+
+          p_address:
+            input.address?.trim() ||
+            null,
+
+          p_shop_type:
+            input.shopType?.trim() ||
+            null,
+
+          p_gps:
+            input.gps?.trim() ||
+            null,
+
+          p_is_active:
+            input.isActive ??
+            null,
+
+          p_internal_note:
+            input.internalNote?.trim() ||
+            null,
+
+          p_customer_id:
+            input.customerId ??
+            null,
+
+          p_reason:
+            input.reason?.trim() ||
+            null,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to save controlled Sales Customer'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid controlled Sales Customer mutation response'
+      );
+    }
+
+    return (
+      data as MavoraSalesCustomerMutationResult
+    );
+  };
+
+
+export const setMavoraSalesCustomerCreditPolicy =
+  async (
+    input: SetMavoraSalesCustomerCreditPolicyInput
+  ): Promise<MavoraSalesCustomerCreditPolicyResult> => {
+    if (!input.tenantId) {
+      throw new Error(
+        'Sales customer tenant is required'
+      );
+    }
+
+    if (!input.customerId) {
+      throw new Error(
+        'Sales Customer is required'
+      );
+    }
+
+    requireNonNegativeNumber(
+      input.creditLimit,
+      'Customer credit limit'
+    );
+
+    if (
+      !Number.isInteger(
+        input.creditDays
+      ) ||
+      input.creditDays < 0 ||
+      input.creditDays > 3650
+    ) {
+      throw new Error(
+        'Customer credit days must be between 0 and 3650'
+      );
+    }
+
+    const { data, error } =
+      await mavoraSupabase.rpc(
+        'set_sales_customer_credit_policy',
+        {
+          p_tenant_id:
+            input.tenantId,
+
+          p_customer_id:
+            input.customerId,
+
+          p_credit_enabled:
+            input.creditEnabled,
+
+          p_credit_limit:
+            input.creditLimit,
+
+          p_credit_days:
+            input.creditDays,
+
+          p_credit_hold:
+            input.creditHold,
+
+          p_reason:
+            input.reason?.trim() ||
+            null,
+        }
+      );
+
+    throwIfError(
+      error,
+      'Unable to update controlled Customer Credit Policy'
+    );
+
+    if (
+      !data ||
+      typeof data !== 'object'
+    ) {
+      throw new Error(
+        'Invalid Customer Credit Policy response'
+      );
+    }
+
+    return (
+      data as MavoraSalesCustomerCreditPolicyResult
+    );
+  };
+
+
 export const checkoutMavoraSalesOrder =
   async (
     input: CheckoutMavoraSalesOrderInput
@@ -459,9 +891,46 @@ export const checkoutMavoraSalesOrder =
     const customerName =
       input.customerName.trim();
 
-    if (!customerName) {
+    const customerId =
+      input.customerId?.trim() ||
+      null;
+
+    const invoiceRemark =
+      input.invoiceRemark?.trim() ||
+      null;
+
+    if (
+      !customerId &&
+      !customerName
+    ) {
       throw new Error(
         'Customer name is required'
+      );
+    }
+
+    const paymentMethod =
+      (
+        input.paymentMethod ??
+        'CASH'
+      )
+        .trim()
+        .toUpperCase();
+
+    if (
+      paymentMethod === 'CREDIT' &&
+      !customerId
+    ) {
+      throw new Error(
+        'Customer Master selection is required for CREDIT Sales'
+      );
+    }
+
+    if (
+      invoiceRemark &&
+      invoiceRemark.length > 500
+    ) {
+      throw new Error(
+        'Invoice Remark cannot exceed 500 characters'
       );
     }
 
@@ -526,7 +995,7 @@ export const checkoutMavoraSalesOrder =
 
     const { data, error } =
       await mavoraSupabase.rpc(
-        'checkout_sales_order',
+        'checkout_sales_order_v2',
         {
           p_tenant_id:
             input.tenantId,
@@ -550,6 +1019,12 @@ export const checkoutMavoraSalesOrder =
                   item.quantity,
               })
             ),
+
+          p_customer_id:
+            customerId,
+
+          p_invoice_remark:
+            invoiceRemark,
 
           p_price_list_id:
             input.priceListId ??
@@ -580,12 +1055,7 @@ export const checkoutMavoraSalesOrder =
             null,
 
           p_payment_method:
-            (
-              input.paymentMethod ??
-              'CASH'
-            )
-              .trim()
-              .toUpperCase(),
+            paymentMethod,
 
           p_credit_terms:
             input.creditTerms?.trim() ||
@@ -639,6 +1109,9 @@ export interface MavoraSalesHistoryWarehouse {
 export interface MavoraSalesHistoryOrder {
   sales_order_id: string;
   invoice_no: string;
+
+  customer_id: string | null;
+  invoice_remark: string | null;
 
   customer_ref: string | null;
   customer_name: string | null;
@@ -749,6 +1222,9 @@ export interface MavoraSalesInvoiceOrder {
   sales_order_id: string;
   invoice_no: string;
   status: string;
+
+  customer_id: string | null;
+  invoice_remark: string | null;
 
   customer_ref: string | null;
   customer_name: string | null;
