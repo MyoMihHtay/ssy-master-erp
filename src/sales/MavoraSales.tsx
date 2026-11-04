@@ -12,16 +12,27 @@ import type { AppLanguage } from '../i18n';
 
 import {
   checkoutMavoraSalesOrder,
+  createMavoraPrivateMediaSignedUrl,
   createSalesPostingKey,
+  addMavoraSalesCustomerActivity,
+  loadMavoraProductMedia,
   loadMavoraSalesCatalog,
+  loadMavoraSalesCustomerActivities,
+  loadMavoraSalesCustomerCrm,
+  loadMavoraSalesCustomerMedia,
   loadMavoraSalesCustomers,
   loadMavoraSalesHistory,
   loadMavoraSalesInvoiceDetail,
   loadMavoraSalesWarehouses,
   setMavoraSalesProductPrice,
+  updateMavoraSalesCustomerCrm,
+  uploadMavoraSalesCustomerMedia,
   upsertMavoraSalesPriceList,
+  type MavoraCustomerMediaKind,
   type MavoraSalesCatalog,
   type MavoraSalesCatalogProduct,
+  type MavoraSalesCustomerActivity,
+  type MavoraSalesCustomerCrm,
   type MavoraSalesCheckoutResult,
   type MavoraSalesCustomer,
   type MavoraSalesHistoryResult,
@@ -39,6 +50,31 @@ interface MavoraSalesProps {
 interface CartLine {
   product: MavoraSalesCatalogProduct;
   quantity: number;
+}
+
+interface CustomerCrmForm {
+  contactPerson: string;
+  email: string;
+  township: string;
+  area: string;
+  routeCode: string;
+  customerSegment: string;
+
+  assignedSalesUserId:
+    string | null;
+
+  latitude: number | null;
+  longitude: number | null;
+  gpsAccuracyM: number | null;
+
+  gpsSource:
+    | 'device'
+    | 'manual'
+    | 'imported'
+    | null;
+
+  gpsCapturedAt:
+    string | null;
 }
 
 const numberValue = (
@@ -187,7 +223,19 @@ export const MavoraSales: React.FC<
     setSearchText,
   ] = useState('');
 
+
   const [
+    productImageUrls,
+    setProductImageUrls,
+  ] = useState<
+    Record<string, string>
+  >({});
+
+  const [
+    productMediaLoading,
+    setProductMediaLoading,
+  ] = useState(false);
+ const [
     cart,
     setCart,
   ] = useState<CartLine[]>([]);
@@ -261,6 +309,98 @@ export const MavoraSales: React.FC<
   const [
     customerLoadError,
     setCustomerLoadError,
+  ] = useState('');
+
+
+  const [
+    checkoutGpsBusy,
+    setCheckoutGpsBusy,
+  ] = useState(false);
+
+  const [
+    crmOpen,
+    setCrmOpen,
+  ] = useState(false);
+
+  const [
+    crmLoading,
+    setCrmLoading,
+  ] = useState(false);
+
+  const [
+    crmSaving,
+    setCrmSaving,
+  ] = useState(false);
+
+  const [
+    crmUploading,
+    setCrmUploading,
+  ] = useState(false);
+
+  const [
+    crmGpsBusy,
+    setCrmGpsBusy,
+  ] = useState(false);
+
+  const [
+    crmActivitySaving,
+    setCrmActivitySaving,
+  ] = useState(false);
+
+  const [
+    crmError,
+    setCrmError,
+  ] = useState('');
+
+  const [
+    crmCustomer,
+    setCrmCustomer,
+  ] = useState<
+    MavoraSalesCustomerCrm | null
+  >(null);
+
+  const [
+    crmForm,
+    setCrmForm,
+  ] = useState<CustomerCrmForm>({
+    contactPerson: '',
+    email: '',
+    township: '',
+    area: '',
+    routeCode: '',
+    customerSegment: '',
+
+    assignedSalesUserId: null,
+
+    latitude: null,
+    longitude: null,
+    gpsAccuracyM: null,
+    gpsSource: null,
+    gpsCapturedAt: null,
+  });
+
+  const [
+    crmMediaKind,
+    setCrmMediaKind,
+  ] = useState<
+    MavoraCustomerMediaKind
+  >('profile');
+
+  const [
+    crmPhotoUrl,
+    setCrmPhotoUrl,
+  ] = useState('');
+
+  const [
+    crmActivities,
+    setCrmActivities,
+  ] = useState<
+    MavoraSalesCustomerActivity[]
+  >([]);
+
+  const [
+    crmActivityNote,
+    setCrmActivityNote,
   ] = useState('');
 
   const [
@@ -604,6 +744,88 @@ export const MavoraSales: React.FC<
     invalidatePostingKey,
   ]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPrimaryProductPhotos =
+      async () => {
+        if (!catalog) {
+          setProductImageUrls({});
+          setProductMediaLoading(false);
+          return;
+        }
+
+        setProductMediaLoading(true);
+
+        try {
+          const result =
+            await loadMavoraProductMedia(
+              tenantId,
+              null,
+              true,
+              500
+            );
+
+          const signedEntries =
+            await Promise.all(
+              (result.items ?? []).map(
+                async (media) => {
+                  try {
+                    const url =
+                      await createMavoraPrivateMediaSignedUrl(
+                        media.object_path,
+                        3600
+                      );
+
+                    return [
+                      media.product_id,
+                      url,
+                    ] as const;
+                  } catch {
+                    return null;
+                  }
+                }
+              )
+            );
+
+          if (cancelled) {
+            return;
+          }
+
+          const next:
+            Record<string, string> = {};
+
+          signedEntries.forEach(
+            (entry) => {
+              if (entry) {
+                next[entry[0]] =
+                  entry[1];
+              }
+            }
+          );
+
+          setProductImageUrls(next);
+        } catch {
+          if (!cancelled) {
+            setProductImageUrls({});
+          }
+        } finally {
+          if (!cancelled) {
+            setProductMediaLoading(false);
+          }
+        }
+      };
+
+    void loadPrimaryProductPhotos();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    catalog,
+    tenantId,
+  ]);
+
   const visibleProducts =
     useMemo(() => {
       const search =
@@ -625,14 +847,20 @@ export const MavoraSales: React.FC<
             .toLowerCase()
             .includes(search) ||
           product.name
-            .toLowerCase()
-            .includes(search) ||
-          (
-            product.category_name ??
-            ''
-          )
-            .toLowerCase()
-            .includes(search)
+              .toLowerCase()
+              .includes(search) ||
+            (
+              product.barcode ??
+              ''
+            )
+              .toLowerCase()
+              .includes(search) ||
+            (
+              product.category_name ??
+              ''
+            )
+              .toLowerCase()
+              .includes(search)
       );
     }, [
       catalog,
@@ -2480,6 +2708,553 @@ export const MavoraSales: React.FC<
       }
     };
 
+  const syncCrmForm =
+    (
+      customer:
+        MavoraSalesCustomerCrm
+    ) => {
+      setCrmForm({
+        contactPerson:
+          customer.contact_person ??
+          '',
+
+        email:
+          customer.email ??
+          '',
+
+        township:
+          customer.township ??
+          '',
+
+        area:
+          customer.area ??
+          '',
+
+        routeCode:
+          customer.route_code ??
+          '',
+
+        customerSegment:
+          customer.customer_segment ??
+          '',
+
+        assignedSalesUserId:
+          customer.assigned_sales_user_id,
+
+        latitude:
+          customer.latitude,
+
+        longitude:
+          customer.longitude,
+
+        gpsAccuracyM:
+          customer.gps_accuracy_m,
+
+        gpsSource:
+          customer.gps_source,
+
+        gpsCapturedAt:
+          customer.gps_captured_at,
+      });
+    };
+
+
+  const refreshCustomerCrmMedia =
+    async (
+      customerId: string
+    ) => {
+      const result =
+        await loadMavoraSalesCustomerMedia(
+          tenantId,
+          customerId
+        );
+
+      const media =
+        (result.items ?? []).find(
+          (item) =>
+            item.is_primary &&
+            item.media_kind ===
+              'profile'
+        ) ??
+        (result.items ?? [])[0];
+
+      if (!media) {
+        setCrmPhotoUrl('');
+        return;
+      }
+
+      try {
+        const url =
+          await createMavoraPrivateMediaSignedUrl(
+            media.object_path,
+            3600
+          );
+
+        setCrmPhotoUrl(url);
+      } catch {
+        setCrmPhotoUrl('');
+      }
+    };
+
+
+  const refreshCustomerCrmActivities =
+    async (
+      customerId: string
+    ) => {
+      const result =
+        await loadMavoraSalesCustomerActivities(
+          tenantId,
+          customerId,
+          100,
+          0
+        );
+
+      setCrmActivities(
+        result.items ?? []
+      );
+    };
+
+
+  const openCustomerCrm =
+    async () => {
+      if (!selectedCustomerId) {
+        setErrorMessage(
+          t(
+            'Customer Master ကို အရင်ရွေးပါ။',
+            'Select a Customer Master record first.'
+          )
+        );
+
+        return;
+      }
+
+      setCrmOpen(true);
+      setCrmLoading(true);
+      setCrmError('');
+      setCrmPhotoUrl('');
+      setCrmActivities([]);
+
+      try {
+        const [
+          crmResult,
+        ] =
+          await Promise.all([
+            loadMavoraSalesCustomerCrm(
+              tenantId,
+              selectedCustomerId
+            ),
+
+            refreshCustomerCrmMedia(
+              selectedCustomerId
+            ),
+
+            refreshCustomerCrmActivities(
+              selectedCustomerId
+            ),
+          ]);
+
+        setCrmCustomer(
+          crmResult.customer
+        );
+
+        syncCrmForm(
+          crmResult.customer
+        );
+      } catch (error) {
+        setCrmError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to load Customer CRM'
+        );
+      } finally {
+        setCrmLoading(false);
+      }
+    };
+
+
+  const captureCheckoutGps =
+    () => {
+      if (!navigator.geolocation) {
+        setErrorMessage(
+          t(
+            'ဤစက်တွင် GPS / Location မရနိုင်ပါ။',
+            'GPS / Location is not supported on this device.'
+          )
+        );
+
+        return;
+      }
+
+      setCheckoutGpsBusy(true);
+      setErrorMessage('');
+
+      navigator.geolocation
+        .getCurrentPosition(
+          (position) => {
+            const latitude =
+              position.coords.latitude;
+
+            const longitude =
+              position.coords.longitude;
+
+            modifyCheckoutField(
+              setCustomerGps,
+              `${latitude.toFixed(
+                6
+              )}, ${longitude.toFixed(
+                6
+              )}`
+            );
+
+            setCheckoutGpsBusy(false);
+          },
+
+          () => {
+            setErrorMessage(
+              t(
+                'GPS တည်နေရာ ရယူ၍မရပါ။ Location permission ကို စစ်ဆေးပါ။',
+                'Unable to capture GPS. Check Location permission.'
+              )
+            );
+
+            setCheckoutGpsBusy(false);
+          },
+
+          {
+            enableHighAccuracy:
+              true,
+
+            timeout:
+              15000,
+
+            maximumAge:
+              0,
+          }
+        );
+    };
+
+
+  const captureCrmGps =
+    () => {
+      if (!navigator.geolocation) {
+        setCrmError(
+          t(
+            'ဤစက်တွင် GPS / Location မရနိုင်ပါ။',
+            'GPS / Location is not supported on this device.'
+          )
+        );
+
+        return;
+      }
+
+      setCrmGpsBusy(true);
+      setCrmError('');
+
+      navigator.geolocation
+        .getCurrentPosition(
+          (position) => {
+            const latitude =
+              position.coords.latitude;
+
+            const longitude =
+              position.coords.longitude;
+
+            const accuracy =
+              position.coords.accuracy;
+
+            const capturedAt =
+              new Date()
+                .toISOString();
+
+            setCrmForm(
+              (current) => ({
+                ...current,
+
+                latitude,
+                longitude,
+
+                gpsAccuracyM:
+                  Number.isFinite(
+                    accuracy
+                  )
+                    ? accuracy
+                    : null,
+
+                gpsSource:
+                  'device',
+
+                gpsCapturedAt:
+                  capturedAt,
+              })
+            );
+
+            modifyCheckoutField(
+              setCustomerGps,
+              `${latitude.toFixed(
+                6
+              )}, ${longitude.toFixed(
+                6
+              )}`
+            );
+
+            setCrmGpsBusy(false);
+          },
+
+          () => {
+            setCrmError(
+              t(
+                'GPS တည်နေရာ ရယူ၍မရပါ။ Location permission ကို စစ်ဆေးပါ။',
+                'Unable to capture GPS. Check Location permission.'
+              )
+            );
+
+            setCrmGpsBusy(false);
+          },
+
+          {
+            enableHighAccuracy:
+              true,
+
+            timeout:
+              15000,
+
+            maximumAge:
+              0,
+          }
+        );
+    };
+
+
+  const saveCustomerCrm =
+    async () => {
+      if (!selectedCustomerId) {
+        return;
+      }
+
+      setCrmSaving(true);
+      setCrmError('');
+
+      try {
+        const result =
+          await updateMavoraSalesCustomerCrm(
+            {
+              tenantId,
+
+              customerId:
+                selectedCustomerId,
+
+              contactPerson:
+                crmForm.contactPerson,
+
+              email:
+                crmForm.email,
+
+              township:
+                crmForm.township,
+
+              area:
+                crmForm.area,
+
+              routeCode:
+                crmForm.routeCode,
+
+              customerSegment:
+                crmForm.customerSegment,
+
+              assignedSalesUserId:
+                crmForm.assignedSalesUserId,
+
+              latitude:
+                crmForm.latitude,
+
+              longitude:
+                crmForm.longitude,
+
+              gpsAccuracyM:
+                crmForm.gpsAccuracyM,
+
+              gpsSource:
+                crmForm.gpsSource,
+
+              gpsCapturedAt:
+                crmForm.gpsCapturedAt,
+            }
+          );
+
+        setCrmCustomer(
+          result.customer
+        );
+
+        syncCrmForm(
+          result.customer
+        );
+
+        if (result.customer.gps) {
+          modifyCheckoutField(
+            setCustomerGps,
+            result.customer.gps
+          );
+        }
+
+        setSelectedCustomer(
+          (current) =>
+            current
+              ? {
+                  ...current,
+
+                  gps:
+                    result.customer
+                      .gps,
+                }
+              : current
+        );
+
+        await refreshSalesCustomers(
+          customerSearch
+        );
+      } catch (error) {
+        setCrmError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to save Customer CRM'
+        );
+      } finally {
+        setCrmSaving(false);
+      }
+    };
+
+
+  const uploadCustomerPhoto =
+    async (
+      file: File
+    ) => {
+      if (!selectedCustomerId) {
+        return;
+      }
+
+      setCrmUploading(true);
+      setCrmError('');
+
+      try {
+        const result =
+          await uploadMavoraSalesCustomerMedia(
+            {
+              tenantId,
+
+              customerId:
+                selectedCustomerId,
+
+              file,
+
+              mediaKind:
+                crmMediaKind,
+
+              isPrimary:
+                crmMediaKind ===
+                'profile',
+
+              sortOrder:
+                0,
+
+              capturedAt:
+                new Date()
+                  .toISOString(),
+
+              latitude:
+                crmForm.latitude,
+
+              longitude:
+                crmForm.longitude,
+
+              gpsAccuracyM:
+                crmForm.gpsAccuracyM,
+            }
+          );
+
+        const url =
+          await createMavoraPrivateMediaSignedUrl(
+            result.media.object_path,
+            3600
+          );
+
+        setCrmPhotoUrl(url);
+
+        await refreshCustomerCrmMedia(
+          selectedCustomerId
+        );
+      } catch (error) {
+        setCrmError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to upload Customer photo'
+        );
+      } finally {
+        setCrmUploading(false);
+      }
+    };
+
+
+  const addCustomerCrmNote =
+    async () => {
+      if (
+        !selectedCustomerId ||
+        !crmActivityNote.trim()
+      ) {
+        return;
+      }
+
+      setCrmActivitySaving(true);
+      setCrmError('');
+
+      try {
+        await addMavoraSalesCustomerActivity(
+          {
+            tenantId,
+
+            customerId:
+              selectedCustomerId,
+
+            activityType:
+              'note',
+
+            subject:
+              'Sales CRM Note',
+
+            note:
+              crmActivityNote,
+
+            occurredAt:
+              new Date()
+                .toISOString(),
+
+            latitude:
+              crmForm.latitude,
+
+            longitude:
+              crmForm.longitude,
+
+            gpsAccuracyM:
+              crmForm.gpsAccuracyM,
+          }
+        );
+
+        setCrmActivityNote('');
+
+        await refreshCustomerCrmActivities(
+          selectedCustomerId
+        );
+      } catch (error) {
+        setCrmError(
+          error instanceof Error
+            ? error.message
+            : 'Unable to add CRM note'
+        );
+      } finally {
+        setCrmActivitySaving(false);
+      }
+    };
+
+
   const modifyCheckoutField =
     <T,>(
       setter:
@@ -2885,8 +3660,8 @@ export const MavoraSales: React.FC<
                     )
                   }
                   placeholder={t(
-                    'SKU / Product ရှာရန်',
-                    'Search SKU / product'
+                    'Product ID / SKU / Barcode / Product ရှာရန်',
+                      'Search Product ID / SKU / Barcode / product'
                   )}
                   className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
                 />
@@ -2914,20 +3689,65 @@ export const MavoraSales: React.FC<
                           : 'border-slate-200 bg-slate-50 opacity-60'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="text-xs font-black text-emerald-600">
-                            {
-                              product.sku
-                            }
-                          </div>
+                      <div className="mb-3 aspect-[4/3] overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                          {productImageUrls[
+                            product.product_id
+                          ] ? (
+                            <img
+                              src={
+                                productImageUrls[
+                                  product.product_id
+                                ]
+                              }
+                              alt={product.name}
+                              loading="lazy"
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-3 text-center text-slate-400">
+                              <span className="text-3xl">
+                                📦
+                              </span>
 
-                          <div className="font-black text-slate-900">
-                            {
-                              product.name
-                            }
-                          </div>
+                              <span className="text-[10px] font-black uppercase tracking-wide">
+                                {productMediaLoading
+                                  ? t(
+                                      'ပုံရယူနေသည်...',
+                                      'Loading photo...'
+                                    )
+                                  : t(
+                                      'Product Photo',
+                                      'Product Photo'
+                                    )}
+                              </span>
+                            </div>
+                          )}
                         </div>
+
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="text-xs font-black text-emerald-600">
+                              {t(
+                                'Product ID / SKU',
+                                'Product ID / SKU'
+                              )}
+                              {': '}
+                              {product.sku}
+                            </div>
+
+                            <div className="truncate font-black text-slate-900">
+                              {product.name}
+                            </div>
+
+                            <div className="mt-1 text-[11px] font-bold text-slate-400">
+                              {t(
+                                'Barcode',
+                                'Barcode'
+                              )}
+                              {': '}
+                              {product.barcode ?? '-'}
+                            </div>
+                          </div>
 
                         <span className="rounded-lg bg-slate-900 px-2 py-1 text-[10px] font-black text-white">
                           {
@@ -3293,6 +4113,372 @@ export const MavoraSales: React.FC<
         </div>
       )}
 
+      {crmOpen && (
+        <div className="fixed inset-0 z-[170] flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm">
+          <div className="max-h-[94vh] w-full max-w-5xl overflow-y-auto rounded-3xl bg-white shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-slate-200 bg-white px-4 py-4 md:px-6">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">
+                  MAVORA CUSTOMER CRM
+                </div>
+
+                <h3 className="mt-1 text-xl font-black text-slate-900 md:text-2xl">
+                  {crmCustomer?.name ??
+                    selectedCustomer?.name ??
+                    'Customer CRM'}
+                </h3>
+
+                <div className="mt-1 text-xs font-bold text-slate-500">
+                  Customer ID:{' '}
+                  {crmCustomer?.customer_code ??
+                    selectedCustomer?.customer_code ??
+                    '-'}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setCrmOpen(false)
+                }
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-black text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-5 p-4 md:p-6">
+              {crmError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700">
+                  {crmError}
+                </div>
+              )}
+
+              {crmLoading ? (
+                <div className="py-14 text-center text-sm font-black text-slate-500">
+                  Loading Customer CRM...
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-5 lg:grid-cols-[280px_1fr]">
+                    <section className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                        {crmPhotoUrl ? (
+                          <img
+                            src={crmPhotoUrl}
+                            alt={
+                              crmCustomer?.name ??
+                              'Customer'
+                            }
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-slate-400">
+                            <span className="text-5xl">
+                              🏪
+                            </span>
+
+                            <span className="text-xs font-black">
+                              Customer / Shop Photo
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      <select
+                        value={crmMediaKind}
+                        onChange={(event) =>
+                          setCrmMediaKind(
+                            event.target.value as MavoraCustomerMediaKind
+                          )
+                        }
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-bold"
+                      >
+                        <option value="profile">
+                          Profile
+                        </option>
+                        <option value="shop_front">
+                          Shop Front
+                        </option>
+                        <option value="shop_inside">
+                          Shop Inside
+                        </option>
+                        <option value="other">
+                          Other
+                        </option>
+                      </select>
+
+                      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-violet-600 px-3 py-3 text-sm font-black text-white hover:bg-violet-700">
+                        📷{' '}
+                        {crmUploading
+                          ? 'Uploading...'
+                          : 'Take Photo / Upload'}
+
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
+                          capture="environment"
+                          disabled={crmUploading}
+                          className="hidden"
+                          onChange={(event) => {
+                            const file =
+                              event.target.files?.[0];
+
+                            event.target.value =
+                              '';
+
+                            if (file) {
+                              void uploadCustomerPhoto(
+                                file
+                              );
+                            }
+                          }}
+                        />
+                      </label>
+
+                      <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+                        <div className="font-black">
+                          📍 Structured GPS
+                        </div>
+
+                        <div className="mt-1 font-bold">
+                          {crmForm.latitude !== null &&
+                          crmForm.longitude !== null
+                            ? `${crmForm.latitude.toFixed(
+                                6
+                              )}, ${crmForm.longitude.toFixed(
+                                6
+                              )}`
+                            : 'GPS not captured'}
+                        </div>
+
+                        {crmForm.gpsAccuracyM !==
+                          null && (
+                          <div className="mt-1 text-[10px]">
+                            Accuracy:{' '}
+                            {formatNumber(
+                              crmForm.gpsAccuracyM,
+                              1
+                            )}{' '}
+                            m
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={crmGpsBusy}
+                          onClick={captureCrmGps}
+                          className="mt-3 w-full rounded-lg bg-blue-600 px-3 py-2 font-black text-white disabled:opacity-50"
+                        >
+                          {crmGpsBusy
+                            ? 'Getting GPS...'
+                            : '📍 Get Current Location'}
+                        </button>
+                      </div>
+                    </section>
+
+                    <section className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        [
+                          'Contact Person',
+                          'contactPerson',
+                        ],
+                        [
+                          'Email',
+                          'email',
+                        ],
+                        [
+                          'Township',
+                          'township',
+                        ],
+                        [
+                          'Area',
+                          'area',
+                        ],
+                        [
+                          'Route',
+                          'routeCode',
+                        ],
+                        [
+                          'Customer Segment',
+                          'customerSegment',
+                        ],
+                      ].map(
+                        ([label, key]) => (
+                          <label
+                            key={key}
+                            className="space-y-1"
+                          >
+                            <span className="text-xs font-black text-slate-500">
+                              {label}
+                            </span>
+
+                            <input
+                              value={
+                                crmForm[
+                                  key as keyof Pick<
+                                    CustomerCrmForm,
+                                    | 'contactPerson'
+                                    | 'email'
+                                    | 'township'
+                                    | 'area'
+                                    | 'routeCode'
+                                    | 'customerSegment'
+                                  >
+                                ] as string
+                              }
+                              onChange={(event) =>
+                                setCrmForm(
+                                  (current) => ({
+                                    ...current,
+                                    [key]:
+                                      event.target.value,
+                                  })
+                                )
+                              }
+                              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                            />
+                          </label>
+                        )
+                      )}
+
+                      <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                        <div className="font-black text-slate-700">
+                          Customer Master
+                        </div>
+
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          <div>
+                            Phone:{' '}
+                            {crmCustomer?.phone ??
+                              selectedCustomer?.phone ??
+                              '-'}
+                          </div>
+
+                          <div>
+                            Shop Type:{' '}
+                            {crmCustomer?.shop_type ??
+                              selectedCustomer?.shop_type ??
+                              '-'}
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            Address:{' '}
+                            {crmCustomer?.address ??
+                              selectedCustomer?.address ??
+                              '-'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="sm:col-span-2 flex justify-end">
+                        <button
+                          type="button"
+                          disabled={crmSaving}
+                          onClick={() =>
+                            void saveCustomerCrm()
+                          }
+                          className="rounded-xl bg-emerald-600 px-5 py-3 text-sm font-black text-white disabled:opacity-50"
+                        >
+                          {crmSaving
+                            ? 'Saving...'
+                            : 'Save CRM'}
+                        </button>
+                      </div>
+                    </section>
+                  </div>
+
+                  <section className="rounded-2xl border border-slate-200 p-4">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <input
+                        value={crmActivityNote}
+                        onChange={(event) =>
+                          setCrmActivityNote(
+                            event.target.value
+                          )
+                        }
+                        placeholder="Customer follow-up / CRM note..."
+                        className="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                      />
+
+                      <button
+                        type="button"
+                        disabled={
+                          crmActivitySaving ||
+                          !crmActivityNote.trim()
+                        }
+                        onClick={() =>
+                          void addCustomerCrmNote()
+                        }
+                        className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-black text-white disabled:opacity-50"
+                      >
+                        {crmActivitySaving
+                          ? 'Saving...'
+                          : 'Add CRM Note'}
+                      </button>
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      {crmActivities.length ===
+                      0 ? (
+                        <div className="rounded-xl bg-slate-50 px-3 py-4 text-center text-xs font-bold text-slate-400">
+                          No CRM activity yet.
+                        </div>
+                      ) : (
+                        crmActivities
+                          .slice(0, 8)
+                          .map(
+                            (activity) => (
+                              <div
+                                key={
+                                  activity.activity_id
+                                }
+                                className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-black uppercase text-violet-600">
+                                    {
+                                      activity.activity_type
+                                    }
+                                  </span>
+
+                                  <span className="text-[10px] font-bold text-slate-400">
+                                    {formatDateTime(
+                                      activity.occurred_at
+                                    )}
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 text-sm text-slate-700">
+                                  {activity.note ??
+                                    activity.subject ??
+                                    '-'}
+                                </div>
+                              </div>
+                            )
+                          )
+                      )}
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 flex justify-end border-t border-slate-200 bg-white px-4 py-3 md:px-6">
+              <button
+                type="button"
+                onClick={() =>
+                  setCrmOpen(false)
+                }
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-black text-slate-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {checkoutOpen && catalog && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm">
           <div className="max-h-[94vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
@@ -3606,9 +4792,38 @@ export const MavoraSales: React.FC<
                 </label>
 
                 <label className="space-y-1 md:col-span-2">
-                  <span className="text-xs font-black text-slate-500">
-                    GPS / Location Note
-                  </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-xs font-black text-slate-500">
+                        GPS / Location Note
+                      </span>
+
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          disabled={checkoutGpsBusy}
+                          onClick={captureCheckoutGps}
+                          className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-black text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          {checkoutGpsBusy
+                            ? t(
+                                'GPS ရှာနေသည်...',
+                                'Getting GPS...'
+                              )
+                            : '📍 Auto GPS'}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={!selectedCustomerId}
+                          onClick={() =>
+                            void openCustomerCrm()
+                          }
+                          className="rounded-lg border border-violet-200 bg-violet-50 px-2 py-1 text-[10px] font-black text-violet-700 hover:bg-violet-100 disabled:opacity-40"
+                        >
+                          👤 CRM
+                        </button>
+                      </div>
+                    </div>
                   <input
                     value={
                       customerGps
