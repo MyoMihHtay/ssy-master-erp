@@ -93,11 +93,47 @@ const numberValue = (
 
 const formatNumber = (
   value: number,
-  maximumFractionDigits = 2
+  maximumFractionDigits = 0
 ): string =>
   value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
     maximumFractionDigits,
   });
+
+const formatFixed2 = (
+  value: number
+): string =>
+  value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const formatSalesErrorMessage = (
+  message: string
+): string =>
+  message
+    .replace(
+      /(Credit Limit:\s*)(-?\d+(?:\.\d+)?)/gi,
+      (
+        _match: string,
+        label: string,
+        raw: string
+      ) =>
+        `${label}${formatNumber(
+          Number(raw)
+        )} MMK`
+    )
+    .replace(
+      /(Outstanding after checkout:\s*)(-?\d+(?:\.\d+)?)/gi,
+      (
+        _match: string,
+        label: string,
+        raw: string
+      ) =>
+        `${label}${formatNumber(
+          Number(raw)
+        )} MMK`
+    );
 
 const formatDateTime = (
   value: string | null | undefined
@@ -1084,6 +1120,21 @@ export const MavoraSales: React.FC<
   const grandTotal =
     taxableAmount +
     taxAmount;
+
+  const checkoutCreditBlocked =
+    paymentMethod ===
+      'CREDIT' &&
+    Boolean(
+      selectedCustomer
+    ) &&
+    (
+      selectedCustomer
+        ?.credit_enabled ===
+        false ||
+      selectedCustomer
+        ?.credit_hold ===
+        true
+    );
 
   const arPaymentTotal =
     useMemo(
@@ -2476,9 +2527,7 @@ export const MavoraSales: React.FC<
                       <span>
                         Discount
                         (${escapeHtml(
-                          formatNumber(
-                            order.discount_percent
-                          )
+                          formatFixed2(order.discount_percent)
                         )}%)
                       </span>
 
@@ -2503,9 +2552,7 @@ export const MavoraSales: React.FC<
                       <span>
                         Tax
                         (${escapeHtml(
-                          formatNumber(
-                            order.tax_percent
-                          )
+                          formatFixed2(order.tax_percent)
                         )}%)
                       </span>
 
@@ -2949,9 +2996,7 @@ export const MavoraSales: React.FC<
                 <span>
                   Discount
                   (${escapeHtml(
-                    formatNumber(
-                      order.discount_percent
-                    )
+                    formatFixed2(order.discount_percent)
                   )}%)
                 </span>
 
@@ -2969,9 +3014,7 @@ export const MavoraSales: React.FC<
                 <span>
                   Tax
                   (${escapeHtml(
-                    formatNumber(
-                      order.tax_percent
-                    )
+                    formatFixed2(order.tax_percent)
                   )}%)
                 </span>
 
@@ -3858,7 +3901,9 @@ export const MavoraSales: React.FC<
 
       {errorMessage && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
-          {errorMessage}
+          {formatSalesErrorMessage(
+            errorMessage
+          )}
         </div>
       )}
 
@@ -4961,6 +5006,40 @@ export const MavoraSales: React.FC<
             </div>
 
             <div className="p-4 md:p-6 space-y-4">
+
+              {errorMessage && (
+                <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-black text-rose-700">
+                  ⚠️{' '}
+                  {formatSalesErrorMessage(
+                    errorMessage
+                  )}
+                </div>
+              )}
+
+              {checkoutCreditBlocked && (
+                <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3">
+                  <div className="text-sm font-black text-amber-800">
+                    {selectedCustomer
+                      ?.credit_hold
+                      ? t(
+                          'Credit Hold — အကြွေးရောင်းချမှုကို ပိတ်ထားပါသည်။',
+                          'Credit Hold — Credit Sale is blocked.'
+                        )
+                      : t(
+                          'ဤ Customer အတွက် Credit မဖွင့်ထားပါ။',
+                          'Credit is disabled for this Customer.'
+                        )}
+                  </div>
+
+                  <div className="mt-1 text-xs text-amber-700">
+                    {t(
+                      'Cash Sale ကို လိုအပ်ပါက ပုံမှန်ဆက်လက်ရောင်းချနိုင်ပါသည်။',
+                      'Cash Sale remains available when required.'
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-3">
                 <div>
                   <div className="text-xs font-black uppercase tracking-wide text-indigo-700">
@@ -5613,22 +5692,38 @@ export const MavoraSales: React.FC<
                 <button
                   type="button"
                   disabled={
-                    checkoutBusy
+                    checkoutBusy ||
+                    checkoutCreditBlocked
                   }
                   onClick={() =>
                     void submitCheckout()
                   }
-                  className="flex-[2] rounded-xl bg-emerald-600 px-4 py-3 font-black text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+                  className={`flex-[2] rounded-xl px-4 py-3 font-black shadow transition ${
+                    checkoutCreditBlocked
+                      ? 'cursor-not-allowed bg-slate-300 text-slate-600'
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  } disabled:opacity-70`}
                 >
-                  {checkoutBusy
-                    ? t(
-                        'လုပ်ဆောင်နေသည်...',
-                        'Processing...'
-                      )
-                    : t(
-                        'Confirm Sale',
-                        'Confirm Sale'
-                      )}
+                  {checkoutCreditBlocked
+                    ? selectedCustomer
+                        ?.credit_hold
+                      ? t(
+                          'Credit Hold — Sale Blocked',
+                          'Credit Hold — Sale Blocked'
+                        )
+                      : t(
+                          'Credit Disabled',
+                          'Credit Disabled'
+                        )
+                    : checkoutBusy
+                      ? t(
+                          'လုပ်ဆောင်နေသည်...',
+                          'Processing...'
+                        )
+                      : t(
+                          'Confirm Sale',
+                          'Confirm Sale'
+                        )}
                 </button>
               </div>
             </div>
