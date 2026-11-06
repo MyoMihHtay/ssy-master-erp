@@ -11,6 +11,7 @@ import { MavoraProductionMasters } from './MavoraProductionMasters';
 import { MavoraRecipeSetup } from './MavoraRecipeSetup';
 import { MavoraProductionOrderSetup } from './MavoraProductionOrderSetup';
 import { MavoraProductionExecutionPanel } from './MavoraProductionExecutionPanel';
+import { MavoraManufacturingCosting } from './MavoraManufacturingCosting';
 
 import {
   loadMavoraProductionSnapshot,
@@ -28,7 +29,8 @@ type AdvancedTab =
   | 'overview'
   | 'work-centers'
   | 'recipes'
-  | 'orders';
+  | 'orders'
+  | 'costing';
 
 const EMPTY_SNAPSHOT: MavoraProductionSnapshot = {
   sites: [],
@@ -630,6 +632,13 @@ export const MavoraProduction: React.FC<Props> = ({
                 'orders',
                 'Production Orders',
               ],
+              [
+                'costing',
+                t(
+                  'Costing / Transfer Price',
+                  'Costing / Transfer Price'
+                ),
+              ],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -848,6 +857,13 @@ export const MavoraProduction: React.FC<Props> = ({
                 />
               )}
             </div>
+          )}
+
+          {activeTab === 'costing' && (
+            <MavoraManufacturingCosting
+              tenantId={tenantId}
+              language={language}
+            />
           )}
 
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm font-bold text-blue-700">
