@@ -19,6 +19,11 @@ import {
   type MavoraRecipeProcessType,
 } from '../production/mavoraProduction';
 
+import {
+  loadMavoraProductionEdition,
+  type MavoraProductionEditionCode,
+} from '../production/mavoraProductionEdition';
+
 interface Props {
   tenantId: string;
   language: AppLanguage;
@@ -61,6 +66,16 @@ export const MavoraProduction: React.FC<Props> = ({
 
   const [loading, setLoading] = useState(true);
 
+  const [
+    editionCode,
+    setEditionCode,
+  ] = useState<MavoraProductionEditionCode>(
+    'PRODUCTION'
+  );
+
+  const isManufacturing =
+    editionCode === 'MANUFACTURING';
+
   const [errorMessage, setErrorMessage] =
     useState('');
 
@@ -80,12 +95,28 @@ export const MavoraProduction: React.FC<Props> = ({
     setErrorMessage('');
 
     try {
-      const data =
-        await loadMavoraProductionSnapshot(
+      const [
+        data,
+        edition,
+      ] = await Promise.all([
+        loadMavoraProductionSnapshot(
           tenantId
-        );
+        ),
+        loadMavoraProductionEdition(
+          tenantId
+        ),
+      ]);
 
       setSnapshot(data);
+      setEditionCode(
+        edition.editionCode
+      );
+
+      if (!edition.isManufacturing) {
+        setShowAdvanced(false);
+        setActiveTab('overview');
+        setSelectedExecutionOrderId(null);
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -336,7 +367,9 @@ export const MavoraProduction: React.FC<Props> = ({
           <div className="text-xs font-black tracking-widest text-orange-600">
             {packagingMode
               ? 'MAVORA CONTROLLED PACKAGING'
-              : 'MAVORA MANUFACTURING ERP'}
+              : isManufacturing
+                ? 'MAVORA MANUFACTURING PRO'
+                : 'MAVORA PRODUCTION EDITION'}
           </div>
 
           <h2 className="text-2xl md:text-3xl font-black text-slate-800 mt-1">
@@ -365,25 +398,31 @@ export const MavoraProduction: React.FC<Props> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() =>
-            setShowAdvanced(
-              (current) => !current
-            )
-          }
-          className="rounded-xl border-2 border-slate-200 bg-white px-4 py-3 font-black text-slate-600 hover:bg-slate-50"
-        >
-          {showAdvanced
-            ? `← ${t(
-                'ရိုးရှင်းသောပုံစံ',
-                'Simple Mode'
-              )}`
-            : `⚙️ ${t(
-                'အဆင့်မြင့်',
-                'Advanced'
-              )}`}
-        </button>
+        {isManufacturing ? (
+          <button
+            type="button"
+            onClick={() =>
+              setShowAdvanced(
+                (current) => !current
+              )
+            }
+            className="rounded-xl border-2 border-slate-200 bg-white px-4 py-3 font-black text-slate-600 hover:bg-slate-50"
+          >
+            {showAdvanced
+              ? `← ${t(
+                  'ရိုးရှင်းသောပုံစံ',
+                  'Simple Mode'
+                )}`
+              : `⚙️ ${t(
+                  'အဆင့်မြင့်',
+                  'Advanced'
+                )}`}
+          </button>
+        ) : (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-xs font-black text-blue-700">
+            MAVORA Production Edition
+          </div>
+        )}
       </div>
 
       {errorMessage && (
@@ -606,7 +645,7 @@ export const MavoraProduction: React.FC<Props> = ({
         </>
       )}
 
-      {showAdvanced && (
+      {isManufacturing && showAdvanced && (
         <>
           <div className="flex flex-wrap gap-2">
             {[
