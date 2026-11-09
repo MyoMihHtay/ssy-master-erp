@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { legacySupabase } from './legacySupabase';
+import { mavoraSupabase } from './mavoraSupabase';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
 import { TenantSelector } from './components/TenantSelector';
@@ -389,27 +390,34 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!legacyDataEnabled) {
+    if (!user?.authUserId) {
       setIsCloudConnected(false);
       return;
     }
 
-    const testSupabaseConnection =
+    const testMavoraCloudConnection =
       async () => {
         try {
           const {
+            data,
             error,
-          } = await legacySupabase
-            .from('ssy_inventory')
+          } = await mavoraSupabase
+            .from('profiles')
             .select('id')
-            .limit(1);
+            .eq(
+              'id',
+              user.authUserId
+            )
+            .maybeSingle();
 
           setIsCloudConnected(
             !error
+            && data?.id
+              === user.authUserId
           );
         } catch (err) {
           console.error(
-            "Connection failed",
+            'MAVORA cloud connection failed',
             err
           );
 
@@ -417,8 +425,8 @@ export default function App() {
         }
       };
 
-    void testSupabaseConnection();
-  }, [legacyDataEnabled]);
+    void testMavoraCloudConnection();
+  }, [user?.authUserId]);
 
   const handleStockInAndExpense = () => { };
 
@@ -737,7 +745,7 @@ export default function App() {
          </div>
          <div className="flex-1 overflow-y-auto">
            <div onClick={() => setIsMobileMenuOpen(false)}>
-             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={handleLogout} language={language} setLanguage={setLanguage} />
+             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} userName={user.name} userRole={user.role} onLogout={handleLogout} language={language} setLanguage={setLanguage} editionCode={user.editionCode} />
            </div>
          </div>
          <div className="p-4 border-t border-gray-800 bg-gray-900 shrink-0">

@@ -9,6 +9,7 @@ interface SidebarProps {
   onLogout: () => void;
   language: AppLanguage;
   setLanguage: (language: AppLanguage) => void;
+  editionCode: 'PRODUCTION' | 'MANUFACTURING';
 }
 
 interface SidebarNavItem {
@@ -26,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   language,
   setLanguage,
+  editionCode,
 }) => {
   const role = (userRole || '').toLowerCase();
 
@@ -79,7 +81,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </h1>
 
         <p className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">
-          MANUFACTURING ERP
+          {editionCode === 'PRODUCTION'
+            ? 'PRODUCTION ERP'
+            : 'MANUFACTURING PRO'}
         </p>
       </div>
 
