@@ -85,6 +85,13 @@ function useLocalStorage<T>(key: string, initialValue: T) {
 const LEGACY_SSY_TENANT_SLUG =
   'sat-sat-yo';
 
+type AppTheme =
+  | 'light'
+  | 'dark';
+
+const MAVORA_THEME_STORAGE_KEY =
+  'mavora_theme';
+
 function useSupabaseTable<
   T extends { id: any }
 >(
@@ -291,8 +298,32 @@ export default function App() {
     LANGUAGE_STORAGE_KEY,
     'my'
   );
+
+  const [theme, setTheme] =
+    useLocalStorage<AppTheme>(
+      MAVORA_THEME_STORAGE_KEY,
+      'light'
+    );
+
+  const toggleTheme = () => {
+    setTheme(
+      (current) =>
+        current === 'dark'
+          ? 'light'
+          : 'dark'
+    );
+  };
+
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [highlightSaleId, setHighlightSaleId] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme =
+      theme;
+
+    document.documentElement.style.colorScheme =
+      theme;
+  }, [theme]);
 
   useEffect(() => {
     let cancelled = false;
@@ -687,7 +718,14 @@ export default function App() {
   }
 
   return (
-    <div className="flex w-full h-[100dvh] bg-gray-50 overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative">
+    <div
+      data-theme={theme}
+      className={`mavora-app-theme ${
+        theme === 'dark'
+          ? 'theme-dark'
+          : 'theme-light'
+      } flex w-full h-[100dvh] overflow-hidden print:block print:h-auto print:bg-white print:overflow-visible relative`}
+    >
       <div className="md:hidden fixed top-0 left-0 w-full bg-gray-900 text-white z-50 p-4 flex justify-between items-center shadow-md print:hidden">
         <h1 className="font-black text-xl tracking-wider">MAVORA <span className="text-emerald-400">ERP</span></h1>
         <button onClick={() => setIsMobileMenuOpen(true)} className="text-white text-3xl font-black focus:outline-none">☰</button>
@@ -727,7 +765,18 @@ export default function App() {
 
       <main className="flex-1 w-full h-full p-2 md:p-8 pt-20 md:pt-6 overflow-y-auto print:overflow-visible print:p-0 print:w-full print:h-auto pb-10 relative z-0">
         {activeTab === 'dashboard' && <Dashboard language={language} sales={salesRecords} expenses={expenses} finishedGoods={finishedGoods} inventory={inventoryItems} employees={employees} />}
-        {activeTab === 'workspace' && <Workspace language={language} userName={user.name} userRole={user.role} />}
+        {activeTab === 'workspace' && (
+          <Workspace
+            language={language}
+            tenantId={user.tenantId}
+            tenantName={user.tenantName}
+            authUserId={user.authUserId}
+            userName={user.name}
+            roleCode={user.roleCode}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+          />
+        )}
 
         {activeTab === 'reports' && (
            <Reports
