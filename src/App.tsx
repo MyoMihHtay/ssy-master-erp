@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { legacySupabase } from './legacySupabase';
 import { Sidebar } from './components/Sidebar';
 import { Login } from './components/Login';
+import { TenantSelector } from './components/TenantSelector';
 import { MavoraInventory } from './components/MavoraInventory';
 import { MavoraProduction } from './components/MavoraProduction';
 import { MavoraFinishedGoods } from './components/MavoraFinishedGoods';
@@ -16,7 +17,10 @@ import { Reports } from './components/Reports';
 import { LANGUAGE_STORAGE_KEY, tr, type AppLanguage } from './i18n';
 import {
   restoreMavoraSession,
+  selectMavoraTenant,
   signOutMavora,
+  type MavoraAuthResult,
+  type MavoraTenantSelection,
   type MavoraUserSession,
 } from './auth/mavoraAuth';
 
@@ -78,65 +82,211 @@ function useLocalStorage<T>(key: string, initialValue: T) {
   return [storedValue, setValue] as const;
 }
 
-function useSupabaseTable<T extends { id: any }>(tableName: string, initialValue: T[]) {
-  const [storedValue, setStoredValue] = useState<T[]>(initialValue);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+const LEGACY_SSY_TENANT_SLUG =
+  'sat-sat-yo';
+
+function useSupabaseTable<
+  T extends { id: any }
+>(
+  tableName: string,
+  initialValue: T[],
+  enabled: boolean
+) {
+  const [
+    storedValue,
+    setStoredValue,
+  ] = useState<T[]>([]);
+
+  const [
+    isLoading,
+    setIsLoading,
+  ] = useState<boolean>(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await legacySupabase.from(tableName).select('*').order('id', { ascending: true });
-        if (error) { console.error(`Error loading ${tableName}:`, error); }
-        else if (data && data.length > 0) { setStoredValue(data as T[]); }
-        else if (initialValue.length > 0) { await legacySupabase.from(tableName).insert(initialValue); setStoredValue(initialValue); }
-      } catch (err) {
-        console.error("Supabase load error:", err);
-      } finally {
+      if (!enabled) {
+        setStoredValue([]);
         setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const {
+          data,
+          error,
+        } = await legacySupabase
+          .from(tableName)
+          .select('*')
+          .order(
+            'id',
+            { ascending: true }
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        if (error) {
+          console.error(
+            `Error loading ${tableName}:`,
+            error
+          );
+          return;
+        }
+
+        if (
+          data
+          && data.length > 0
+        ) {
+          setStoredValue(
+            data as T[]
+          );
+          return;
+        }
+
+        if (
+          initialValue.length > 0
+        ) {
+          const {
+            error: seedError,
+          } = await legacySupabase
+            .from(tableName)
+            .insert(initialValue);
+
+          if (seedError) {
+            console.error(
+              `Error seeding ${tableName}:`,
+              seedError
+            );
+            return;
+          }
+
+          if (!cancelled) {
+            setStoredValue(
+              initialValue
+            );
+          }
+        }
+      } catch (err) {
+        console.error(
+          "Supabase load error:",
+          err
+        );
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     };
-    loadData();
-  }, [tableName]);
 
-  const setValue = async (value: T[] | ((val: T[]) => T[])) => {
+    void loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    tableName,
+    enabled,
+  ]);
+
+  const setValue = async (
+    value:
+      T[]
+      | ((val: T[]) => T[])
+  ) => {
+    if (!enabled) {
+      console.warn(
+        `[MAVORA] Legacy write blocked: ${tableName}`
+      );
+      return;
+    }
+
     try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      const { error } = await legacySupabase.from(tableName).upsert(valueToStore);
-      if (error) console.error("Supabase Sync Error:", error);
-    } catch (error) { console.error(error); }
+      const valueToStore =
+        value instanceof Function
+          ? value(storedValue)
+          : value;
+
+      setStoredValue(
+        valueToStore
+      );
+
+      const {
+        error,
+      } = await legacySupabase
+        .from(tableName)
+        .upsert(valueToStore);
+
+      if (error) {
+        console.error(
+          "Supabase Sync Error:",
+          error
+        );
+      }
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  return [storedValue, setValue, isLoading] as const;
+  return [
+    storedValue,
+    setValue,
+    isLoading,
+  ] as const;
 }
+
 
 export default function App() {
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
+  const [
+    user,
+    setUser,
+  ] = useState<MavoraUserSession | null>(
+    null
+  );
+
+  const [
+    tenantSelection,
+    setTenantSelection,
+  ] = useState<MavoraTenantSelection | null>(
+    null
+  );
+
+  const [
+    authLoading,
+    setAuthLoading,
+  ] = useState<boolean>(true);
+
+  const legacyDataEnabled =
+    user?.tenantSlug
+    === LEGACY_SSY_TENANT_SLUG;
+
 
   const [inventoryItems, setInventoryItems, invLoading] = useSupabaseTable<InventoryItem>('ssy_inventory', [
     { id: 1, code: 'RM-001', name: 'ငါးရေခွံကုန်ကြမ်း', category: 'Raw Materials', unit: 'ပိဿာ', inStock: 500, warehouse: 'RM', lastPurchasePrice: 15000 },
-  ]);
+  ], legacyDataEnabled);
 
-  const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', []);
-  const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', []);
-  const [expenses, setExpenses, expLoading] = useSupabaseTable<ExpenseItem>('ssy_expenses', []);
-  const [customers, setCustomers, custLoading] = useSupabaseTable<Customer>('ssy_customers', []);
+  const [finishedGoods, setFinishedGoods, fgLoading] = useSupabaseTable<FinishedGoodItem>('ssy_finished_goods', [], legacyDataEnabled);
+  const [salesRecords, setSalesRecords, salesLoading] = useSupabaseTable<SaleRecord>('ssy_sales_records', [], legacyDataEnabled);
+  const [expenses, setExpenses, expLoading] = useSupabaseTable<ExpenseItem>('ssy_expenses', [], legacyDataEnabled);
+  const [customers, setCustomers, custLoading] = useSupabaseTable<Customer>('ssy_customers', [], legacyDataEnabled);
 
-  const [purchaseRequests, setPurchaseRequests, prLoading] = useSupabaseTable<PurchaseRequest>('ssy_purchase_requests', []);
-  const [recipes, setRecipes, recLoading] = useSupabaseTable<Recipe>('ssy_recipes', []);
-  const [packageRecipes, setPackageRecipes, pkgRecLoading] = useSupabaseTable<PackageRecipe>('ssy_pkg_recipes', []);
+  const [purchaseRequests, setPurchaseRequests, prLoading] = useSupabaseTable<PurchaseRequest>('ssy_purchase_requests', [], legacyDataEnabled);
+  const [recipes, setRecipes, recLoading] = useSupabaseTable<Recipe>('ssy_recipes', [], legacyDataEnabled);
+  const [packageRecipes, setPackageRecipes, pkgRecLoading] = useSupabaseTable<PackageRecipe>('ssy_pkg_recipes', [], legacyDataEnabled);
 
-  const [employees, setEmployees, empLoading] = useSupabaseTable<Employee>('ssy_employees', []);
-  const [attendance, setAttendance, attLoading] = useSupabaseTable<Attendance>('ssy_attendance', []);
-  const [advances, setAdvances, advLoading] = useSupabaseTable<Advance>('ssy_advances', []);
-  const [leaves, setLeaves, leaveLoading] = useSupabaseTable<Leave>('ssy_leaves', []);
-  const [hrSettings, setHrSettings, hrsLoading] = useSupabaseTable<HRSetting>('ssy_hr_settings', []);
+  const [employees, setEmployees, empLoading] = useSupabaseTable<Employee>('ssy_employees', [], legacyDataEnabled);
+  const [attendance, setAttendance, attLoading] = useSupabaseTable<Attendance>('ssy_attendance', [], legacyDataEnabled);
+  const [advances, setAdvances, advLoading] = useSupabaseTable<Advance>('ssy_advances', [], legacyDataEnabled);
+  const [leaves, setLeaves, leaveLoading] = useSupabaseTable<Leave>('ssy_leaves', [], legacyDataEnabled);
+  const [hrSettings, setHrSettings, hrsLoading] = useSupabaseTable<HRSetting>('ssy_hr_settings', [], legacyDataEnabled);
 
-  const [user, setUser] = useState<MavoraUserSession | null>(null);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
   const [language, setLanguage] = useLocalStorage<AppLanguage>(
     LANGUAGE_STORAGE_KEY,
     'my'
@@ -153,16 +303,33 @@ export default function App() {
 
     const restoreAuth = async () => {
       try {
-        const restoredUser = await restoreMavoraSession();
+        const restoredAuth =
+          await restoreMavoraSession();
 
         if (!cancelled) {
-          setUser(restoredUser);
+          if (!restoredAuth) {
+            setUser(null);
+            setTenantSelection(null);
+          } else if (
+            restoredAuth.kind === 'session'
+          ) {
+            setUser(
+              restoredAuth.session
+            );
+            setTenantSelection(null);
+          } else {
+            setUser(null);
+            setTenantSelection(
+              restoredAuth.selection
+            );
+          }
         }
       } catch (error) {
         console.error('MAVORA session restore failed:', error);
 
         if (!cancelled) {
           setUser(null);
+          setTenantSelection(null);
         }
       } finally {
         if (!cancelled) {
@@ -185,19 +352,42 @@ export default function App() {
       console.error('MAVORA sign out failed:', error);
     } finally {
       setUser(null);
+      setTenantSelection(null);
       setActiveTab('dashboard');
     }
   };
 
   useEffect(() => {
-    const testSupabaseConnection = async () => {
-      try {
-        const { error } = await legacySupabase.from('ssy_inventory').select('id').limit(1);
-        if (!error) setIsCloudConnected(true);
-      } catch (err) { console.error("Connection failed", err); }
-    };
-    testSupabaseConnection();
-  }, []);
+    if (!legacyDataEnabled) {
+      setIsCloudConnected(false);
+      return;
+    }
+
+    const testSupabaseConnection =
+      async () => {
+        try {
+          const {
+            error,
+          } = await legacySupabase
+            .from('ssy_inventory')
+            .select('id')
+            .limit(1);
+
+          setIsCloudConnected(
+            !error
+          );
+        } catch (err) {
+          console.error(
+            "Connection failed",
+            err
+          );
+
+          setIsCloudConnected(false);
+        }
+      };
+
+    void testSupabaseConnection();
+  }, [legacyDataEnabled]);
 
   const handleStockInAndExpense = () => { };
 
@@ -430,12 +620,53 @@ export default function App() {
     );
   }
 
+  if (tenantSelection) {
+    return (
+      <TenantSelector
+        language={language}
+        selection={tenantSelection}
+        onLogout={handleLogout}
+        onSelect={async (
+          tenantId
+        ) => {
+          const session =
+            await selectMavoraTenant(
+              tenantId
+            );
+
+          setUser(session);
+          setTenantSelection(null);
+          setActiveTab('dashboard');
+        }}
+      />
+    );
+  }
+
   if (!user) {
     return (
       <Login
         language={language}
         setLanguage={setLanguage}
-        onLogin={setUser}
+        onAuthenticated={(
+          result: MavoraAuthResult
+        ) => {
+          if (
+            result.kind === 'session'
+          ) {
+            setUser(
+              result.session
+            );
+            setTenantSelection(null);
+            setActiveTab(
+              'dashboard'
+            );
+          } else {
+            setUser(null);
+            setTenantSelection(
+              result.selection
+            );
+          }
+        }}
       />
     );
   }
